@@ -6,8 +6,8 @@ const { core_conn_execute_query_from_file } = require('./utiles.js');
 async function core_conn_initialize_database(sequelize) {
 	try {
 		//! TODO: Agregar un FOR
-			// const typesPath = path.join(__dirname, '..', 'test.sql');
-			// await core_conn_execute_query_from_file(sequelize, typesPath);
+			const db_script = path.join(__dirname, '..', 'test.sql');
+			await core_conn_execute_query_from_file(sequelize, db_script);
 		// sincronizar modelos con la base de datos
 		await sequelize.sync(JSON.parse(process.env.SYNC_PARAMS));
 
