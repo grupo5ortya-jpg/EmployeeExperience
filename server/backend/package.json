@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon --env-file .env.dev index.js",
+    "prod": "nodemon --env-file .env.prod index.js"
+  },
+  "keywords": [],
+  "author": "Constantin Mitrokhin, Juan Manuel Calo, Kevin Radnoti, Uriel Barrios, Federico Martin Grandinetti",
+  "license": "ISC",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "morgan": "^1.10.1",
+    "pg": "^8.20.0",
+    "pgtools": "^1.0.1",
+    "sequelize": "^6.37.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
