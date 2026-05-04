@@ -1,8 +1,8 @@
 
 export function srv_front_router_generate_routes() {
-	// Busca archivos .jsx dentro de cualquier bs/*/frontend/src/pages/**
+	// Busca archivos .jsx dentro de cualquier server/*/frontend/src/pages/**
 	const modules = import.meta.glob(
-		"/../../bs/**/frontend/src/pages/**/*.jsx",
+		"/../../server/frontend/src/pages/**/*.jsx",
 		{ eager: true }
 	);
 
@@ -11,9 +11,9 @@ export function srv_front_router_generate_routes() {
 	for (const fullPath in modules) {
 		const component = modules[fullPath].default;
 
-		// ejemplo: /bs/core/frontend/src/pages/Home/Home.jsx
+		// ejemplo: server/frontend/src/pages/Home/Home.jsx
 		const clean = fullPath
-			.replace("/bs/", "")
+			.replace("/server/", "")
 			.replace("/frontend/src/pages/", "")
 			.replace(".jsx", "");
 
