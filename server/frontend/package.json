@@ -14,12 +14,16 @@
   "license": "ISC",
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
+    "@tailwindcss/vite": "^4.2.4",
+    "@tanstack/react-query": "^5.100.9",
     "axios": "^1.15.2",
     "employeeexperience": "file:../..",
+    "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.14.2"
+    "react-router-dom": "^7.14.2",
+    "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
