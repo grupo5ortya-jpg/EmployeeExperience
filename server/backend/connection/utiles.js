@@ -24,11 +24,18 @@ async function core_conn_ensure_database(p_db_name) {
 }
 
 
-async function core_conn_execute_query_from_file(sequelize, filePath) {
+async function core_conn_execute_query_from_file(sequelize, filePath, schema) {
 	if (fs.existsSync(filePath)) {
 		const sql = fs.readFileSync(filePath, 'utf8');
 		try {
-			await sequelize.query(sql);
+			if (schema) {
+				await sequelize.transaction(async (t) => {
+					await sequelize.query(`SET LOCAL search_path TO "${schema}", public;`, { transaction: t });
+					await sequelize.query(sql, { transaction: t });
+				});
+			} else {
+				await sequelize.query(sql);
+			}
 			console.log(`${filePath} executed`);
 		} catch (err) {
 			// Ignorar tipo ya existe (42710) u otros errores idempotentes
