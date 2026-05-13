@@ -20,5 +20,8 @@
   "homepage": "https://github.com/grupo5ortya-jpg/EmployeeExperience#readme",
   "devDependencies": {
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "node": "^26.1.0"
   }
 }

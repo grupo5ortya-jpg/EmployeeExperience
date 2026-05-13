@@ -3,15 +3,15 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
-const routes = require('./routes/routes.js');
+const routes = require('./routes/index.routes.js');
 const { PROJECT_NAME, ALLOWED_DOMAINS, ALLOWED_METHODS } = process.env;
 
 const server = express();
 server.name = PROJECT_NAME;
 
 server.use(cors());
-server.use(express.json({limit: '50mb'}));
-server.use(express.urlencoded({extended: true, limit: '50mb'}));
+server.use(express.json({ limit: '50mb' }));
+server.use(express.urlencoded({ extended: true, limit: '50mb' }));
 server.use(cookieParser());
 server.use(morgan('dev'));
 server.use((req, res, next) => {
