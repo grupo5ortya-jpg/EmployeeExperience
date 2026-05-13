@@ -11,6 +11,9 @@ const sequelize = new Sequelize(
 		port: DB_PORT,
 		logging: false,
 		native: false,
+		dialectOptions: {
+			options: '-c search_path=main,public'
+		}
 	}
 );
 

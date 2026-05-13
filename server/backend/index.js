@@ -12,7 +12,6 @@ async function core_start_server() {
 		await core_conn_ensure_database(DB_NAME);
 		await core_conn_initialize_database(sequelize);
 
-
 		// Iniciar servidor
 		server.listen(PORT, () => {
 			console.log(`Server running on port ${PORT}`);
