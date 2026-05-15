@@ -7,6 +7,10 @@ const Department = require('./Department');
 const Employee = require('./Employee');
 const Course = require('./Course');
 const CourseEnrollment = require('./CourseEnrollment');
+const OnboardingTemplate = require('./OnboardingTemplate');
+const OnboardingTemplateTask = require('./OnboardingTemplateTask');
+const EmployeeOnboarding = require('./EmployeeOnboarding');
+const EmployeeOnboardingTask = require('./EmployeeOnboardingTask');
 
 const applyAssociations = () => {
     // User <-> Role (N:M)
@@ -111,6 +115,71 @@ const applyAssociations = () => {
         foreignKey: 'courseId',
         as: 'courseEnrollments',
     });
+    // OnboardingTemplate -> OnboardingTemplateTask
+    OnboardingTemplate.hasMany(OnboardingTemplateTask, {
+        foreignKey: 'templateId',
+        as: 'tasks',
+    });
+
+    OnboardingTemplateTask.belongsTo(OnboardingTemplate, {
+        foreignKey: 'templateId',
+        as: 'template',
+    });
+
+    // Employee -> EmployeeOnboarding
+    Employee.hasMany(EmployeeOnboarding, {
+        foreignKey: 'employeeId',
+        as: 'onboardings',
+    });
+
+    EmployeeOnboarding.belongsTo(Employee, {
+        foreignKey: 'employeeId',
+        as: 'employee',
+    });
+
+    // OnboardingTemplate -> EmployeeOnboarding
+    OnboardingTemplate.hasMany(EmployeeOnboarding, {
+        foreignKey: 'templateId',
+        as: 'employeeOnboardings',
+    });
+
+    EmployeeOnboarding.belongsTo(OnboardingTemplate, {
+        foreignKey: 'templateId',
+        as: 'template',
+    });
+
+    // EmployeeOnboarding -> EmployeeOnboardingTask
+    EmployeeOnboarding.hasMany(EmployeeOnboardingTask, {
+        foreignKey: 'employeeOnboardingId',
+        as: 'tasks',
+    });
+
+    EmployeeOnboardingTask.belongsTo(EmployeeOnboarding, {
+        foreignKey: 'employeeOnboardingId',
+        as: 'employeeOnboarding',
+    });
+
+    // OnboardingTemplateTask -> EmployeeOnboardingTask
+    OnboardingTemplateTask.hasMany(EmployeeOnboardingTask, {
+        foreignKey: 'templateTaskId',
+        as: 'employeeTasks',
+    });
+
+    EmployeeOnboardingTask.belongsTo(OnboardingTemplateTask, {
+        foreignKey: 'templateTaskId',
+        as: 'templateTask',
+    });
+
+    // Employee -> EmployeeOnboardingTask (assigned user)
+    Employee.hasMany(EmployeeOnboardingTask, {
+        foreignKey: 'assignedToEmployeeId',
+        as: 'assignedOnboardingTasks',
+    });
+
+    EmployeeOnboardingTask.belongsTo(Employee, {
+        foreignKey: 'assignedToEmployeeId',
+        as: 'assignedTo',
+    });
 };
 
 applyAssociations();
@@ -124,4 +193,8 @@ module.exports = {
     Employee,
     Course,
     CourseEnrollment,
+    OnboardingTemplate,
+    OnboardingTemplateTask,
+    EmployeeOnboarding,
+    EmployeeOnboardingTask,
 };

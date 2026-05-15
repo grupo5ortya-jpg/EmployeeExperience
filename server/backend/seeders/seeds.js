@@ -9,6 +9,10 @@ const {
     Employee,
     Course,
     CourseEnrollment,
+    OnboardingTemplate,
+    OnboardingTemplateTask,
+    EmployeeOnboarding,
+    EmployeeOnboardingTask,
 } = require('../models');
 
 async function seedDatabase() {
@@ -289,6 +293,162 @@ async function seedDatabase() {
         ]);
 
         console.log('✅ Course enrollments created');
+        // =========================
+        // Onboarding Templates
+        // =========================
+        const standardOnboardingTemplate = await OnboardingTemplate.create({
+            name: 'Onboarding estándar',
+            description: 'Plantilla general para nuevos ingresos',
+            isActive: true,
+        });
+
+        console.log('✅ Onboarding template created');
+
+        // =========================
+        // Onboarding Template Tasks
+        // =========================
+        const onboardingTask1 = await OnboardingTemplateTask.create({
+            templateId: standardOnboardingTemplate.id,
+            title: 'Completar documentación de ingreso',
+            description: 'Subir documentación personal y firmar formularios de ingreso',
+            responsibleRole: 'employee',
+            dueInDays: 1,
+            sortOrder: 1,
+        });
+
+        const onboardingTask2 = await OnboardingTemplateTask.create({
+            templateId: standardOnboardingTemplate.id,
+            title: 'Reunión inicial con líder',
+            description: 'Coordinar reunión de bienvenida y alineación de expectativas',
+            responsibleRole: 'leader',
+            dueInDays: 2,
+            sortOrder: 2,
+        });
+
+        const onboardingTask3 = await OnboardingTemplateTask.create({
+            templateId: standardOnboardingTemplate.id,
+            title: 'Configuración de herramientas',
+            description: 'Configurar correo, acceso al repositorio y herramientas internas',
+            responsibleRole: 'employee',
+            dueInDays: 3,
+            sortOrder: 3,
+        });
+
+        const onboardingTask4 = await OnboardingTemplateTask.create({
+            templateId: standardOnboardingTemplate.id,
+            title: 'Capacitación inicial de cultura y procesos',
+            description: 'Asistir a la capacitación introductoria sobre cultura y procesos internos',
+            responsibleRole: 'hr',
+            dueInDays: 5,
+            sortOrder: 4,
+        });
+
+        console.log('✅ Onboarding template tasks created');
+
+        // =========================
+        // Employee Onboardings
+        // =========================
+        const lucasOnboarding = await EmployeeOnboarding.create({
+            employeeId: employee3.id,
+            templateId: standardOnboardingTemplate.id,
+            startDate: '2024-09-01',
+            status: 'IN_PROGRESS',
+        });
+
+        const anaOnboarding = await EmployeeOnboarding.create({
+            employeeId: employee2.id,
+            templateId: standardOnboardingTemplate.id,
+            startDate: '2024-07-15',
+            status: 'COMPLETED',
+            completedAt: new Date(),
+        });
+
+        console.log('✅ Employee onboardings created');
+
+        // =========================
+        // Employee Onboarding Tasks
+        // =========================
+        await EmployeeOnboardingTask.bulkCreate([
+            {
+                employeeOnboardingId: lucasOnboarding.id,
+                templateTaskId: onboardingTask1.id,
+                title: onboardingTask1.title,
+                description: onboardingTask1.description,
+                assignedToEmployeeId: employee3.id,
+                dueDate: '2024-09-02',
+                status: 'COMPLETED',
+                completedAt: new Date(),
+            },
+            {
+                employeeOnboardingId: lucasOnboarding.id,
+                templateTaskId: onboardingTask2.id,
+                title: onboardingTask2.title,
+                description: onboardingTask2.description,
+                assignedToEmployeeId: leaderEmployee.id,
+                dueDate: '2024-09-03',
+                status: 'IN_PROGRESS',
+            },
+            {
+                employeeOnboardingId: lucasOnboarding.id,
+                templateTaskId: onboardingTask3.id,
+                title: onboardingTask3.title,
+                description: onboardingTask3.description,
+                assignedToEmployeeId: employee3.id,
+                dueDate: '2024-09-04',
+                status: 'PENDING',
+            },
+            {
+                employeeOnboardingId: lucasOnboarding.id,
+                templateTaskId: onboardingTask4.id,
+                title: onboardingTask4.title,
+                description: onboardingTask4.description,
+                assignedToEmployeeId: hrEmployee.id,
+                dueDate: '2024-09-06',
+                status: 'PENDING',
+            },
+            {
+                employeeOnboardingId: anaOnboarding.id,
+                templateTaskId: onboardingTask1.id,
+                title: onboardingTask1.title,
+                description: onboardingTask1.description,
+                assignedToEmployeeId: employee2.id,
+                dueDate: '2024-07-16',
+                status: 'COMPLETED',
+                completedAt: new Date(),
+            },
+            {
+                employeeOnboardingId: anaOnboarding.id,
+                templateTaskId: onboardingTask2.id,
+                title: onboardingTask2.title,
+                description: onboardingTask2.description,
+                assignedToEmployeeId: leaderEmployee.id,
+                dueDate: '2024-07-17',
+                status: 'COMPLETED',
+                completedAt: new Date(),
+            },
+            {
+                employeeOnboardingId: anaOnboarding.id,
+                templateTaskId: onboardingTask3.id,
+                title: onboardingTask3.title,
+                description: onboardingTask3.description,
+                assignedToEmployeeId: employee2.id,
+                dueDate: '2024-07-18',
+                status: 'COMPLETED',
+                completedAt: new Date(),
+            },
+            {
+                employeeOnboardingId: anaOnboarding.id,
+                templateTaskId: onboardingTask4.id,
+                title: onboardingTask4.title,
+                description: onboardingTask4.description,
+                assignedToEmployeeId: hrEmployee.id,
+                dueDate: '2024-07-20',
+                status: 'COMPLETED',
+                completedAt: new Date(),
+            },
+        ]);
+
+        console.log('✅ Employee onboarding tasks created');
         console.log('🎉 Seed completed successfully');
 
         process.exit(0);
