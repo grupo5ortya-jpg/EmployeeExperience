@@ -5,6 +5,7 @@ const {
     OnboardingTemplate,
     OnboardingTemplateTask,
 } = require('../models');
+const { Op } = require('sequelize');
 
 const getEmployeeOnboardings = async (req, res) => {
     try {
@@ -137,6 +138,8 @@ const getEmployeeOnboardingTasks = async (req, res) => {
 };
 
 const createEmployeeOnboarding = async (req, res) => {
+    const transaction = await EmployeeOnboarding.sequelize.transaction();
+
     try {
         const {
             employeeId,
@@ -146,30 +149,138 @@ const createEmployeeOnboarding = async (req, res) => {
             completedAt,
         } = req.body;
 
-        const employee = await Employee.findByPk(employeeId);
+        const employee = await Employee.findByPk(employeeId, { transaction });
         if (!employee) {
+            await transaction.rollback();
             return res.status(404).json({
                 message: 'Employee not found',
             });
         }
 
-        const template = await OnboardingTemplate.findByPk(templateId);
+        const template = await OnboardingTemplate.findByPk(templateId, {
+            include: [
+                {
+                    model: OnboardingTemplateTask,
+                    as: 'tasks',
+                },
+            ],
+            transaction,
+        });
+
         if (!template) {
+            await transaction.rollback();
             return res.status(404).json({
                 message: 'Onboarding template not found',
             });
         }
 
-        const newEmployeeOnboarding = await EmployeeOnboarding.create({
-            employeeId,
-            templateId,
-            startDate,
-            status,
-            completedAt,
+        if (!template.tasks || template.tasks.length === 0) {
+            await transaction.rollback();
+            return res.status(400).json({
+                message: 'Cannot create onboarding from a template without tasks',
+            });
+        }
+
+        const activeOnboarding = await EmployeeOnboarding.findOne({
+            where: {
+                employeeId,
+                status: {
+                    [Op.in]: ['PENDING', 'IN_PROGRESS'],
+                },
+            },
+            transaction,
         });
 
-        return res.status(201).json(newEmployeeOnboarding);
+        if (activeOnboarding) {
+            await transaction.rollback();
+            return res.status(409).json({
+                message: 'Employee already has an active onboarding',
+            });
+        }
+
+        const newEmployeeOnboarding = await EmployeeOnboarding.create(
+            {
+                employeeId,
+                templateId,
+                startDate,
+                status: status || 'PENDING',
+                completedAt,
+            },
+            { transaction }
+        );
+
+        const onboardingTasksPayload = template.tasks.map((templateTask) => {
+            let assignedToEmployeeId = null;
+
+            if (templateTask.responsibleRole === 'employee') {
+                assignedToEmployeeId = employee.id;
+            }
+
+            if (templateTask.responsibleRole === 'leader') {
+                assignedToEmployeeId = employee.managerId || null;
+            }
+
+            if (templateTask.responsibleRole === 'hr') {
+                assignedToEmployeeId = null;
+            }
+
+            const onboardingStartDate = new Date(startDate);
+            const dueDate = new Date(onboardingStartDate);
+            dueDate.setDate(dueDate.getDate() + templateTask.dueInDays);
+
+            return {
+                employeeOnboardingId: newEmployeeOnboarding.id,
+                templateTaskId: templateTask.id,
+                title: templateTask.title,
+                description: templateTask.description,
+                assignedToEmployeeId,
+                dueDate: dueDate.toISOString().split('T')[0],
+                status: 'PENDING',
+            };
+        });
+
+        await EmployeeOnboardingTask.bulkCreate(onboardingTasksPayload, {
+            transaction,
+        });
+
+        await transaction.commit();
+
+        const createdOnboarding = await EmployeeOnboarding.findByPk(newEmployeeOnboarding.id, {
+            include: [
+                {
+                    model: Employee,
+                    as: 'employee',
+                    attributes: ['id', 'firstName', 'lastName', 'fullName', 'position', 'status'],
+                },
+                {
+                    model: OnboardingTemplate,
+                    as: 'template',
+                    attributes: ['id', 'name', 'description', 'isActive'],
+                },
+                {
+                    model: EmployeeOnboardingTask,
+                    as: 'tasks',
+                    include: [
+                        {
+                            model: Employee,
+                            as: 'assignedTo',
+                            attributes: ['id', 'firstName', 'lastName', 'fullName', 'position'],
+                        },
+                        {
+                            model: OnboardingTemplateTask,
+                            as: 'templateTask',
+                            attributes: ['id', 'title', 'responsibleRole', 'dueInDays', 'sortOrder'],
+                        },
+                    ],
+                },
+            ],
+            order: [[{ model: EmployeeOnboardingTask, as: 'tasks' }, 'dueDate', 'ASC']],
+        });
+
+        return res.status(201).json(createdOnboarding);
     } catch (error) {
+        await transaction.rollback();
+
         return res.status(500).json({
             message: 'Failed to create employee onboarding',
             error: error.message,
