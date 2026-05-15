@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --env-file .env.dev index.js",
-    "prod": "nodemon --env-file .env.prod index.js"
+    "prod": "nodemon --env-file .env.prod index.js",
+    "seed": "node seeders/seeds.js"
   },
   "keywords": [],
   "author": "Constantin Mitrokhin, Juan Manuel Calo, Kevin Radnoti, Uriel Barrios, Federico Martin Grandinetti",

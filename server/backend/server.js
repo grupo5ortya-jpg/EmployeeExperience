@@ -5,7 +5,8 @@ const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 const routes = require('./routes/index.routes.js');
 const { PROJECT_NAME, ALLOWED_DOMAINS, ALLOWED_METHODS } = process.env;
-
+const { notFound } = require('./middlewares/notFound')
+const { errorHandler } = require('./middlewares/errorHandler.js')
 const server = express();
 server.name = PROJECT_NAME;
 
@@ -29,7 +30,9 @@ server.use((req, res, next) => {
 });
 
 server.use('/', routes);
-
+server.use(notFound);
+server.use(errorHandler);
+console.log("WHATSS")
 server.get('/', (req, res) => {
 	res.send('Core service running 🚀');
 });
