@@ -7,14 +7,17 @@ const sequelize = new Sequelize(
 	DB_NAME, DB_USER, DB_PASSWORD,
 	{
 		host: DB_HOST,
-		dialect: DB_DIALECT,
+		dialect: DB_DIALECT || 'postgres',
 		port: DB_PORT,
 		logging: false,
 		native: false,
+		dialectOptions: {
+			options: '-c search_path=main,public'
+		}
 	}
 );
 
 
-module.exports = {
+module.exports =
 	sequelize
-};
+
