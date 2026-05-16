@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getEmployees } from '../api/employeeApi';
+import { getEmployees } from '../../api/employeeApi';
+import { Link } from 'react-router-dom';
 
 function EmployeeList() {
     const [employees, setEmployees] = useState([]);
@@ -30,7 +31,9 @@ function EmployeeList() {
             <h2>Empleados</h2>
             {employees.map((employee) => (
                 <div key={employee.id}>
-                    <p>{employee.fullName}</p>
+                    <Link to={`/detailEmpleado/${employee.id}`}>
+                        {employee.fullName}
+                    </Link>
                     <p>{employee.position}</p>
                     <p>{employee.department?.name}</p>
                 </div>

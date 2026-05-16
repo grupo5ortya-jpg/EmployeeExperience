@@ -6,6 +6,8 @@ import Home from "./pages/Home/Home.jsx";
 import PageNotFound from "./pages/PageNotFound/PageNotFound";
 import { srv_front_router_generate_routes } from './router/router.js';
 import './App.css'
+import EmployeeList from './pages/listaEmpleados/Lista.jsx';
+import EmployeeDetail from "./pages/detailEmpleado/DetalleEmpleado.jsx";
 
 
 function App() {
@@ -15,13 +17,15 @@ function App() {
 		<Provider store={store}>
 			<BrowserRouter>
 				<Routes>
+					<Route path="/Lista" element={<EmployeeList />} />
+					<Route path="/detailEmpleado/:id" element={<EmployeeDetail />} />
 					<Route path="/" element={<Home />} />
 
 					{dynamicRoutes.map((r) => (
 						<Route
-						key={r.path}
-						path={r.path}
-						element={<r.element />}
+							key={r.path}
+							path={r.path}
+							element={<r.element />}
 						/>
 					))}
 
