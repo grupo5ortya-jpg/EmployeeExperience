@@ -3,7 +3,18 @@
 @theme {
   --color-accent: #aa3bff;
   --color-accent-hover: #9333ea;
+
+  /* Paleta del proyecto */
+  --color-navy:        #1c2b4a;
+  --color-navy-light:  #243555;
+
+  --color-brand:       #38bdf8; /* sky-400 */
+  --color-brand-hover: #0ea5e9; /* sky-500 */
+  --color-brand-light: #e0f2fe; /* sky-100 */
+  --color-brand-pale:  #f0f9ff; /* sky-50  */
 }
+
+
 
 * {
   box-sizing: border-box;
@@ -13,4 +24,7 @@ body {
   margin: 0;
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background-color: #0F172A;
+  color: #111827;
+  /*39393A*/
 }

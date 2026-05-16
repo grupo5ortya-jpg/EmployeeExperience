@@ -46,19 +46,14 @@ const tasks = [
 ]
 
 const badgeStyles = {
-  urgent: 'bg-red-100 text-red-600',
-  done:   'bg-green-100 text-green-600',
-  date:   'bg-transparent text-gray-400',
+  urgent: 'bg-red-50 text-red-500',
+  done:   'bg-green-50 text-green-500',
+  date:   'bg-transparent text-slate-400',
 }
 
 function Badge({ type, label }) {
   return (
-    <span
-      className={`
-        text-xs font-medium whitespace-nowrap px-2.5 py-1 rounded-full
-        ${badgeStyles[type]}
-      `}
-    >
+    <span className={`text-xs font-medium whitespace-nowrap px-2.5 py-1 rounded-full ${badgeStyles[type]}`}>
       {label}
     </span>
   )
@@ -67,28 +62,25 @@ function Badge({ type, label }) {
 function TaskRow({ title, category, badge, done }) {
   return (
     <div className="flex items-center gap-3 py-3">
-      {/* Checkbox */}
       <div
         className={`
           w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-colors
           ${done
-            ? 'bg-green-500 border-green-500'
-            : 'border-gray-300 hover:border-violet-400 cursor-pointer'
+            ? 'bg-green-400 border-green-400'
+            : 'border-slate-300 hover:border-brand cursor-pointer'
           }
         `}
       >
         {done && <Check size={11} strokeWidth={3} className="text-white" />}
       </div>
 
-      {/* Text */}
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium leading-tight truncate ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+        <p className={`text-sm font-medium leading-tight truncate ${done ? 'line-through text-slate-400' : 'text-slate-700'}`}>
           {title}
         </p>
-        <p className="text-xs text-gray-400 mt-0.5">{category}</p>
+        <p className="text-xs text-slate-400 mt-0.5">{category}</p>
       </div>
 
-      {/* Badge */}
       <Badge type={badge.type} label={badge.label} />
     </div>
   )
@@ -96,17 +88,15 @@ function TaskRow({ title, category, badge, done }) {
 
 export default function TaskList() {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-      {/* Header */}
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-sm font-semibold text-gray-900">Próximas tareas</h3>
-        <button className="text-xs text-violet-600 hover:text-violet-700 font-medium transition-colors cursor-pointer">
+        <h3 className="text-sm font-semibold text-slate-700">Próximas tareas</h3>
+        <button className="text-xs text-brand-hover hover:text-brand font-medium transition-colors cursor-pointer">
           Ver todas →
         </button>
       </div>
 
-      {/* Rows */}
-      <div className="divide-y divide-gray-50">
+      <div className="divide-y divide-slate-50">
         {tasks.map((task) => (
           <TaskRow key={task.id} {...task} />
         ))}

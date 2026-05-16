@@ -1,34 +1,39 @@
-
 export function srv_front_router_generate_routes() {
-	// Busca archivos .jsx dentro de cualquier server/*/frontend/src/pages/**
-	const modules = import.meta.glob(
-		"/../../server/frontend/src/pages/**/*.jsx",
-		{ eager: true }
-	);
+  const modules = import.meta.glob('../pages/**/*.jsx', { eager: true })
+  const layoutRoutes = []
+  const publicRoutes = []
 
-	const routes = [];
+  for (const fullPath in modules) {
+    const normalized = fullPath.replace(/\\/g, '/')
 
-	for (const fullPath in modules) {
-		const component = modules[fullPath].default;
+    // skip sub-component files (any path segment named "components")
+    if (normalized.includes('/components/')) continue
 
-		// ejemplo: server/frontend/src/pages/Home/Home.jsx
-		const clean = fullPath
-			.replace("/server/", "")
-			.replace("/frontend/src/pages/", "")
-			.replace(".jsx", "");
+    const component = modules[fullPath].default
+    const clean = normalized.replace('../pages/', '').replace('.jsx', '')
+    const segments = clean.split('/')
+    const pageName = segments[segments.length - 1]
 
-		// ejemplo clean: core/Home/Home
-		// extrae solo el nombre de la última carpeta → "Home"
-		const segments = clean.split("/");
-		const pageName = segments[segments.length - 1];
+    // 404 → public, no layout
+    if (pageName === 'PageNotFound') {
+      publicRoutes.push({ path: '*', component })
+      continue
+    }
 
-		const path = "/" + pageName.toLowerCase();
+    // auth/** → public, no layout
+    if (segments[0] === 'auth') {
+      publicRoutes.push({ path: '/' + pageName.toLowerCase(), component })
+      continue
+    }
 
-		routes.push({
-			path,
-			element: component,
-		});
-	}
+    // Home → root path, with layout
+    if (pageName === 'Home') {
+      layoutRoutes.push({ path: '/', component })
+      continue
+    }
 
-	return routes;
+    layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
+  }
+
+  return { layoutRoutes, publicRoutes }
 }
