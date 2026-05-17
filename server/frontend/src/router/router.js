@@ -32,6 +32,9 @@ export function srv_front_router_generate_routes() {
       continue
     }
 
+    // DetailEmployee needs a dynamic :id param — registered manually in App.jsx
+    if (pageName === 'DetailEmployee') continue
+
     layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
   }
 

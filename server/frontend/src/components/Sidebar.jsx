@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom'
 import {
   Home,
   UserPlus,
@@ -13,9 +14,9 @@ import {
 } from 'lucide-react'
 
 const navItems = [
-  { icon: Home,          label: 'Inicio',          active: true  },
+  { icon: Home,          label: 'Inicio',          to: '/'             },
   { icon: User,          label: 'Mi perfil'                      },
-  { icon: Users,         label: 'Equipo'                         },
+  { icon: Users,         label: 'Equipo',          to: '/employeelist' },
   { icon: UserPlus,      label: 'Onboarding'                     },
   { icon: RotateCcw,     label: 'Feedback 360°'                  },
   { icon: Target,        label: 'Objetivos'                      },
@@ -25,25 +26,41 @@ const navItems = [
   { icon: LifeBuoy,      label: 'Soporte'                        },
 ]
 
-function NavItem({ icon: Icon, label, active, badge }) {
+const itemClass = (active) =>
+  `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-150 cursor-pointer
+  ${active ? 'bg-brand text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`
+
+function NavItem({ icon: Icon, label, active, badge, to }) {
+  const content = (isActive) => (
+    <>
+      <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
+      <span className="flex-1 text-left truncate">{label}</span>
+      {badge && (
+        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-white text-xs font-bold flex items-center justify-center">
+          {badge}
+        </span>
+      )}
+    </>
+  )
+
+  if (to) {
+    return (
+      <li>
+        <NavLink
+          to={to}
+          end={to === '/'}
+          className={({ isActive }) => itemClass(isActive)}
+        >
+          {({ isActive }) => content(isActive)}
+        </NavLink>
+      </li>
+    )
+  }
+
   return (
     <li>
-      <button
-        className={`
-          w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-150 cursor-pointer
-          ${active
-            ? 'bg-brand text-white'
-            : 'text-slate-300 hover:bg-white/10 hover:text-white'
-          }
-        `}
-      >
-        <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
-        <span className="flex-1 text-left truncate">{label}</span>
-        {badge && (
-          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-white text-xs font-bold flex items-center justify-center">
-            {badge}
-          </span>
-        )}
+      <button className={itemClass(active)}>
+        {content(active)}
       </button>
     </li>
   )

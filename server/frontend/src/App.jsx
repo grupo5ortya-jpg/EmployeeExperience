@@ -3,6 +3,7 @@ import { Provider } from "react-redux"
 import { store } from './store/store.js'
 import { srv_front_router_generate_routes } from './router/router.js'
 import AppLayout from './components/layouts/AppLayout.jsx'
+import DetailEmployee from './pages/detailEmployee/DetailEmployee.jsx'
 
 function App() {
   const { layoutRoutes, publicRoutes } = srv_front_router_generate_routes()
@@ -16,6 +17,7 @@ function App() {
             {layoutRoutes.map(({ path, component: C }) => (
               <Route key={path} path={path} element={<C />} />
             ))}
+            <Route path="/detailemployee/:id" element={<DetailEmployee />} />
           </Route>
 
           {/* Public pages: login, 404, etc. */}
