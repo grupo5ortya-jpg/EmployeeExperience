@@ -12,11 +12,6 @@ export default function Topbar() {
 
   return (
     <header className="h-14 bg-navy border-b border-white/10 flex items-center gap-4 px-6 shrink-0">
-      {/* Hamburger */}
-      <button className="text-slate-300 hover:text-white transition-colors cursor-pointer">
-        <Menu size={20} strokeWidth={1.8} />
-      </button>
-
       {/* Greeting */}
       <div className="min-w-0">
         <h1 className="text-sm font-semibold text-white leading-tight whitespace-nowrap">
