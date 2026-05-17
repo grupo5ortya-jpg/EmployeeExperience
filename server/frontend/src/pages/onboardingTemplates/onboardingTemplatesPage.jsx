@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import useOnboardingTemplates from '../../hooks/useOnboardingTemplates';
 import useOnboardingTemplateById from '../../hooks/useOnboardingTemplateById';
 
@@ -8,11 +8,15 @@ const OnboardingTemplatesPage = () => {
 
     const { template, loadingTemplate, templateError } = useOnboardingTemplateById(selectedTemplateId);
 
+    const initializedRef = useRef(false);
+
     useEffect(() => {
-        if (templates.length > 0 && !selectedTemplateId) {
-            setSelectedTemplateId(templates[0].id);
+        // Initialize selectedTemplateId only once when templates first arrive.
+        if (!initializedRef.current && templates.length > 0) {
+            setSelectedTemplateId((prev) => prev ?? templates[0].id);
+            initializedRef.current = true;
         }
-    }, [templates, selectedTemplateId]);
+    }, [templates]);
 
     const metrics = useMemo(() => {
         const totalTemplates = templates.length;
