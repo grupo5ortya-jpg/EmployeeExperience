@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { apiClient } from './apiClient';
 
 export const getEmployees = async () => {
     const response = await apiClient.get('/employees');
