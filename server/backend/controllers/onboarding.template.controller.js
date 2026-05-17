@@ -1,7 +1,4 @@
-const {
-    OnboardingTemplate,
-    OnboardingTemplateTask,
-} = require('../models');
+const { OnboardingTemplate, OnboardingTemplateTask } = require('../models');
 
 const getAllOnboardingTemplates = async (req, res) => {
     try {
@@ -72,7 +69,27 @@ const getOnboardingTemplateById = async (req, res) => {
     }
 };
 
+const createOnboardingTemplate = async (req, res) => {
+    try {
+        const { name, description, isActive } = req.body;
+
+        const newTemplate = await OnboardingTemplate.create({
+            name,
+            description,
+            isActive,
+        });
+
+        return res.status(201).json(newTemplate);
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to create onboarding template',
+            error: error.message,
+        });
+    }
+};
+
 module.exports = {
     getAllOnboardingTemplates,
     getOnboardingTemplateById,
+    createOnboardingTemplate,
 };
