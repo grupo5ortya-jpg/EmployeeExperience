@@ -1,22 +1,56 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useOnboardingTemplates from '../../hooks/useOnboardingTemplates';
 import useOnboardingTemplateById from '../../hooks/useOnboardingTemplateById';
+import {
+    createOnboardingTemplate,
+    createOnboardingTemplateTask,
+} from '../../services/onboardingService';
+
+const initialTemplateForm = {
+    name: '',
+    description: '',
+    isActive: true,
+};
+
+const initialTaskForm = {
+    title: '',
+    description: '',
+    responsibleRole: 'employee',
+    dueInDays: 0,
+    sortOrder: 1,
+};
 
 const OnboardingTemplatesPage = () => {
-    const { templates, loadingTemplates, templatesError } = useOnboardingTemplates();
+    const {
+        templates,
+        loadingTemplates,
+        templatesError,
+        refetchTemplates,
+    } = useOnboardingTemplates();
+
     const [selectedTemplateId, setSelectedTemplateId] = useState(null);
 
-    const { template, loadingTemplate, templateError } = useOnboardingTemplateById(selectedTemplateId);
+    const {
+        template,
+        loadingTemplate,
+        templateError,
+        refetchTemplate,
+    } = useOnboardingTemplateById(selectedTemplateId);
 
-    const initializedRef = useRef(false);
+    const [templateForm, setTemplateForm] = useState(initialTemplateForm);
+    const [taskForm, setTaskForm] = useState(initialTaskForm);
+
+    const [submittingTemplate, setSubmittingTemplate] = useState(false);
+    const [submittingTask, setSubmittingTask] = useState(false);
+
+    const [templateSubmitError, setTemplateSubmitError] = useState('');
+    const [taskSubmitError, setTaskSubmitError] = useState('');
 
     useEffect(() => {
-        // Initialize selectedTemplateId only once when templates first arrive.
-        if (!initializedRef.current && templates.length > 0) {
-            setSelectedTemplateId((prev) => prev ?? templates[0].id);
-            initializedRef.current = true;
+        if (templates.length > 0 && !selectedTemplateId) {
+            setSelectedTemplateId(templates[0].id);
         }
-    }, [templates]);
+    }, [templates, selectedTemplateId]);
 
     const metrics = useMemo(() => {
         const totalTemplates = templates.length;
@@ -35,6 +69,74 @@ const OnboardingTemplatesPage = () => {
             averageTasks,
         };
     }, [templates]);
+
+    const handleTemplateFormChange = (event) => {
+        const { name, value, type, checked } = event.target;
+
+        setTemplateForm((prev) => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value,
+        }));
+    };
+
+    const handleTaskFormChange = (event) => {
+        const { name, value } = event.target;
+
+        setTaskForm((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleCreateTemplate = async (event) => {
+        event.preventDefault();
+
+        try {
+            setSubmittingTemplate(true);
+            setTemplateSubmitError('');
+
+            const createdTemplate = await createOnboardingTemplate(templateForm);
+
+            setTemplateForm(initialTemplateForm);
+
+            await refetchTemplates();
+            setSelectedTemplateId(createdTemplate.id);
+        } catch (error) {
+            console.error(error);
+            setTemplateSubmitError('No se pudo crear la plantilla');
+        } finally {
+            setSubmittingTemplate(false);
+        }
+    };
+
+    const handleCreateTask = async (event) => {
+        event.preventDefault();
+
+        if (!selectedTemplateId) return;
+
+        try {
+            setSubmittingTask(true);
+            setTaskSubmitError('');
+
+            await createOnboardingTemplateTask({
+                templateId: selectedTemplateId,
+                title: taskForm.title,
+                description: taskForm.description,
+                responsibleRole: taskForm.responsibleRole,
+                dueInDays: Number(taskForm.dueInDays),
+                sortOrder: Number(taskForm.sortOrder),
+            });
+
+            setTaskForm(initialTaskForm);
+
+            await Promise.all([refetchTemplates(), refetchTemplate()]);
+        } catch (error) {
+            console.error(error);
+            setTaskSubmitError('No se pudo crear la tarea');
+        } finally {
+            setSubmittingTask(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-slate-100 p-6">
@@ -90,6 +192,72 @@ const OnboardingTemplatesPage = () => {
                                     {metrics.averageTasks}
                                 </p>
                             </div>
+                        </div>
+
+                        <div className="mb-6 rounded-2xl bg-white p-6 shadow">
+                            <h2 className="mb-4 text-xl font-semibold text-slate-800">
+                                Crear nueva plantilla
+                            </h2>
+
+                            <form onSubmit={handleCreateTemplate} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div className="md:col-span-1">
+                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                        Nombre
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={templateForm.name}
+                                        onChange={handleTemplateFormChange}
+                                        className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                                        placeholder="Ej. Onboarding líderes"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="md:col-span-1">
+                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                        Activa
+                                    </label>
+                                    <div className="flex h-[42px] items-center">
+                                        <input
+                                            type="checkbox"
+                                            name="isActive"
+                                            checked={templateForm.isActive}
+                                            onChange={handleTemplateFormChange}
+                                            className="h-4 w-4"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                        Descripción
+                                    </label>
+                                    <textarea
+                                        name="description"
+                                        value={templateForm.description}
+                                        onChange={handleTemplateFormChange}
+                                        className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                                        rows="3"
+                                        placeholder="Descripción de la plantilla"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <button
+                                        type="submit"
+                                        disabled={submittingTemplate}
+                                        className="rounded-xl bg-blue-600 px-5 py-2 font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+                                    >
+                                        {submittingTemplate ? 'Creando...' : 'Crear plantilla'}
+                                    </button>
+                                </div>
+                            </form>
+
+                            {templateSubmitError && (
+                                <p className="mt-3 text-sm text-red-600">{templateSubmitError}</p>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -175,6 +343,103 @@ const OnboardingTemplatesPage = () => {
                                                     {template.isActive ? 'Activa' : 'Inactiva'}
                                                 </span>
                                             </div>
+                                        </div>
+
+                                        <div className="mb-6 rounded-2xl border border-slate-200 p-4">
+                                            <h3 className="mb-4 text-lg font-semibold text-slate-800">
+                                                Agregar tarea a la plantilla
+                                            </h3>
+
+                                            <form onSubmit={handleCreateTask} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <div className="md:col-span-2">
+                                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                                        Título
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="title"
+                                                        value={taskForm.title}
+                                                        onChange={handleTaskFormChange}
+                                                        className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                                                        placeholder="Ej. Presentación del equipo"
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div className="md:col-span-2">
+                                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                                        Descripción
+                                                    </label>
+                                                    <textarea
+                                                        name="description"
+                                                        value={taskForm.description}
+                                                        onChange={handleTaskFormChange}
+                                                        className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                                                        rows="3"
+                                                        placeholder="Descripción de la tarea"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                                        Responsable
+                                                    </label>
+                                                    <select
+                                                        name="responsibleRole"
+                                                        value={taskForm.responsibleRole}
+                                                        onChange={handleTaskFormChange}
+                                                        className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                                                    >
+                                                        <option value="employee">Employee</option>
+                                                        <option value="leader">Leader</option>
+                                                        <option value="hr">HR</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                                        Vence en días
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name="dueInDays"
+                                                        value={taskForm.dueInDays}
+                                                        onChange={handleTaskFormChange}
+                                                        className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                                                        min="0"
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                                        Orden
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name="sortOrder"
+                                                        value={taskForm.sortOrder}
+                                                        onChange={handleTaskFormChange}
+                                                        className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                                                        min="1"
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div className="md:col-span-2">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={submittingTask}
+                                                        className="rounded-xl bg-slate-800 px-5 py-2 font-medium text-white transition hover:bg-slate-900 disabled:opacity-60"
+                                                    >
+                                                        {submittingTask ? 'Creando...' : 'Agregar tarea'}
+                                                    </button>
+                                                </div>
+                                            </form>
+
+                                            {taskSubmitError && (
+                                                <p className="mt-3 text-sm text-red-600">{taskSubmitError}</p>
+                                            )}
                                         </div>
 
                                         <div>
