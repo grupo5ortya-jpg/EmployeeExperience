@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import useOnboardingTemplates from '../../hooks/useOnboardingTemplates';
+import useOnboardingTemplates from '../../hooks/useOnboardingTemplates'// '../hooks/useOnboardingTemplates';
 import useOnboardingTemplateById from '../../hooks/useOnboardingTemplateById';
 import {
     createOnboardingTemplate,
