@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "init": "concurrently \"npm i --prefix server\\backend\" \"npm i --prefix server\\frontend\"",
-    "dev": "concurrently \"npm run dev --prefix server\\backend\" \"npm run dev --prefix server\\frontend\"",
+    "dev": "concurrently \"cd server/backend && node ./node_modules/nodemon/bin/nodemon.js --env-file .env.dev index.js\" \"cd server/frontend && node ./node_modules/vite/bin/vite.js\"",
     "prod": "concurrently \"npm run prod --prefix server\\backend\" \"npm run prod --prefix server\\frontend\""
   },
   "repository": {

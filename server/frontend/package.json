@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "prod": "vite build && vite preview",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "node ./node_modules/vite/bin/vite.js",
+    "prod": "node ./node_modules/vite/bin/vite.js build && node ./node_modules/vite/bin/vite.js preview",
+    "build": "node ./node_modules/vite/bin/vite.js build",
+    "preview": "node ./node_modules/vite/bin/vite.js preview"
   },
   "keywords": [],
   "author": "Constantin Mitrokhin, Juan Manuel Calo, Kevin Radnoti, Uriel Barrios, Federico Martin Grandinetti",
@@ -17,7 +17,6 @@
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-query": "^5.100.9",
     "axios": "^1.15.2",
-    "employeeexperience": "file:../..",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
