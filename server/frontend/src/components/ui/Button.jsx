@@ -1,5 +1,5 @@
 const variants = {
-  primary: 'bg-accent hover:bg-accent-hover text-white font-semibold shadow-sm disabled:opacity-60',
+  primary: 'bg-brand hover:bg-brand-hover text-white font-semibold shadow-sm disabled:opacity-60',
   outline: 'border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium',
   ghost: 'hover:bg-gray-100 text-gray-600 font-medium',
 }

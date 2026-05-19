@@ -1,9 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  --color-accent:       #aa3bff;
-  --color-accent-hover: #9333ea;
-
   /* Paleta del proyecto */
   --color-navy:        #1c2b4a;
   --color-navy-light:  #243555;
