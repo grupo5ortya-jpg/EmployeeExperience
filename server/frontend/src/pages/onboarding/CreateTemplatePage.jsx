@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { createOnboardingTemplate, createOnboardingTemplateTask } from '../../services/onboardingService';
 
@@ -13,6 +14,7 @@ const initialTaskForm     = { title: '', description: '', responsibleRole: 'empl
 let localIdCounter = 0;
 
 const CreateTemplatePage = () => {
+    const navigate = useNavigate();
     const [templateForm, setTemplateForm] = useState(initialTemplateForm);
     const [localTasks, setLocalTasks]     = useState([]);
     const [taskForm, setTaskForm]         = useState(initialTaskForm);
@@ -97,13 +99,22 @@ const CreateTemplatePage = () => {
                     </div>
                     <h2 className="text-base font-bold text-slate-800 mb-1">¡Plantilla guardada!</h2>
                     <p className="text-sm text-slate-400 mb-5">La plantilla fue creada correctamente.</p>
-                    <button
-                        onClick={handleCancel}
-                        className="bg-brand hover:bg-brand-hover text-white text-sm font-semibold
-                                   px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
-                    >
-                        Crear otra plantilla
-                    </button>
+                    <div className="flex items-center gap-3 justify-center">
+                        <button
+                            onClick={handleCancel}
+                            className="bg-brand hover:bg-brand-hover text-white text-sm font-semibold
+                                       px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                            Crear otra plantilla
+                        </button>
+                        <button
+                            onClick={() => navigate('/onboardinghome')}
+                            className="text-sm font-medium text-slate-500 hover:text-slate-700
+                                       px-4 py-2.5 rounded-lg hover:bg-brand-pale transition-colors cursor-pointer"
+                        >
+                            Ver plantillas
+                        </button>
+                    </div>
                 </div>
             </main>
         );
