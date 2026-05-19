@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getOnboardingTemplateById } from '../../services/onboardingService';
+import { getOnboardingTemplateById } from '../services/onboardingService';
 
 const useOnboardingTemplateById = (templateId) => {
 
