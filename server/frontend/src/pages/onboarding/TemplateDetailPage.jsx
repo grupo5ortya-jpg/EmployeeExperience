@@ -8,7 +8,7 @@ const COLUMNS = ['Orden', 'Tarea', 'Descripción', 'Responsable', 'Días desde i
 export default function TemplateDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { template, loadingTemplate, templateError, refetchTemplate } = useOnboardingTemplateById(id);
+    const { data: template, isLoading: loadingTemplate, isError, refetch: refetchTemplate } = useOnboardingTemplateById(id);
 
     return (
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
@@ -24,9 +24,9 @@ export default function TemplateDetailPage() {
                 <div className="text-sm text-slate-400">Cargando plantilla...</div>
             )}
 
-            {templateError && (
+            {isError && (
                 <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-500">
-                    {templateError}
+                    No se pudo cargar la plantilla.
                     <button onClick={refetchTemplate} className="ml-2 underline">Reintentar</button>
                 </div>
             )}

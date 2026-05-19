@@ -22,6 +22,7 @@ const CreateTemplatePage = () => {
     const [saving, setSaving]             = useState(false);
     const [saveError, setSaveError]       = useState('');
     const [saved, setSaved]               = useState(false);
+    const [confirmCancel, setConfirmCancel] = useState(false);
 
     const handleTemplateChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -138,7 +139,7 @@ const CreateTemplatePage = () => {
                     <div className="flex items-center gap-2.5 shrink-0">
                         <button
                             type="button"
-                            onClick={handleCancel}
+                            onClick={() => setConfirmCancel(true)}
                             className="text-sm font-medium text-slate-500 hover:text-slate-700
                                        px-4 py-2.5 rounded-lg hover:bg-brand-pale transition-colors cursor-pointer"
                         >
@@ -184,6 +185,41 @@ const CreateTemplatePage = () => {
                 </div>
 
             </form>
+
+            {confirmCancel && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm"
+                    onClick={() => setConfirmCancel(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl border border-brand-light shadow-xl w-full max-w-sm mx-4 p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="text-base font-bold text-slate-800 mb-1">¿Cancelar creación?</h3>
+                        <p className="text-sm text-slate-400 mb-5">
+                            Se perderán los datos ingresados. ¿Querés salir igual?
+                        </p>
+                        <div className="flex items-center gap-3 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmCancel(false)}
+                                className="text-sm font-medium text-slate-500 hover:text-slate-700
+                                           px-4 py-2.5 rounded-lg hover:bg-brand-pale transition-colors cursor-pointer"
+                            >
+                                No, seguir editando
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/onboardinghome')}
+                                className="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold
+                                           px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
+                            >
+                                Sí, cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <AddTaskModal
                 isOpen={isAddTaskOpen}

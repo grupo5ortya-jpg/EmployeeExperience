@@ -5,7 +5,7 @@ import useOnboardingTemplates from '../../hooks/useOnboardingTemplates';
 const COLUMNS = ['Nombre', 'Descripción', 'Estado', 'Acciones'];
 
 export default function OnboardingHome() {
-    const { templates, loadingTemplates, templatesError, refetchTemplates } = useOnboardingTemplates();
+    const { data: templates = [], isLoading: loadingTemplates, isError, refetch: refetchTemplates } = useOnboardingTemplates();
     const navigate = useNavigate();
 
     return (
@@ -27,9 +27,9 @@ export default function OnboardingHome() {
                 </button>
             </div>
 
-            {templatesError && (
+            {isError && (
                 <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-500 mb-4">
-                    {templatesError}
+                    No se pudieron cargar las plantillas.
                     <button onClick={refetchTemplates} className="ml-2 underline">Reintentar</button>
                 </div>
             )}
