@@ -1,7 +1,11 @@
 import { useState, useMemo } from 'react'
+import { UserPlus } from 'lucide-react'
+
 import { useEmployees } from '../../hooks/useEmployees'
+import { createEmployee } from '../../services/employeeService'
 import EmployeeFilters from './components/EmployeeFilters'
 import EmployeeTable from './components/EmployeeTable'
+import CreateEmployeeModal from './components/CreateEmployeeModal'
 
 const STATUS_LABEL = {
   ACTIVE:   'Activo',
@@ -11,12 +15,13 @@ const STATUS_LABEL = {
 
 const ESTADO_OPTIONS = ['Todos', 'Activo', 'Inactivo', 'En licencia']
 
-export default function Colaboradores() {
-  const { data: employees = [], isLoading, isError } = useEmployees()
+export default function EmployeeList() {
+  const { data: employees = [], isLoading, isError, refetch } = useEmployees()
 
-  const [search, setSearch] = useState('')
-  const [depto, setDepto]   = useState('Todos')
-  const [estado, setEstado] = useState('Todos')
+  const [search, setSearch]         = useState('')
+  const [depto, setDepto]           = useState('Todos')
+  const [estado, setEstado]         = useState('Todos')
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const deptoOptions = useMemo(
     () => ['Todos', ...new Set(employees.map((e) => e.department?.name).filter(Boolean))],
@@ -39,15 +44,34 @@ export default function Colaboradores() {
     [employees, search, depto, estado],
   )
 
+  const handleSave = async (data) => {
+    await createEmployee(data)
+    await refetch()
+  }
+
   return (
     <main className="flex-1 overflow-y-auto p-4 lg:p-6 flex flex-col gap-4 lg:gap-6">
-      <div className="border-l-4 border-brand pl-4">
-        <h1 className="text-lg lg:text-xl font-bold text-slate-800">Colaboradores</h1>
-        <p className="text-xs lg:text-sm text-slate-400 mt-0.5">
-          Gestiona y monitorea a todas las personas de la organización
-        </p>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="border-l-4 border-brand pl-4">
+          <h1 className="text-lg lg:text-xl font-bold text-slate-800">Colaboradores</h1>
+          <p className="text-xs lg:text-sm text-slate-400 mt-0.5">
+            Gestiona y monitorea a todas las personas de la organización
+          </p>
+        </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white
+                     text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors
+                     cursor-pointer shrink-0"
+        >
+          <UserPlus size={16} />
+          Nuevo colaborador
+        </button>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-xl border border-brand-light shadow-sm">
         <EmployeeFilters
           search={search}  onSearch={setSearch}
@@ -61,6 +85,14 @@ export default function Colaboradores() {
           isError={isError}
         />
       </div>
+
+      <CreateEmployeeModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSave}
+        employees={employees}
+      />
+
     </main>
   )
 }

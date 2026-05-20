@@ -42,7 +42,7 @@ export default function Login() {
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 px-8 py-10">
           {/* Logo / Brand */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand mb-4">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -106,7 +106,7 @@ export default function Login() {
                   ${
                     errors.password
                       ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                      : "border-gray-300 focus:border-accent focus:ring-2 focus:ring-purple-100"
+                      : "border-gray-300 focus:border-brand focus:ring-2 focus:ring-brand-light"
                   }
                 `}
                 />
