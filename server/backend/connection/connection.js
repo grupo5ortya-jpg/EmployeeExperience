@@ -48,9 +48,11 @@ async function core_conn_initialize_database(sequelize) {
 		const info_conf_content = fs.readFileSync(info_conf_path, 'utf8');
 		const modules_line = info_conf_content.split(/\r?\n/).find(line => line.startsWith('modules='));
 		const modules = modules_line.split('=')[1].split(',').map(m => m.trim());
-		const schema = core_conn_parse_info_conf_value(info_conf_content, 'schema');
+		const schemaFromEnv = process.env.DB_SCHEMA ? process.env.DB_SCHEMA.trim() : '';
+		const schemaFromConfig = core_conn_parse_info_conf_value(info_conf_content, 'schema');
+		const schema = schemaFromEnv || schemaFromConfig || 'public';
 
-		if (schema) {
+		if (schema && schema !== 'public') {
 			await sequelize.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
 		}
 
@@ -111,17 +113,7 @@ async function core_conn_initialize_database(sequelize) {
 			}
 		}
 
-		// sincronizar modelos con la base de datos
-		const sync_params = JSON.parse(process.env.SYNC_PARAMS);
-		if (schema) {
-			await sequelize.transaction(async (t) => {
-				await sequelize.query(`SET LOCAL search_path TO "${schema}", public;`, { transaction: t });
-				await sequelize.sync({ ...sync_params, transaction: t });
-			});
-		} else {
-			await sequelize.sync(sync_params);
-		}
-
+		// Sincronización y asociaciones se hacen en index.js después de registrar los modelos.
 		return true;
 	} catch (error) {
 		console.error('Error initializing database:', error);

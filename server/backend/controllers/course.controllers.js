@@ -1,4 +1,4 @@
-const { Course, Employee, CourseEnrollment } = require('../models');
+const { Course, Employee, CourseEnrollment } = require('../connection/connection');
 
 const getAllCourses = async (req, res) => {
     try {

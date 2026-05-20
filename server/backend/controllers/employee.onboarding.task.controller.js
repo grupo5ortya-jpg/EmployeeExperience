@@ -3,7 +3,7 @@ const {
     EmployeeOnboarding,
     Employee,
     OnboardingTemplateTask,
-} = require('../models');
+} = require('../connection/connection');
 
 const updateEmployeeOnboardingTask = async (req, res) => {
     try {

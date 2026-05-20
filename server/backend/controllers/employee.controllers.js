@@ -1,4 +1,4 @@
-const { Employee, User, Department, Course, CourseEnrollment } = require('../models');
+const { Employee, User, Department, Course, CourseEnrollment } = require('../connection/connection');
 const { formatEmployeeCoursesResponse } = require('../utils/utils.course.mappers')
 const getAllEmployees = async (req, res) => {
     try {

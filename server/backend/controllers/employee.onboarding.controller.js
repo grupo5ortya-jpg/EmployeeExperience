@@ -4,7 +4,7 @@ const {
     EmployeeOnboardingTask,
     OnboardingTemplate,
     OnboardingTemplateTask,
-} = require('../models');
+} = require('../connection/connection');
 const { Op } = require('sequelize');
 
 const getEmployeeOnboardings = async (req, res) => {

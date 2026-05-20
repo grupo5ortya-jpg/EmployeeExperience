@@ -1,7 +1,7 @@
 const {
     OnboardingTemplate,
     OnboardingTemplateTask,
-} = require('../models');
+} = require('../connection/connection');
 
 const getAllOnboardingTemplates = async (req, res) => {
     try {

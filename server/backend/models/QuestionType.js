@@ -2,9 +2,10 @@
 const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../connection/sequelize');
 
-class Department extends Model { }
 
-Department.init(
+class QuestionType extends Model { }
+
+QuestionType.init(
 	{
 		id: {
 			type: DataTypes.UUID,
@@ -14,21 +15,26 @@ Department.init(
 		name: {
 			type: DataTypes.STRING(100),
 			allowNull: false,
-			unique: true,
-			validate: {
-				notEmpty: true,
-			},
+		},
+		sub_type: {
+			type: DataTypes.STRING(100),
+			allowNull: true,
 		}
 	},
 	{
 		sequelize,
-		modelName: 'Department',
-		tableName: 'departments',
-		timestamps: true,
+		modelName: 'QuestionType',
+		tableName: 'question_types',
+		timestamps: false,
 		paranoid: true,
+		uniqueKeys: {
+			unique_name_subtype: {
+				fields: ['name', 'sub_type'],
+			},
+		},
 		schema: process.env.DB_SCHEMA || 'public',
 	}
 );
 
 
-module.exports = Department;
+module.exports = QuestionType;
