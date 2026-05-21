@@ -1,22 +1,9 @@
 
-const Department = require('../models/Department');
-const Employee = require('../models/Employee');
-const EmployeeTask = require('../models/EmployeeTask');
-const Person = require('../models/Person');
-const Question = require('../models/Question');
-const QuestionOption = require('../models/QuestionOption');
-const QuestionType = require('../models/QuestionType');
-const Role = require('../models/Role');
-const Survey = require('../models/Survey');
-const SurveyAssignment = require('../models/SurveyAssignment');
-const SurveyResponse = require('../models/SurveyResponse');
-const SurveyType = require('../models/SurveyType');
-const Task = require('../models/Task');
-const User = require('../models/User');
-const TaskType = require('../models/TaskType');
-const Team = require('../models/Team');
-
-async function core_conn_apply_associations() {
+const core_conn_apply_associations = (sequelize) => {
+	const {
+		Department, Employee, EmployeeTask, Person, Question, QuestionOption, QuestionType, Role,
+		Survey, SurveyAssignment, SurveyResponse, SurveyType, Task, User, TaskType, Team
+	} = sequelize.models;
 
 	//! Department !//
 		Department.hasMany(Employee, {
@@ -134,12 +121,12 @@ async function core_conn_apply_associations() {
 
 	//! SurveyType / Survey !//
 		SurveyType.hasMany(Survey, {
-			foreignKey: 'survey_type_id',
+			foreignKey: 'type_id',
 			as: 'surveys',
 		});
 
 		Survey.belongsTo(SurveyType, {
-			foreignKey: 'survey_type_id',
+			foreignKey: 'type_id',
 			as: 'surveyType',
 		});
 
@@ -201,13 +188,31 @@ async function core_conn_apply_associations() {
 			as: 'selectedOption',
 		});
 
-		//! Team / Employee !//
-		Team.hasMany(Employee, {
+		//! Team / Employee self-association !//
+		Team.belongsTo(Employee, {
 			foreignKey: 'leader_id',
-			as: 'members',
+			as: 'leader',
+		});
+
+		Team.belongsTo(Employee, {
+			foreignKey: 'collaborator_id',
+			as: 'collaborator',
+		});
+
+		Employee.belongsToMany(Employee, {
+			through: Team,
+			as: 'collaborators',
+			foreignKey: 'leader_id',
+			otherKey: 'collaborator_id',
+		});
+
+		Employee.belongsToMany(Employee, {
+			through: Team,
+			as: 'leaders',
+			foreignKey: 'collaborator_id',
+			otherKey: 'leader_id',
 		});
 };
-
 
 module.exports = {
 	core_conn_apply_associations

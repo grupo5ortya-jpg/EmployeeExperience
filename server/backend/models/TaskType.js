@@ -1,39 +1,34 @@
 
-const { DataTypes, Model } = require('sequelize');
-const sequelize = require('../connection/sequelize');
+const { DataTypes } = require('sequelize');
 
-
-class TaskType extends Model { }
-
-TaskType.init(
-	{
-		id: {
-			type: DataTypes.UUID,
-			defaultValue: DataTypes.UUIDV4,
-			primaryKey: true,
-		},
-		name: {
-			type: DataTypes.STRING(100),
-			allowNull: false,
-		},
-		sub_type: {
-			type: DataTypes.STRING(100),
-			allowNull: true,
-		}
-	},
-	{
-		sequelize,
-		modelName: 'TaskType',
-		tableName: 'task_types',
-		timestamps: false,
-		uniqueKeys: {
-			unique_name_subtype: {
-				fields: ['name', 'sub_type'],
+module.exports = (sequelize) => {
+	sequelize.define('TaskType',
+		{
+			id: {
+				type: DataTypes.UUID,
+				defaultValue: DataTypes.UUIDV4,
+				primaryKey: true,
 			},
+			name: {
+				type: DataTypes.STRING(100),
+				allowNull: false,
+			},
+			sub_type: {
+				type: DataTypes.STRING(100),
+				allowNull: true,
+			}
 		},
-		schema: process.env.DB_SCHEMA || 'public',
-	}
-);
-
-
-module.exports = TaskType;
+		{
+			sequelize,
+			modelName: 'TaskType',
+			tableName: 'task_types',
+			timestamps: false,
+			uniqueKeys: {
+				unique_name_subtype: {
+					fields: ['name', 'sub_type'],
+				},
+			},
+			schema: process.env.DB_SCHEMA || 'public',
+		}
+	);
+};

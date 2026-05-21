@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { core_conn_execute_query_from_file } = require('./utiles.js');
 
+
 function core_conn_parse_info_conf_list(info_conf_content, key) {
 	const lines = info_conf_content.split(/\r?\n/);
 	let collecting = false;
@@ -30,6 +31,7 @@ function core_conn_parse_info_conf_list(info_conf_content, key) {
 		.filter(Boolean);
 }
 
+
 function core_conn_parse_info_conf_value(info_conf_content, key) {
 	const lines = info_conf_content.split(/\r?\n/);
 	for (const line of lines) {
@@ -41,7 +43,8 @@ function core_conn_parse_info_conf_value(info_conf_content, key) {
 	return '';
 }
 
-async function core_conn_initialize_database(sequelize) {
+
+async function core_conn_initialize_database_from_bs(sequelize) {
 	try {
 		// Leer el archivo info.conf para obtener el orden de módulos y schema
 		const info_conf_path = path.join(__dirname, '..', '..', 'bs', 'info.conf');
@@ -123,5 +126,5 @@ async function core_conn_initialize_database(sequelize) {
 
 
 module.exports = {
-	core_conn_initialize_database
+	core_conn_initialize_database_from_bs
 };

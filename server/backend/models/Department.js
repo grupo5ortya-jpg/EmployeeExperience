@@ -1,34 +1,32 @@
 
-const { DataTypes, Model } = require('sequelize');
-const sequelize = require('../connection/sequelize');
+const { DataTypes } = require('sequelize');
 
-class Department extends Model { }
-
-Department.init(
-	{
-		id: {
-			type: DataTypes.UUID,
-			defaultValue: DataTypes.UUIDV4,
-			primaryKey: true,
-		},
-		name: {
-			type: DataTypes.STRING(100),
-			allowNull: false,
-			unique: true,
-			validate: {
-				notEmpty: true,
+module.exports = (sequelize) => {
+	sequelize.define('Department',
+		{
+			id: {
+				type: DataTypes.UUID,
+				defaultValue: DataTypes.UUIDV4,
+				primaryKey: true,
 			},
+			name: {
+				type: DataTypes.STRING(100),
+				allowNull: false,
+				unique: true,
+				validate: {
+					notEmpty: true,
+				},
+			}
+		},
+		{
+			sequelize,
+			modelName: 'Department',
+			tableName: 'departments',
+			timestamps: true,
+			paranoid: true,
+			schema: process.env.DB_SCHEMA || 'public',
 		}
-	},
-	{
-		sequelize,
-		modelName: 'Department',
-		tableName: 'departments',
-		timestamps: true,
-		paranoid: true,
-		schema: process.env.DB_SCHEMA || 'public',
-	}
-);
+	);
+};
 
 
-module.exports = Department;

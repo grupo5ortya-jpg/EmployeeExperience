@@ -1,44 +1,39 @@
 
-const { DataTypes, Model } = require('sequelize');
-const sequelize = require('../connection/sequelize');
+const { DataTypes } = require('sequelize');
 
-
-class Employee extends Model { }
-
-Employee.init(
-	{
-		id: {
-			type: DataTypes.UUID,
-			defaultValue: DataTypes.UUIDV4,
-			primaryKey: true,
+module.exports = (sequelize) => {
+	sequelize.define('Employee',
+		{
+			id: {
+				type: DataTypes.UUID,
+				defaultValue: DataTypes.UUIDV4,
+				primaryKey: true,
+			},
+			person_id: {
+				type: DataTypes.UUID,
+				allowNull: false,
+				unique: true,
+			},
+			department_id: {
+				type: DataTypes.UUID,
+				allowNull: true
+			},
+			position: {
+				type: DataTypes.STRING(120),
+				allowNull: true,
+			},
+			status: {
+				type: DataTypes.ENUM('ACTIVE', ' '),
+				allowNull: false,
+				defaultValue: 'ACTIVE',
+			},
 		},
-		person_id: {
-			type: DataTypes.UUID,
-			allowNull: false,
-			unique: true,
-		},
-		department_id: {
-			type: DataTypes.UUID,
-			allowNull: true
-		},
-		position: {
-			type: DataTypes.STRING(120),
-			allowNull: false,
-		},
-		status: {
-			type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
-			allowNull: false,
-			defaultValue: 'ACTIVE',
-		},
-	},
-	{
-		sequelize,
-		modelName: 'Employee',
-		tableName: 'employees',
-		timestamps: false,
-		schema: process.env.DB_SCHEMA || 'public',
-	}
-);
-
-
-module.exports = Employee;
+		{
+			sequelize,
+			modelName: 'Employee',
+			tableName: 'employees',
+			timestamps: false,
+			schema: process.env.DB_SCHEMA || 'public',
+		}
+	)
+};
