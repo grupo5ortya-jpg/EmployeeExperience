@@ -67,7 +67,7 @@ export default function EmployeeList() {
                      cursor-pointer shrink-0"
         >
           <UserPlus size={16} />
-          Nuevo colaborador
+          Nuevo empleado
         </button>
       </div>
 

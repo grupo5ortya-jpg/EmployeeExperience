@@ -1,20 +1,12 @@
+
 const { Router } = require('express');
 const router = Router();
+const roles = require('../controllers/role.controllers');
 
-
-router.get('/all', (req, res) => {
-	res.json({ message: 'Roles routes' });
-});
-
-router.get('/active-roles', (req, res) => {
-	res.json({ message: 'Roles routes' });
-});
-
-router.get('/:name', (req, res) => {
-	const { name } = req.params;
-	// Lógica para obtener un tipo de pregunta por nombre
-	res.json({ message: `Get Role with name ${name}` });
-});
-
+router.get('/',       roles.getAllRoles);
+router.get('/:id',    roles.getRoleById);
+router.post('/',      roles.createRole);
+router.patch('/:id',  roles.updateRole);
+router.delete('/:id', roles.deleteRole);
 
 module.exports = router;

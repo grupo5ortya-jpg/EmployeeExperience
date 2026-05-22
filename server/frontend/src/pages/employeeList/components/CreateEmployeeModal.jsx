@@ -6,7 +6,6 @@ const STATUS_OPTS = [
   { value: 'ACTIVE',     label: 'Activo' },
   { value: 'INACTIVE',   label: 'Inactivo' },
   { value: 'ON_LEAVE',   label: 'En licencia' },
-  { value: 'ONBOARDING', label: 'Onboarding' },
 ]
 
 const INITIAL = {

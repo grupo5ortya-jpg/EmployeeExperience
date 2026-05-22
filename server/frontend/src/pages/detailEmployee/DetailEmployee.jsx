@@ -93,6 +93,12 @@ export default function DetailEmployee() {
     emergencyContactName, emergencyContactPhone,
   } = employee
 
+  const addressStr = address
+    ? [address.street, address.number, address.neighborhood, address.city, address.country]
+        .filter(Boolean)
+        .join(', ')
+    : null
+
   const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.toUpperCase()
   const avatarBg = getAvatarColor(`${firstName}${lastName}`)
   const statusLabel = STATUS_LABEL[status] ?? status
@@ -136,7 +142,7 @@ export default function DetailEmployee() {
         <Section title="Contacto">
           <InfoRow icon={Mail}    label="Email"    value={user?.email} />
           <InfoRow icon={Phone}   label="Teléfono" value={phone} />
-          <InfoRow icon={MapPin}  label="Dirección" value={address} />
+          <InfoRow icon={MapPin}  label="Dirección" value={addressStr} />
         </Section>
 
         {/* Organización */}

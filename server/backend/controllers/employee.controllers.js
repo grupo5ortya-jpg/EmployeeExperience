@@ -1,262 +1,168 @@
-const { Employee, User, Department, Course, CourseEnrollment } = require('../connection/connection');
-const { formatEmployeeCoursesResponse } = require('../utils/utils.course.mappers')
-const getAllEmployees = async (req, res) => {
-    try {
-        const employees = await Employee.findAll({
-            attributes: [
-                'id',
-                'firstName',
-                'lastName',
-                'fullName',
-                'userId',
-                'departmentId',
-                'managerId',
-                'documentType',
-                'documentNumber',
-                'birthDate',
-                'hireDate',
-                'position',
-                'status',
-                'phone',
-                'address',
-                'emergencyContactName',
-                'emergencyContactPhone',
-                'createdAt',
-                'updatedAt',
-            ],
-            include: [
-                {
-                    model: User,
-                    as: 'user',
-                    attributes: ['id', 'email', 'isActive', 'auth0Id'],
-                },
-                {
-                    model: Department,
-                    as: 'department',
-                    attributes: ['id', 'name', 'description'],
-                },
-                {
-                    model: Employee,
-                    as: 'manager',
-                    attributes: ['id', 'firstName', 'lastName', 'position'],
-                },
-            ],
-        });
+const { sequelize, Employee, Person, Department, User } = require('../connection/sequelize');
 
-        return res.status(200).json(employees);
-    } catch (error) {
-        return res.status(500).json({
-            message: 'Failed to fetch employees',
-            error: error.message,
-        });
-    }
+const DOC_TYPE_MAP = {
+	DNI:       'DNI',
+	Pasaporte: 'PASAPORTE EXTRANJERO',
+	CUIT:      'OTRO',
+	CUIL:      'OTRO',
 };
 
-const getEmployeeById = async (req, res) => {
-    try {
-        const { id } = req.params;
+const EMPLOYEE_INCLUDE = [
+	{ model: Person,     as: 'person' },
+	{ model: Department, as: 'department', attributes: ['id', 'name'] },
+	{ model: User,       as: 'user',       attributes: ['id', 'email'] },
+	{
+		model:   Employee,
+		as:      'leaders',
+		through: { attributes: [] },
+		include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+	},
+];
 
-        const employee = await Employee.findByPk(id, {
-            include: [
-                {
-                    model: User,
-                    as: 'user',
-                    attributes: ['id', 'email', 'isActive', 'auth0Id'],
-                },
-                {
-                    model: Department,
-                    as: 'department',
-                    attributes: ['id', 'name', 'description'],
-                },
-                {
-                    model: Employee,
-                    as: 'manager',
-                    attributes: ['id', 'firstName', 'lastName', 'position'],
-                },
-                {
-                    model: Employee,
-                    as: 'directReports',
-                    attributes: ['id', 'firstName', 'lastName', 'position'],
-                },
-            ],
-        });
+function formatEmployee(e) {
+	const leader = e.leaders?.[0] ?? null;
+	return {
+		id:                    e.id,
+		firstName:             e.person?.first_name              ?? null,
+		lastName:              e.person?.last_name               ?? null,
+		documentType:          e.person?.document_type           ?? null,
+		documentNumber:        e.person?.document_number         ?? null,
+		birthDate:             e.person?.birth_date              ?? null,
+		email:                 e.user?.email                     ?? null,
+		phone:                 e.person?.phone                   ?? null,
+		address:               e.person?.address                 ?? null,
+		emergencyContactName:  e.person?.emergency_contact_name  ?? null,
+		emergencyContactPhone: e.person?.emergency_contact_phone ?? null,
+		position:              e.position,
+		status:                e.status,
+		hireDate:              e.hire_date ?? null,
+		department:            e.department ?? null,
+		user:                  e.user       ?? null,
+		manager: leader
+			? {
+				id:        leader.id,
+				firstName: leader.person?.first_name ?? null,
+				lastName:  leader.person?.last_name  ?? null,
+			}
+			: null,
+	};
+}
 
-        if (!employee) {
-            return res.status(404).json({
-                message: 'Employee not found',
-            });
-        }
-
-        return res.status(200).json(employee);
-    } catch (error) {
-        return res.status(500).json({
-            message: 'Failed to fetch employee',
-            error: error.message,
-        });
-    }
+const getAllEmployees = async (req, res, next) => {
+	try {
+		const employees = await Employee.findAll({ include: EMPLOYEE_INCLUDE });
+		res.json(employees.map(formatEmployee));
+	} catch (err) {
+		next(err);
+	}
 };
 
-const createEmployee = async (req, res) => {
-    try {
-        const {
-            userId,
-            departmentId,
-            managerId,
-            firstName,
-            lastName,
-            documentType,
-            documentNumber,
-            birthDate,
-            hireDate,
-            position,
-            status,
-            phone,
-            address,
-            emergencyContactName,
-            emergencyContactPhone,
-        } = req.body;
-
-        const newEmployee = await Employee.create({
-            userId,
-            departmentId,
-            managerId,
-            firstName,
-            lastName,
-            documentType,
-            documentNumber,
-            birthDate,
-            hireDate,
-            position,
-            status,
-            phone,
-            address,
-            emergencyContactName,
-            emergencyContactPhone,
-        });
-
-        return res.status(201).json(newEmployee);
-    } catch (error) {
-        return res.status(500).json({
-            message: 'Failed to create employee',
-            error: error.message,
-        });
-    }
+const getEmployeeById = async (req, res, next) => {
+	try {
+		const employee = await Employee.findByPk(req.params.id, { include: EMPLOYEE_INCLUDE });
+		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
+		res.json(formatEmployee(employee));
+	} catch (err) {
+		next(err);
+	}
 };
 
-const updateEmployee = async (req, res) => {
-    try {
-        const { id } = req.params;
+const createEmployee = async (req, res, next) => {
+	const {
+		firstName, lastName, email, documentType, documentNumber, birthDate,
+		phone, address, emergencyContactName, emergencyContactPhone,
+		position, status, departmentId,
+	} = req.body;
 
-        const employee = await Employee.findByPk(id);
+	const t = await sequelize.transaction();
+	try {
+		const person = await Person.create({
+			first_name:              firstName,
+			last_name:               lastName,
+			email,
+			document_type:           DOC_TYPE_MAP[documentType] ?? documentType,
+			document_number:         documentNumber,
+			birth_date:              birthDate    || null,
+			phone:                   phone        || null,
+			address:                 address      || null,
+			emergency_contact_name:  emergencyContactName  || null,
+			emergency_contact_phone: emergencyContactPhone || null,
+		}, { transaction: t });
 
-        if (!employee) {
-            return res.status(404).json({
-                message: 'Employee not found',
-            });
-        }
+		const employee = await Employee.create({
+			person_id:     person.id,
+			department_id: departmentId || null,
+			position:      position     || null,
+			status:        status       || 'ACTIVE',
+		}, { transaction: t });
 
-        await employee.update(req.body);
+		await t.commit();
 
-        return res.status(200).json(employee);
-    } catch (error) {
-        return res.status(500).json({
-            message: 'Failed to update employee',
-            error: error.message,
-        });
-    }
+		const full = await Employee.findByPk(employee.id, { include: EMPLOYEE_INCLUDE });
+		res.status(201).json(formatEmployee(full));
+	} catch (err) {
+		await t.rollback();
+		next(err);
+	}
 };
 
-const deleteEmployee = async (req, res) => {
-    try {
-        const { id } = req.params;
+const updateEmployee = async (req, res, next) => {
+	try {
+		const employee = await Employee.findByPk(req.params.id, {
+			include: [{ model: Person, as: 'person' }],
+		});
+		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
 
-        const employee = await Employee.findByPk(id);
+		const {
+			firstName, lastName, email, documentType, documentNumber, birthDate,
+			phone, address, emergencyContactName, emergencyContactPhone,
+			position, status, departmentId, hireDate,
+		} = req.body;
 
-        if (!employee) {
-            return res.status(404).json({
-                message: 'Employee not found',
-            });
-        }
+		const personUpdates = {};
+		if (firstName      !== undefined) personUpdates.first_name     = firstName;
+		if (lastName       !== undefined) personUpdates.last_name      = lastName;
+		if (email          !== undefined) personUpdates.email          = email;
+		if (documentType   !== undefined) personUpdates.document_type  = DOC_TYPE_MAP[documentType] ?? documentType;
+		if (documentNumber !== undefined) personUpdates.document_number = documentNumber;
+		if (birthDate      !== undefined) personUpdates.birth_date     = birthDate || null;
+		if (phone          !== undefined) personUpdates.phone          = phone     || null;
+		if (address        !== undefined) personUpdates.address        = address   || null;
+		if (emergencyContactName  !== undefined) personUpdates.emergency_contact_name  = emergencyContactName  || null;
+		if (emergencyContactPhone !== undefined) personUpdates.emergency_contact_phone = emergencyContactPhone || null;
 
-        await employee.destroy();
+		if (Object.keys(personUpdates).length) await employee.person.update(personUpdates);
 
-        return res.status(200).json({
-            message: 'Employee deleted successfully',
-        });
-    } catch (error) {
-        return res.status(500).json({
-            message: 'Failed to delete employee',
-            error: error.message,
-        });
-    }
+		const employeeUpdates = {};
+		if (position     !== undefined) employeeUpdates.position      = position;
+		if (status       !== undefined) employeeUpdates.status        = status;
+		if (departmentId !== undefined) employeeUpdates.department_id = departmentId || null;
+		if (hireDate     !== undefined) employeeUpdates.hire_date     = hireDate    || null;
+
+		if (Object.keys(employeeUpdates).length) await employee.update(employeeUpdates);
+
+		const updated = await Employee.findByPk(employee.id, { include: EMPLOYEE_INCLUDE });
+		res.json(formatEmployee(updated));
+	} catch (err) {
+		next(err);
+	}
 };
-const getEmployeeCourses = async (req, res) => {
-    try {
-        const { id } = req.params;
 
-        const employee = await Employee.findByPk(id, {
-            attributes: ['id', 'firstName', 'lastName', 'position', 'status'],
-            include: [
-                {
-                    model: CourseEnrollment,
-                    as: 'courseEnrollments',
-                    attributes: ['id', 'status', 'progressPercent', 'enrolledAt', 'completedAt'],
-                    include: [
-                        {
-                            model: Course,
-                            as: 'course',
-                            attributes: ['id', 'title', 'description', 'modality', 'provider', 'durationHours'],
-                        },
-                    ],
-                },
-            ],
-        });
-
-        if (!employee) {
-            return res.status(404).json({
-                message: 'Employee not found',
-            });
-        }
-
-        // const formattedResponse = {
-        //     employee: {
-        //         id: employee.id,
-        //         firstName: employee.firstName,
-        //         lastName: employee.lastName,
-        //         position: employee.position,
-        //         status: employee.status,
-        //     },
-        //     courses: employee.courseEnrollments.map((enrollment) => ({
-        //         id: enrollment.course.id,
-        //         title: enrollment.course.title,
-        //         description: enrollment.course.description,
-        //         modality: enrollment.course.modality,
-        //         provider: enrollment.course.provider,
-        //         durationHours: enrollment.course.durationHours,
-        //         enrollment: {
-        //             id: enrollment.id,
-        //             status: enrollment.status,
-        //             progressPercent: enrollment.progressPercent,
-        //             enrolledAt: enrollment.enrolledAt,
-        //             completedAt: enrollment.completedAt,
-        //         },
-        //     })),
-        // };
-
-        return res.status(200).json(formatEmployeeCoursesResponse(employee));
-    } catch (error) {
-        return res.status(500).json({
-            message: 'Failed to fetch employee courses',
-            error: error.message,
-        });
-    }
+const deleteEmployee = async (req, res, next) => {
+	try {
+		const employee = await Employee.findByPk(req.params.id);
+		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
+		await employee.destroy();
+		res.status(204).end();
+	} catch (err) {
+		next(err);
+	}
 };
 
 module.exports = {
-    getAllEmployees,
-    getEmployeeById,
-    createEmployee,
-    updateEmployee,
-    deleteEmployee,
-    getEmployeeCourses
+	getAllEmployees,
+	getEmployeeById,
+	createEmployee,
+	updateEmployee,
+	deleteEmployee,
 };

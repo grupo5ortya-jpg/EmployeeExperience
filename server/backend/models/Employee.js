@@ -22,8 +22,12 @@ module.exports = (sequelize) => {
 				type: DataTypes.STRING(120),
 				allowNull: true,
 			},
+			hire_date: {
+				type: DataTypes.DATEONLY,
+				allowNull: true,
+			},
 			status: {
-				type: DataTypes.ENUM('ACTIVE', ' '),
+				type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'ON_LEAVE'),
 				allowNull: false,
 				defaultValue: 'ACTIVE',
 			},

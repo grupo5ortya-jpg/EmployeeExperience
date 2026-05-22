@@ -47,7 +47,7 @@ router.use('/task', task_routes);
 router.use('/question-option', question_option_routes);
 
 // Mount employee routes
-router.use('/employee', employee_routes);
+router.use('/employees', employee_routes);
 
 // Mount question routes
 router.use('/question', question_routes);

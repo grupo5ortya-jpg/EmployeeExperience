@@ -1,33 +1,12 @@
 
 const { Router } = require('express');
 const router = Router();
+const taskTypes = require('../controllers/task_type.controllers');
 
-
-router.get('/all', (req, res) => {
-	res.json({ message: 'Question type routes' });
-});
-
-router.get('/:uuid', (req, res) => {
-	const { uuid } = req.params;
-	// Lógica para obtener un tipo de pregunta por ID
-	res.json({ message: `Get question type with uuid ${uuid}` });
-});
-
-router.post('/create', (req, res) => {
-	// Lógica para crear un nuevo tipo de pregunta
-	res.json({ message: 'Create a new question type' });
-});
-
-router.patch('/:uuid', (req, res) => {
-	const { uuid } = req.params;
-	// Lógica para actualizar un tipo de pregunta por ID
-	res.json({ message: `Update question type with uuid ${uuid}` });
-});
-
-router.delete('/:uuid', (req, res) => {
-	const { uuid } = req.params;
-	// Lógica para eliminar un tipo de pregunta por ID
-	res.json({ message: `Delete question type with uuid ${uuid}` });
-});
+router.get('/',       taskTypes.getAllTaskTypes);
+router.get('/:id',    taskTypes.getTaskTypeById);
+router.post('/',      taskTypes.createTaskType);
+router.patch('/:id',  taskTypes.updateTaskType);
+router.delete('/:id', taskTypes.deleteTaskType);
 
 module.exports = router;
