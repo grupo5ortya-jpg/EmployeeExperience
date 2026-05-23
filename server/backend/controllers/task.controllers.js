@@ -6,10 +6,10 @@ const TASK_INCLUDE = [
 
 function formatTask(t) {
 	return {
-		id:                t.id,
-		name:              t.name,
+		id: t.id,
+		name: t.name,
 		estimatedDuration: t.estimated_duration ?? null,
-		taskType:          t.taskType ?? null,
+		taskType: t.taskType ?? null,
 	};
 }
 
@@ -21,6 +21,20 @@ const getAllTasks = async (req, res, next) => {
 		next(err);
 	}
 };
+const getAllTasksByType = async (req, res, next) => {
+	const { typeId } = req.body
+	try {
+		const tasks = await Task.findAll({
+			where: {
+				task_type_id: typeId,
+			}
+		}, { include: { model: TaskType, as: 'type', attributes: ['name', 'sub_type'] } });
+		res.json(tasks.map(formatTask));
+	} catch (err) {
+		next(err);
+	}
+};
+
 
 const getTaskById = async (req, res, next) => {
 	try {
@@ -37,7 +51,7 @@ const createTask = async (req, res, next) => {
 		const { name, taskTypeId, estimatedDuration } = req.body;
 		const task = await Task.create({
 			name,
-			task_type_id:       taskTypeId,
+			task_type_id: taskTypeId,
 			estimated_duration: estimatedDuration ?? null,
 		});
 		const full = await Task.findByPk(task.id, { include: TASK_INCLUDE });
@@ -54,8 +68,8 @@ const updateTask = async (req, res, next) => {
 
 		const { name, taskTypeId, estimatedDuration } = req.body;
 		const updates = {};
-		if (name              !== undefined) updates.name               = name;
-		if (taskTypeId        !== undefined) updates.task_type_id       = taskTypeId;
+		if (name !== undefined) updates.name = name;
+		if (taskTypeId !== undefined) updates.task_type_id = taskTypeId;
 		if (estimatedDuration !== undefined) updates.estimated_duration = estimatedDuration ?? null;
 
 		await task.update(updates);
@@ -79,6 +93,7 @@ const deleteTask = async (req, res, next) => {
 };
 
 module.exports = {
+	getAllTasksByType,
 	getAllTasks,
 	getTaskById,
 	createTask,
