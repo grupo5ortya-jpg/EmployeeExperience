@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import { useRoles } from '../../../hooks/useRoles'
 
 const DOC_TYPES   = ['DNI', 'Pasaporte', 'CUIT', 'CUIL']
 const STATUS_OPTS = [
@@ -23,6 +24,8 @@ const INITIAL = {
   address:               '',
   emergencyContactName:  '',
   emergencyContactPhone: '',
+  email:                 '',
+  roleId:                '',
 }
 
 function Field({ label, required, children }) {
@@ -53,6 +56,7 @@ export default function CreateEmployeeModal({ isOpen, onClose, onSave, employees
   const [form, setForm]       = useState(INITIAL)
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
+  const { data: roles = [] }  = useRoles()
 
   if (!isOpen) return null
 
@@ -85,6 +89,7 @@ export default function CreateEmployeeModal({ isOpen, onClose, onSave, employees
         managerId:    form.managerId    || null,
         birthDate:    form.birthDate    || null,
         hireDate:     form.hireDate     || null,
+        address:      form.address ? { street: form.address } : null,
       })
       setForm(INITIAL)
       onClose()
@@ -158,6 +163,21 @@ export default function CreateEmployeeModal({ isOpen, onClose, onSave, employees
           {/* Información laboral */}
           <div className="flex flex-col gap-3">
             <SectionTitle>Información laboral</SectionTitle>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Email" required>
+                <input type="email" name="email" value={form.email} onChange={handle}
+                  className={inputCls} placeholder="Ej. maria@empresa.com" required />
+              </Field>
+              <Field label="Rol" required>
+                <select name="roleId" value={form.roleId} onChange={handle} className={inputCls} required>
+                  <option value="">Seleccionar rol</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Posición / Cargo">

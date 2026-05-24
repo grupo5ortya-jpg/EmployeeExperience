@@ -33,7 +33,9 @@ function formatEmployeeTask(et) {
 
 const getAllEmployeeTasks = async (req, res, next) => {
 	try {
-		const records = await EmployeeTask.findAll({ include: EMPLOYEE_TASK_INCLUDE });
+		const where = {};
+		if (req.query.taskId) where.task_id = req.query.taskId;
+		const records = await EmployeeTask.findAll({ where, include: EMPLOYEE_TASK_INCLUDE });
 		res.json(records.map(formatEmployeeTask));
 	} catch (err) {
 		next(err);

@@ -1,4 +1,4 @@
-const { sequelize, Employee, Person, Department, User } = require('../connection/sequelize');
+const { sequelize, Employee, Person, Department, User, Role } = require('../connection/sequelize');
 
 const DOC_TYPE_MAP = {
 	DNI:       'DNI',
@@ -10,7 +10,12 @@ const DOC_TYPE_MAP = {
 const EMPLOYEE_INCLUDE = [
 	{ model: Person,     as: 'person' },
 	{ model: Department, as: 'department', attributes: ['id', 'name'] },
-	{ model: User,       as: 'user',       attributes: ['id', 'email'] },
+	{
+		model:      User,
+		as:         'user',
+		attributes: ['id', 'email'],
+		include:    [{ model: Role, as: 'role', attributes: ['id', 'name'] }],
+	},
 	{
 		model:   Employee,
 		as:      'leaders',
@@ -36,8 +41,9 @@ function formatEmployee(e) {
 		position:              e.position,
 		status:                e.status,
 		hireDate:              e.hire_date ?? null,
-		department:            e.department ?? null,
-		user:                  e.user       ?? null,
+		department:            e.department    ?? null,
+		user:                  e.user          ?? null,
+		role:                  e.user?.role    ?? null,
 		manager: leader
 			? {
 				id:        leader.id,
@@ -69,9 +75,10 @@ const getEmployeeById = async (req, res, next) => {
 
 const createEmployee = async (req, res, next) => {
 	const {
-		firstName, lastName, email, documentType, documentNumber, birthDate,
+		firstName, lastName, documentType, documentNumber, birthDate,
 		phone, address, emergencyContactName, emergencyContactPhone,
-		position, status, departmentId,
+		position, status, departmentId, hireDate, managerId,
+		email, roleId,
 	} = req.body;
 
 	const t = await sequelize.transaction();
@@ -79,7 +86,6 @@ const createEmployee = async (req, res, next) => {
 		const person = await Person.create({
 			first_name:              firstName,
 			last_name:               lastName,
-			email,
 			document_type:           DOC_TYPE_MAP[documentType] ?? documentType,
 			document_number:         documentNumber,
 			birth_date:              birthDate    || null,
@@ -94,7 +100,20 @@ const createEmployee = async (req, res, next) => {
 			department_id: departmentId || null,
 			position:      position     || null,
 			status:        status       || 'ACTIVE',
+			hire_date:     hireDate     || null,
 		}, { transaction: t });
+
+		if (managerId) {
+			await employee.addLeader(managerId, { transaction: t });
+		}
+
+		if (email && roleId) {
+			await User.create({
+				email,
+				role_id:     roleId,
+				employee_id: employee.id,
+			}, { transaction: t });
+		}
 
 		await t.commit();
 

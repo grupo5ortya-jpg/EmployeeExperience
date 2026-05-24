@@ -17,7 +17,7 @@ const STATUS_STYLE = {
 
 export default function EmployeeRow({ employee, striped }) {
   const navigate = useNavigate()
-  const { id, firstName, lastName, position, user, department, manager, status } = employee
+  const { id, firstName, lastName, position, user, department, manager, status, role } = employee
 
   const statusLabel = STATUS_LABEL[status] ?? status
   const statusStyle = STATUS_STYLE[status] ?? 'bg-slate-100 text-slate-500'
@@ -66,6 +66,11 @@ export default function EmployeeRow({ employee, striped }) {
         ) : (
           <span className="text-xs text-slate-400">—</span>
         )}
+      </td>
+
+      {/* Rol — lg+ */}
+      <td className="hidden lg:table-cell px-4 py-3 text-slate-600 whitespace-nowrap text-sm">
+        {role?.name ?? '—'}
       </td>
 
       {/* Estado — always */}

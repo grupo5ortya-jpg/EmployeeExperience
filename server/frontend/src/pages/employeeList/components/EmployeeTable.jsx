@@ -5,6 +5,7 @@ const COLUMNS = [
   { label: 'Posición',      vis: 'hidden md:table-cell' },
   { label: 'Departamento',  vis: 'hidden lg:table-cell' },
   { label: 'Líder directo', vis: 'hidden lg:table-cell' },
+  { label: 'Rol',           vis: 'hidden lg:table-cell' },
   { label: 'Estado',        vis: '' },
   { label: '',              vis: '' },
 ]
