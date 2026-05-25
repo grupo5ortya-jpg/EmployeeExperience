@@ -16,6 +16,6 @@ export const createOnboardingTemplate = async (payload) => {
 };
 
 export const createOnboardingTemplateTask = async (payload) => {
-    const response = await apiClient.post('/onboarding-template-tasks', payload);
+    const response = await apiClient.post('/task', payload);
     return response.data;
 };
