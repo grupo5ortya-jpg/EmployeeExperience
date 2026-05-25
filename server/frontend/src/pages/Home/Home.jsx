@@ -6,7 +6,7 @@ import CourseList from '../../components/CourseList'
 
 export default function Dashboard() {
   return (
-    <main className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+    <main className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-6">
       <section>
         <h2 className="text-sm font-semibold text-slate-400 mb-3">Resumen personal</h2>
         <SummaryCards />

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { UserPlus } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { useEmployees } from '../../hooks/useEmployees'
 import { createEmployee } from '../../services/employeeService'
@@ -16,7 +17,8 @@ const STATUS_LABEL = {
 const ESTADO_OPTIONS = ['Todos', 'Activo', 'Inactivo', 'En licencia']
 
 export default function EmployeeList() {
-  const { data: employees = [], isLoading, isError, refetch } = useEmployees()
+  const queryClient = useQueryClient()
+  const { data: employees = [], isLoading, isError } = useEmployees()
 
   const [search, setSearch]         = useState('')
   const [depto, setDepto]           = useState('Todos')
@@ -46,11 +48,14 @@ export default function EmployeeList() {
 
   const handleSave = async (data) => {
     await createEmployee(data)
-    await refetch()
+    // invalidateQueries marca el cache global como stale, forzando a todos los
+    // componentes que usen ['employees'] (incluyendo AllAssignmentsPage) a refetchear
+    // con data fresca en cuanto monten — más robusto que refetch() local.
+    await queryClient.invalidateQueries({ queryKey: ['employees'] })
   }
 
   return (
-    <main className="flex-1 overflow-y-auto p-4 lg:p-6 flex flex-col gap-4 lg:gap-6">
+    <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 flex flex-col gap-4 lg:gap-6">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
