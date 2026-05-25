@@ -14,3 +14,12 @@ export const updateTask = async (id, data) => {
     const response = await apiClient.patch(`/task/${id}`, data);
     return response.data;
 };
+
+export const createTask = async (data) => {
+    const response = await apiClient.post('/task', data);
+    return response.data;
+};
+
+export const deleteTask = async (id) => {
+    await apiClient.delete(`/task/${id}`);
+};

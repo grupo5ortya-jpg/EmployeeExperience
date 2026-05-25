@@ -1,11 +1,9 @@
 import { Plus } from 'lucide-react';
 import TaskRow from './TaskRow';
 
-const COLUMNS = ['Orden', 'Tarea', 'Responsable', 'Días desde ingreso', 'Acciones'];
+const COLUMNS = ['Tarea', 'Duración estimada', 'Acciones'];
 
 export default function TasksSection({ tasks = [], onAddTask, onDeleteTask }) {
-    const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
-
     return (
         <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden">
             {/* Header */}
@@ -13,7 +11,7 @@ export default function TasksSection({ tasks = [], onAddTask, onDeleteTask }) {
                 <div>
                     <h2 className="text-sm font-bold text-slate-700">Tareas del template</h2>
                     <p className="text-xs text-slate-400 mt-0.5">
-                        Define las tareas que se generarán para cada nueva incorporación.
+                        Definí las tareas que forman parte de esta plantilla.
                     </p>
                 </div>
                 <button
@@ -28,7 +26,7 @@ export default function TasksSection({ tasks = [], onAddTask, onDeleteTask }) {
                 </button>
             </div>
 
-            {sorted.length > 0 ? (
+            {tasks.length > 0 ? (
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
@@ -42,7 +40,7 @@ export default function TasksSection({ tasks = [], onAddTask, onDeleteTask }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {sorted.map((task, i) => (
+                            {tasks.map((task, i) => (
                                 <TaskRow
                                     key={task._localId}
                                     task={task}

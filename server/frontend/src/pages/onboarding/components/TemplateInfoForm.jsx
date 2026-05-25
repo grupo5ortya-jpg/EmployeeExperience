@@ -1,47 +1,35 @@
-import { FieldLabel, TextInput, Textarea } from './FormFields';
+import { FieldLabel, TextInput } from './FormFields';
 
 export default function TemplateInfoForm({ form, onChange }) {
     return (
         <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-brand-light bg-brand-pale/40">
-                <h2 className="text-sm font-bold text-slate-700">Información general</h2>
+                <h2 className="text-sm font-bold text-slate-700">Información de la plantilla</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                    Definí el tipo y subtipo del template (ej: Onboarding · Checklist).
+                </p>
             </div>
 
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                    <FieldLabel>Nombre del template</FieldLabel>
+                    <FieldLabel>Nombre del template <span className="text-red-400">*</span></FieldLabel>
                     <TextInput
                         name="name"
                         value={form.name}
                         onChange={onChange}
-                        placeholder="Ej. Onboarding Developer"
+                        placeholder="Ej. Onboarding"
                         required
                     />
                 </div>
 
                 <div>
-                    <FieldLabel>Descripción (opcional)</FieldLabel>
-                    <Textarea
-                        name="description"
-                        value={form.description}
+                    <FieldLabel>Subtipo (opcional)</FieldLabel>
+                    <TextInput
+                        name="sub_type"
+                        value={form.sub_type}
                         onChange={onChange}
-                        placeholder="Proceso de onboarding para..."
-                        rows={3}
+                        placeholder="Ej. Checklist, Documentación, Integración"
                     />
-                </div>
-
-                <div className="md:col-span-2 flex items-center gap-2 pt-1">
-                    <input
-                        type="checkbox"
-                        id="isActive"
-                        name="isActive"
-                        checked={form.isActive}
-                        onChange={onChange}
-                        className="w-4 h-4 accent-brand cursor-pointer"
-                    />
-                    <label htmlFor="isActive" className="text-sm text-slate-600 cursor-pointer select-none">
-                        Plantilla activa
-                    </label>
                 </div>
             </div>
         </div>
