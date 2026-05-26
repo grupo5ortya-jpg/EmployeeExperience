@@ -1,24 +1,24 @@
-const { sequelize, Employee, Person, Department, User, Role } = require('../connection/sequelize');
+const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask } = require('../connection/sequelize');
 
 const DOC_TYPE_MAP = {
-	DNI:       'DNI',
+	DNI: 'DNI',
 	Pasaporte: 'PASAPORTE EXTRANJERO',
-	CUIT:      'OTRO',
-	CUIL:      'OTRO',
+	CUIT: 'OTRO',
+	CUIL: 'OTRO',
 };
 
 const EMPLOYEE_INCLUDE = [
-	{ model: Person,     as: 'person' },
+	{ model: Person, as: 'person' },
 	{ model: Department, as: 'department', attributes: ['id', 'name'] },
 	{
-		model:      User,
-		as:         'user',
+		model: User,
+		as: 'user',
 		attributes: ['id', 'email'],
-		include:    [{ model: Role, as: 'role', attributes: ['id', 'name'] }],
+		include: [{ model: Role, as: 'role', attributes: ['id', 'name'] }],
 	},
 	{
-		model:   Employee,
-		as:      'leaders',
+		model: Employee,
+		as: 'leaders',
 		through: { attributes: [] },
 		include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
 	},
@@ -27,28 +27,28 @@ const EMPLOYEE_INCLUDE = [
 function formatEmployee(e) {
 	const leader = e.leaders?.[0] ?? null;
 	return {
-		id:                    e.id,
-		firstName:             e.person?.first_name              ?? null,
-		lastName:              e.person?.last_name               ?? null,
-		documentType:          e.person?.document_type           ?? null,
-		documentNumber:        e.person?.document_number         ?? null,
-		birthDate:             e.person?.birth_date              ?? null,
-		email:                 e.user?.email                     ?? null,
-		phone:                 e.person?.phone                   ?? null,
-		address:               e.person?.address                 ?? null,
-		emergencyContactName:  e.person?.emergency_contact_name  ?? null,
+		id: e.id,
+		firstName: e.person?.first_name ?? null,
+		lastName: e.person?.last_name ?? null,
+		documentType: e.person?.document_type ?? null,
+		documentNumber: e.person?.document_number ?? null,
+		birthDate: e.person?.birth_date ?? null,
+		email: e.user?.email ?? null,
+		phone: e.person?.phone ?? null,
+		address: e.person?.address ?? null,
+		emergencyContactName: e.person?.emergency_contact_name ?? null,
 		emergencyContactPhone: e.person?.emergency_contact_phone ?? null,
-		position:              e.position,
-		status:                e.status,
-		hireDate:              e.hire_date ?? null,
-		department:            e.department    ?? null,
-		user:                  e.user          ?? null,
-		role:                  e.user?.role    ?? null,
+		position: e.position,
+		status: e.status,
+		hireDate: e.hire_date ?? null,
+		department: e.department ?? null,
+		user: e.user ?? null,
+		role: e.user?.role ?? null,
 		manager: leader
 			? {
-				id:        leader.id,
+				id: leader.id,
 				firstName: leader.person?.first_name ?? null,
-				lastName:  leader.person?.last_name  ?? null,
+				lastName: leader.person?.last_name ?? null,
 			}
 			: null,
 	};
@@ -75,51 +75,139 @@ const getEmployeeById = async (req, res, next) => {
 
 const createEmployee = async (req, res, next) => {
 	const {
-		firstName, lastName, documentType, documentNumber, birthDate,
-		phone, address, emergencyContactName, emergencyContactPhone,
-		position, status, departmentId, hireDate, managerId,
-		email, roleId,
+		firstName,
+		lastName,
+		documentType,
+		documentNumber,
+		birthDate,
+		phone,
+		address,
+		emergencyContactName,
+		emergencyContactPhone,
+		position,
+		status,
+		departmentId,
+		hireDate,
+		managerId,
+		email,
+		roleId,
 	} = req.body;
 
 	const t = await sequelize.transaction();
+
 	try {
+
+		// =========================================
+		// PERSON
+		// =========================================
+
 		const person = await Person.create({
-			first_name:              firstName,
-			last_name:               lastName,
-			document_type:           DOC_TYPE_MAP[documentType] ?? documentType,
-			document_number:         documentNumber,
-			birth_date:              birthDate    || null,
-			phone:                   phone        || null,
-			address:                 address      || null,
-			emergency_contact_name:  emergencyContactName  || null,
+			first_name: firstName,
+			last_name: lastName,
+			document_type: DOC_TYPE_MAP[documentType] ?? documentType,
+			document_number: documentNumber,
+			birth_date: birthDate || null,
+			phone: phone || null,
+			address: address || null,
+			emergency_contact_name: emergencyContactName || null,
 			emergency_contact_phone: emergencyContactPhone || null,
 		}, { transaction: t });
 
+		// =========================================
+		// EMPLOYEE
+		// =========================================
+
 		const employee = await Employee.create({
-			person_id:     person.id,
+			person_id: person.id,
 			department_id: departmentId || null,
-			position:      position     || null,
-			status:        status       || 'ACTIVE',
-			hire_date:     hireDate     || null,
+			position: position || null,
+			status: status || 'ACTIVE',
+			hire_date: hireDate || null,
 		}, { transaction: t });
 
+		// =========================================
+		// MANAGER
+		// =========================================
+
 		if (managerId) {
-			await employee.addLeader(managerId, { transaction: t });
+			await employee.addLeader(managerId, {
+				transaction: t,
+			});
 		}
+
+		// =========================================
+		// USER
+		// =========================================
 
 		if (email && roleId) {
 			await User.create({
 				email,
-				role_id:     roleId,
+				role_id: roleId,
 				employee_id: employee.id,
 			}, { transaction: t });
 		}
 
+		// =========================================
+		// AUTO ASSIGN ONBOARDING TASKS
+		// =========================================
+
+		const onboardingTasks = await Task.findAll({
+			include: [
+				{
+					model: TaskType,
+					as: 'taskType',
+					where: {
+						name: 'Onboarding',
+					},
+				},
+			],
+			transaction: t,
+		});
+
+		if (onboardingTasks.length > 0) {
+
+			const employeeTasks = onboardingTasks.map((task) => {
+
+				// fecha base = hireDate o hoy
+				const baseDate = hireDate
+					? new Date(hireDate)
+					: new Date();
+
+				// si no tiene duración -> 0
+				const duration = task.estimatedDuration ?? 0;
+
+				// sumar días
+				baseDate.setDate(
+					baseDate.getDate() + duration
+				);
+
+				return {
+					employee_id: employee.id,
+					task_id: task.id,
+					status: 'ENROLLED',
+					due_date: baseDate,
+				};
+			});
+
+			await EmployeeTask.bulkCreate(employeeTasks, {
+				transaction: t,
+			});
+		}
+
+		// =========================================
+		// COMMIT
+		// =========================================
+
 		await t.commit();
 
-		const full = await Employee.findByPk(employee.id, { include: EMPLOYEE_INCLUDE });
+		const full = await Employee.findByPk(employee.id, {
+			include: EMPLOYEE_INCLUDE,
+		});
+
 		res.status(201).json(formatEmployee(full));
+
 	} catch (err) {
+
 		await t.rollback();
 		next(err);
 	}
@@ -139,24 +227,24 @@ const updateEmployee = async (req, res, next) => {
 		} = req.body;
 
 		const personUpdates = {};
-		if (firstName      !== undefined) personUpdates.first_name     = firstName;
-		if (lastName       !== undefined) personUpdates.last_name      = lastName;
-		if (email          !== undefined) personUpdates.email          = email;
-		if (documentType   !== undefined) personUpdates.document_type  = DOC_TYPE_MAP[documentType] ?? documentType;
+		if (firstName !== undefined) personUpdates.first_name = firstName;
+		if (lastName !== undefined) personUpdates.last_name = lastName;
+		if (email !== undefined) personUpdates.email = email;
+		if (documentType !== undefined) personUpdates.document_type = DOC_TYPE_MAP[documentType] ?? documentType;
 		if (documentNumber !== undefined) personUpdates.document_number = documentNumber;
-		if (birthDate      !== undefined) personUpdates.birth_date     = birthDate || null;
-		if (phone          !== undefined) personUpdates.phone          = phone     || null;
-		if (address        !== undefined) personUpdates.address        = address   || null;
-		if (emergencyContactName  !== undefined) personUpdates.emergency_contact_name  = emergencyContactName  || null;
+		if (birthDate !== undefined) personUpdates.birth_date = birthDate || null;
+		if (phone !== undefined) personUpdates.phone = phone || null;
+		if (address !== undefined) personUpdates.address = address || null;
+		if (emergencyContactName !== undefined) personUpdates.emergency_contact_name = emergencyContactName || null;
 		if (emergencyContactPhone !== undefined) personUpdates.emergency_contact_phone = emergencyContactPhone || null;
 
 		if (Object.keys(personUpdates).length) await employee.person.update(personUpdates);
 
 		const employeeUpdates = {};
-		if (position     !== undefined) employeeUpdates.position      = position;
-		if (status       !== undefined) employeeUpdates.status        = status;
+		if (position !== undefined) employeeUpdates.position = position;
+		if (status !== undefined) employeeUpdates.status = status;
 		if (departmentId !== undefined) employeeUpdates.department_id = departmentId || null;
-		if (hireDate     !== undefined) employeeUpdates.hire_date     = hireDate    || null;
+		if (hireDate !== undefined) employeeUpdates.hire_date = hireDate || null;
 
 		if (Object.keys(employeeUpdates).length) await employee.update(employeeUpdates);
 

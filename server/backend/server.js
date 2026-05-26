@@ -32,7 +32,6 @@ server.use((req, res, next) => {
 server.use('/', routes);
 server.use(notFound);
 server.use(errorHandler);
-console.log("WHATSS")
 server.get('/', (req, res) => {
 	res.send('Core service running 🚀');
 });
