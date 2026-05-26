@@ -130,6 +130,28 @@ const core_conn_apply_associations = (sequelize) => {
 			as: 'surveyType',
 		});
 
+	//! QuestionType / Survey (qué preguntas incluye el ciclo) !//
+		QuestionType.hasMany(Survey, {
+			foreignKey: 'question_type_id',
+			as: 'cyclesSurveys',
+		});
+
+		Survey.belongsTo(QuestionType, {
+			foreignKey: 'question_type_id',
+			as: 'questionType',
+		});
+
+	//! Department / Survey (ciclos de Feedback 360 por departamento) !//
+		Department.hasMany(Survey, {
+			foreignKey: 'department_id',
+			as: 'feedbackCycles',
+		});
+
+		Survey.belongsTo(Department, {
+			foreignKey: 'department_id',
+			as: 'department',
+		});
+
 	//! Survey / SurveyAssignment !//
 		Survey.hasMany(SurveyAssignment, {
 			foreignKey: 'survey_id',

@@ -18,7 +18,7 @@ const navItems = [
   { icon: User,          label: 'Mi perfil'                      },
   { icon: Users,         label: 'Equipo',          to: '/employeelist' },
   { icon: UserPlus,      label: 'Onboarding', to: '/onboardinghome' },
-  { icon: RotateCcw,     label: 'Feedback 360°'                  },
+  { icon: RotateCcw,     label: 'Feedback 360°',  to: '/feedbackhome' },
   { icon: Target,        label: 'Objetivos'                      },
   { icon: BookOpen,      label: 'Aprendizaje LMS'                },
   { icon: ClipboardList, label: 'Plan de acción'                 },
