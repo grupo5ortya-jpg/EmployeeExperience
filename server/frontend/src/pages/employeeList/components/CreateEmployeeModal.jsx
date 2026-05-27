@@ -363,16 +363,17 @@ export default function CreateEmployeeModal({
                   </option>
                   {console.log(taskTypes)}
                   {taskTypes.map((taskType) => (
-
-                    <option
+                    < option
                       key={taskType.id}
                       value={taskType.id}
                     >
                       {taskType.name}
 
-                      {taskType.sub_type
-                        ? ` · ${taskType.sub_type}`
-                        : ''}
+                      {
+                        taskType.sub_type
+                          ? ` · ${taskType.sub_type}`
+                          : ''
+                      }
                     </option>
                   ))}
                 </select>
@@ -596,7 +597,7 @@ export default function CreateEmployeeModal({
           </div>
 
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   )
 }

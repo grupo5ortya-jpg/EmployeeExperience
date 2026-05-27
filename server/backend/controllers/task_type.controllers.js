@@ -11,7 +11,6 @@ function formatTaskType(t) {
 const getAllTaskTypes = async (req, res, next) => {
 	try {
 		const taskTypes = await TaskType.findAll();
-		console.log(taskTypes.map(formatTaskType))
 		res.json(taskTypes.map(formatTaskType));
 	} catch (err) {
 		next(err);

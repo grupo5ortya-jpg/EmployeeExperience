@@ -8,7 +8,7 @@ module.exports = async function (sequelize) {
 
 	const taskTypes = await TaskType.findAll();
 	const taskTypeByKey = taskTypes.reduce((acc, type) => {
-		const key = `${type.name}:${type.sub_type}`;
+		const key = `${type.name}`//:${type.sub_type}`;
 		acc[key] = type.id;
 		return acc;
 	}, {});
@@ -16,92 +16,92 @@ module.exports = async function (sequelize) {
 	const tasks = [
 		{
 			name: 'Completar checklist de bienvenida',
-			task_type_id: taskTypeByKey['Onboarding:Checklist'],
+			task_type_id: taskTypeByKey['Onboarding estándar'],
 			estimated_duration: 2,
 		},
 		{
 			name: 'Revisar políticas internas',
-			task_type_id: taskTypeByKey['Onboarding:Checklist'],
+			task_type_id: taskTypeByKey['Onboarding estándar'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Firmar contrato y documentación de alta',
-			task_type_id: taskTypeByKey['Onboarding:Documentación'],
+			task_type_id: taskTypeByKey['Onboarding estándar'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Subir credenciales y formularios obligatorios',
-			task_type_id: taskTypeByKey['Onboarding:Documentación'],
+			task_type_id: taskTypeByKey['Onboarding estándar'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Reunión de bienvenida con el líder',
-			task_type_id: taskTypeByKey['Onboarding:Integración'],
+			task_type_id: taskTypeByKey['Onboarding estándar'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Presentarse al equipo y conocer responsabilidades',
-			task_type_id: taskTypeByKey['Onboarding:Integración'],
+			task_type_id: taskTypeByKey['Onboarding estándar'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Devolver notebook y tarjetas de acceso',
-			task_type_id: taskTypeByKey['Offboarding:Checklist'],
+			task_type_id: taskTypeByKey['Offboarding estándad'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Completar checklist de salida con RRHH',
-			task_type_id: taskTypeByKey['Offboarding:Checklist'],
+			task_type_id: taskTypeByKey['Offboarding estándad'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Entrevista de salida con RRHH',
-			task_type_id: taskTypeByKey['Offboarding:Entrevista de salida'],
+			task_type_id: taskTypeByKey['Offboarding estándad'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Completar curso de inducción digital',
-			task_type_id: taskTypeByKey['Aprendizaje:Curso'],
+			task_type_id: taskTypeByKey['Aprendizaje - curso'],
 			estimated_duration: 3,
 		},
 		{
 			name: 'Participar en workshop de habilidades blandas',
-			task_type_id: taskTypeByKey['Aprendizaje:Curso'],
+			task_type_id: taskTypeByKey['Aprendizaje - curso'],
 			estimated_duration: 2,
 		},
 		{
 			name: 'Obtener certificación de seguridad informática',
-			task_type_id: taskTypeByKey['Aprendizaje:Certificación'],
+			task_type_id: taskTypeByKey['Aprendizaje - certificarse'],
 			estimated_duration: 5,
 		},
 		{
 			name: 'Completar certificación de compliance',
-			task_type_id: taskTypeByKey['Aprendizaje:Certificación'],
+			task_type_id: taskTypeByKey['Aprendizaje - certificarse'],
 			estimated_duration: 4,
 		},
 		{
 			name: 'Completar autoevaluación semestral',
-			task_type_id: taskTypeByKey['Desempeño:Evaluación 360'],
+			task_type_id: taskTypeByKey['Desempeño - feedback 360'],
 			estimated_duration: 2,
 		},
 		{
 			name: 'Enviar evaluación a pares y líder',
-			task_type_id: taskTypeByKey['Desempeño:Evaluación 360'],
+			task_type_id: taskTypeByKey['Desempeño - feedback 360'],
 			estimated_duration: 2,
 		},
 		{
 			name: 'Registrar reconocimiento a un colega',
-			task_type_id: taskTypeByKey['Desempeño:Reconocimiento'],
+			task_type_id: taskTypeByKey['Desempeño - reconocimiento'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Solicitar acceso a la intranet corporativa',
-			task_type_id: taskTypeByKey['Administrativo:Accesos'],
+			task_type_id: taskTypeByKey['Administrativo - acceso'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Revisar permisos y accesos asignados',
-			task_type_id: taskTypeByKey['Administrativo:Accesos'],
+			task_type_id: taskTypeByKey['Administrativo - acceso'],
 			estimated_duration: 1,
 		},
 	];
