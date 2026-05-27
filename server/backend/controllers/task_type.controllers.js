@@ -2,8 +2,8 @@ const { TaskType } = require('../connection/sequelize');
 
 function formatTaskType(t) {
 	return {
-		id:      t.id,
-		name:    t.name,
+		id: t.id,
+		name: t.name,
 		subType: t.sub_type ?? null,
 	};
 }
@@ -11,6 +11,7 @@ function formatTaskType(t) {
 const getAllTaskTypes = async (req, res, next) => {
 	try {
 		const taskTypes = await TaskType.findAll();
+		console.log(taskTypes.map(formatTaskType))
 		res.json(taskTypes.map(formatTaskType));
 	} catch (err) {
 		next(err);
@@ -44,7 +45,7 @@ const updateTaskType = async (req, res, next) => {
 
 		const { name, subType } = req.body;
 		const updates = {};
-		if (name    !== undefined) updates.name     = name;
+		if (name !== undefined) updates.name = name;
 		if (subType !== undefined) updates.sub_type = subType || null;
 
 		await taskType.update(updates);
