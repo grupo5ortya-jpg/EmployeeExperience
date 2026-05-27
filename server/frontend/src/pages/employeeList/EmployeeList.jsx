@@ -9,7 +9,7 @@ import EmployeeTable from './components/EmployeeTable'
 import CreateEmployeeModal from './components/CreateEmployeeModal'
 
 const STATUS_LABEL = {
-  ACTIVE:   'Activo',
+  ACTIVE: 'Activo',
   INACTIVE: 'Inactivo',
   ON_LEAVE: 'En licencia',
 }
@@ -20,9 +20,9 @@ export default function EmployeeList() {
   const queryClient = useQueryClient()
   const { data: employees = [], isLoading, isError } = useEmployees()
 
-  const [search, setSearch]         = useState('')
-  const [depto, setDepto]           = useState('Todos')
-  const [estado, setEstado]         = useState('Todos')
+  const [search, setSearch] = useState('')
+  const [depto, setDepto] = useState('Todos')
+  const [estado, setEstado] = useState('Todos')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const deptoOptions = useMemo(
@@ -39,7 +39,7 @@ export default function EmployeeList() {
           `${e.firstName} ${e.lastName}`.toLowerCase().includes(q) ||
           e.user?.email?.toLowerCase().includes(q) ||
           e.position?.toLowerCase().includes(q)
-        const matchDepto  = depto === 'Todos'  || e.department?.name === depto
+        const matchDepto = depto === 'Todos' || e.department?.name === depto
         const matchEstado = estado === 'Todos' || STATUS_LABEL[e.status] === estado
         return matchSearch && matchDepto && matchEstado
       }),
@@ -79,9 +79,9 @@ export default function EmployeeList() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-brand-light shadow-sm">
         <EmployeeFilters
-          search={search}  onSearch={setSearch}
-          depto={depto}    onDepto={setDepto}   deptoOptions={deptoOptions}
-          estado={estado}  onEstado={setEstado} estadoOptions={ESTADO_OPTIONS}
+          search={search} onSearch={setSearch}
+          depto={depto} onDepto={setDepto} deptoOptions={deptoOptions}
+          estado={estado} onEstado={setEstado} estadoOptions={ESTADO_OPTIONS}
         />
         <EmployeeTable
           employees={filtered}

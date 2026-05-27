@@ -91,6 +91,7 @@ const createEmployee = async (req, res, next) => {
 		managerId,
 		email,
 		roleId,
+		taskType
 	} = req.body;
 
 	const t = await sequelize.transaction();
@@ -157,7 +158,7 @@ const createEmployee = async (req, res, next) => {
 					model: TaskType,
 					as: 'taskType',
 					where: {
-						name: 'Onboarding',
+						name: taskType || 'Onboarding',
 					},
 				},
 			],
