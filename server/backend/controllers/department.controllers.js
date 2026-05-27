@@ -2,8 +2,8 @@ const { Department, Employee, Person } = require('../connection/sequelize');
 
 const EMPLOYEE_INCLUDE = [
 	{
-		model:      Employee,
-		as:         'employees',
+		model: Employee,
+		as: 'employees',
 		attributes: ['id', 'position', 'status'],
 		include: [
 			{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] },
@@ -13,17 +13,16 @@ const EMPLOYEE_INCLUDE = [
 
 function formatDepartment(d, withEmployees = false) {
 	return {
-		id:        d.id,
-		name:      d.name,
+		id: d.id,
+		name: d.name,
 		createdAt: d.createdAt,
-		updatedAt: d.updatedAt,
 		...(withEmployees && {
 			employees: (d.employees ?? []).map(e => ({
-				id:        e.id,
-				position:  e.position,
-				status:    e.status,
+				id: e.id,
+				position: e.position,
+				status: e.status,
 				firstName: e.person?.first_name ?? null,
-				lastName:  e.person?.last_name  ?? null,
+				lastName: e.person?.last_name ?? null,
 			})),
 		}),
 	};
@@ -37,6 +36,14 @@ const getAllDepartments = async (req, res, next) => {
 		next(err);
 	}
 };
+const getAllActiveDepartments = async (req, res, next) => {
+	try {
+		const departments = await Department.findAll({ where: { deletedAt: null } });
+		res.json(departments.map(d => formatDepartment(d)));
+	} catch (err) {
+		next(err);
+	}
+};
 
 const getDepartmentById = async (req, res, next) => {
 	try {
@@ -44,7 +51,7 @@ const getDepartmentById = async (req, res, next) => {
 			include: EMPLOYEE_INCLUDE,
 		});
 		if (!department) return res.status(404).json({ status: 'fail', message: 'Department not found' });
-		res.json(formatDepartment(department, true));
+		res.json(formatDepartment(department, false));
 	} catch (err) {
 		next(err);
 	}
@@ -80,14 +87,17 @@ const deleteDepartment = async (req, res, next) => {
 		const department = await Department.findByPk(req.params.id);
 		if (!department) return res.status(404).json({ status: 'fail', message: 'Department not found' });
 		await department.destroy();
-		res.status(204).end();
+		const employeesLeft = employeesLeft(department);
+		res.status(204).json({ message: `Quedan ${employeesLeft} empleados asociados al departamento` }).end();
 	} catch (err) {
 		next(err);
 	}
 };
+const employeesLeft = (department) => formatDepartment(department, true).employees.length
 
 module.exports = {
 	getAllDepartments,
+	getAllActiveDepartments,
 	getDepartmentById,
 	createDepartment,
 	updateDepartment,

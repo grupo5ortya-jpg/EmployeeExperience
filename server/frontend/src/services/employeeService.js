@@ -11,6 +11,7 @@ export const getEmployeeById = async (id) => {
 };
 
 export const createEmployee = async (data) => {
+    console.log('VER DEPARTMENT ID', data)
     const response = await apiClient.post('/employees', data);
     return response.data;
 };

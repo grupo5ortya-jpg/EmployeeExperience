@@ -1,13 +1,13 @@
-import { useParams, useNavigate }  from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft, Building2, CalendarRange, Lock,
     ShieldCheck, HelpCircle,
 } from 'lucide-react'
 
-import { useSurveyById }   from '../../hooks/useSurveyById'
+import { useSurveyById } from '../../hooks/useSurveyById'
 import { COMPETENCY_MAP, countQuestions } from './constants/competencies'
-import { useFeedbackParticipants }        from './hooks/useFeedbackParticipants'
-import { QuestionList }        from './components/QuestionList'
+import { useFeedbackParticipants } from './hooks/useFeedbackParticipants'
+import { QuestionList } from './components/QuestionList'
 import { ParticipantsSection } from './components/ParticipantsSection'
 
 /* ─── Helpers ───────────────────────────────────────────────── */
@@ -34,7 +34,7 @@ function PageSkeleton() {
 
 /* ─── Página ─────────────────────────────────────────────────── */
 export default function FeedbackDetailPage() {
-    const { id }   = useParams()
+    const { id } = useParams()
     const navigate = useNavigate()
 
     const { data: survey, isLoading, isError } = useSurveyById(id)
@@ -52,7 +52,7 @@ export default function FeedbackDetailPage() {
         )
     }
 
-    const competencies   = survey.competencies ?? []
+    const competencies = survey.competencies ?? []
     const totalQuestions = countQuestions(competencies)
 
     return (
