@@ -361,7 +361,6 @@ export default function CreateEmployeeModal({
                   <option value="">
                     Onboarding - estándar
                   </option>
-                  {console.log(taskTypes)}
                   {taskTypes.map((taskType) => (
                     < option
                       key={taskType.id}
@@ -370,8 +369,8 @@ export default function CreateEmployeeModal({
                       {taskType.name}
 
                       {
-                        taskType.sub_type
-                          ? ` · ${taskType.sub_type}`
+                        taskType.subType
+                          ? ` · ${taskType.subType}`
                           : ''
                       }
                     </option>
