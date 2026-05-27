@@ -1,11 +1,6 @@
 const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask } = require('../connection/sequelize');
 
-const DOC_TYPE_MAP = {
-	DNI: 'DNI',
-	Pasaporte: 'PASAPORTE EXTRANJERO',
-	CUIT: 'OTRO',
-	CUIL: 'OTRO',
-};
+const DOC_TYPE_MAP = Person.rawAttributes.document_type.values;
 
 const EMPLOYEE_INCLUDE = [
 	{ model: Person, as: 'person' },
