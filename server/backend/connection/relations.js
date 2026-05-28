@@ -210,6 +210,17 @@ const core_conn_apply_associations = (sequelize) => {
 			as: 'selectedOption',
 		});
 
+		//! Employee mentor self-association !//
+		Employee.belongsTo(Employee, {
+			foreignKey: 'mentor_id',
+			as: 'mentor',
+		});
+
+		Employee.hasMany(Employee, {
+			foreignKey: 'mentor_id',
+			as: 'mentees',
+		});
+
 		//! Team / Employee self-association !//
 		Team.belongsTo(Employee, {
 			foreignKey: 'leader_id',

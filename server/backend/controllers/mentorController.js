@@ -28,23 +28,15 @@ async function getMentorSuggestions(req, res, next) {
             position:   newEmp.position ?? null,
         };
 
-        // Build mentor candidates from DB
-        const candidates = await buildMentorCandidates(employeeId);
+        // Build mentor candidates from DB, same-department first
+        const candidates = await buildMentorCandidates(employeeId, newEmployee.department);
 
         if (candidates.length === 0) {
             return res.json({ suggestions: [], message: 'No hay candidatos disponibles.' });
         }
 
-        // Call Gemini
-        const rawResponse = await suggestMentors(newEmployee, candidates);
-
-        // Strip markdown code fences if Gemini wraps the JSON
-        const jsonStr = rawResponse
-            .replace(/^```json?\s*/i, '')
-            .replace(/```\s*$/, '')
-            .trim();
-
-        const suggestions = JSON.parse(jsonStr);
+        // suggestMentors already parses the JSON internally
+        const suggestions = await suggestMentors(newEmployee, candidates);
 
         return res.json({ suggestions });
     } catch (error) {

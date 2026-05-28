@@ -15,3 +15,8 @@ export const createEmployee = async (data) => {
     const response = await apiClient.post('/employees', data);
     return response.data;
 };
+
+export const assignMentor = async (employeeId, mentorId) => {
+    const response = await apiClient.patch(`/employees/${employeeId}/mentor`, { mentorId });
+    return response.data;
+};

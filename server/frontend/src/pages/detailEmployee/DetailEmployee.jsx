@@ -87,7 +87,7 @@ export default function DetailEmployee() {
 
   const {
     firstName, lastName, position, status,
-    user, department, manager,
+    user, department, manager, mentor,
     phone, address, birthDate, hireDate,
     documentType, documentNumber,
     emergencyContactName, emergencyContactPhone,
@@ -153,6 +153,11 @@ export default function DetailEmployee() {
             icon={User}
             label="Líder directo"
             value={manager ? `${manager.firstName} ${manager.lastName}` : null}
+          />
+          <InfoRow
+            icon={User}
+            label="Mentor"
+            value={mentor ? `${mentor.firstName} ${mentor.lastName}${mentor.position ? ` — ${mentor.position}` : ''}` : '—'}
           />
           <InfoRow icon={Calendar} label="Fecha de ingreso" value={formatDate(hireDate)} />
         </Section>

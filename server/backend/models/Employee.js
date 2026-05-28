@@ -31,6 +31,10 @@ module.exports = (sequelize) => {
 				allowNull: false,
 				defaultValue: 'ACTIVE',
 			},
+			mentor_id: {
+				type: DataTypes.UUID,
+				allowNull: true,
+			},
 		},
 		{
 			sequelize,

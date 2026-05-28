@@ -1,4 +1,5 @@
 
+require('dotenv').config();
 const server = require('./server.js');
 const { sequelize } = require('./connection/sequelize');
 const { core_conn_initialize_database_from_bs } = require('./connection/connection.js');

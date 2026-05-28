@@ -17,6 +17,12 @@ const EMPLOYEE_INCLUDE = [
 		through: { attributes: [] },
 		include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
 	},
+	{
+		model: Employee,
+		as: 'mentor',
+		attributes: ['id', 'position'],
+		include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+	},
 ];
 
 function formatEmployee(e) {
@@ -44,6 +50,14 @@ function formatEmployee(e) {
 				id: leader.id,
 				firstName: leader.person?.first_name ?? null,
 				lastName: leader.person?.last_name ?? null,
+			}
+			: null,
+		mentor: e.mentor
+			? {
+				id: e.mentor.id,
+				firstName: e.mentor.person?.first_name ?? null,
+				lastName: e.mentor.person?.last_name ?? null,
+				position: e.mentor.position ?? null,
 			}
 			: null,
 	};
@@ -262,10 +276,31 @@ const deleteEmployee = async (req, res, next) => {
 	}
 };
 
+const assignMentor = async (req, res, next) => {
+	try {
+		const employee = await Employee.findByPk(req.params.id);
+		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
+
+		const { mentorId } = req.body;
+
+		if (mentorId && mentorId === req.params.id) {
+			return res.status(400).json({ status: 'fail', message: 'Un empleado no puede ser su propio mentor.' });
+		}
+
+		await employee.update({ mentor_id: mentorId ?? null });
+
+		const updated = await Employee.findByPk(employee.id, { include: EMPLOYEE_INCLUDE });
+		res.json(formatEmployee(updated));
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
 	getAllEmployees,
 	getEmployeeById,
 	createEmployee,
 	updateEmployee,
 	deleteEmployee,
+	assignMentor,
 };
