@@ -83,35 +83,98 @@ module.exports = async function (sequelize) {
 			estimated_duration: 2,
 		},
 		{
-			question_type_id: typeByKey['Pulso:Clima'],
+			question_type_id: typeByKey['Pulso:30'],
 			text: '¿Te sientes valorado por tu equipo?',
 			type: 'Cerrada',
 			estimated_duration: 1,
 		},
 		{
-			question_type_id: typeByKey['Pulso:Clima'],
+			question_type_id: typeByKey['Pulso:30'],
 			text: '¿La comunicación interna es clara en tu área?',
 			type: 'Cerrada',
 			estimated_duration: 1,
 		},
 		{
-			question_type_id: typeByKey['Pulso:Clima'],
+			question_type_id: typeByKey['Pulso:30'],
 			text: '¿Tu carga de trabajo es equilibrada?',
 			type: 'Cerrada',
 			estimated_duration: 1,
 		},
 		{
-			question_type_id: typeByKey['Pulso:Clima'],
+			question_type_id: typeByKey['Pulso:30'],
 			text: '¿Sientes que tienes oportunidades de desarrollo en este rol?',
 			type: 'Cerrada',
 			estimated_duration: 1,
 		},
 		{
-			question_type_id: typeByKey['Pulso:Clima'],
+			question_type_id: typeByKey['Pulso:30'],
 			text: '¿Qué temas te gustaría que se incluyeran en el próximo pulso?',
 			type: 'Abierta',
 			estimated_duration: 2,
 		},
+		// ── Pulso: 60 días ───────────────────────────────────────
+		{
+			question_type_id: typeByKey['Pulso:60'],
+			text: '¿Te sentís integrado/a al equipo después de dos meses?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:60'],
+			text: '¿Tus responsabilidades actuales coinciden con lo que esperabas al ingresar?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:60'],
+			text: '¿Recibiste el acompañamiento necesario para desarrollar tu trabajo?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:60'],
+			text: '¿Te sentís cómodo/a consultando dudas con tu equipo o líder?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:60'],
+			text: '¿Qué es lo que más te está costando adaptarte hasta ahora?',
+			type: 'Abierta',
+			estimated_duration: 2,
+		},
+		// ── Pulso: 90 días ───────────────────────────────────────
+		{
+			question_type_id: typeByKey['Pulso:90'],
+			text: '¿Sentís que tu aporte es valorado dentro del equipo?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:90'],
+			text: '¿Tenés claridad sobre tus objetivos y prioridades a corto plazo?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:90'],
+			text: '¿La cultura de la empresa se alinea con tus valores personales?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:90'],
+			text: '¿Ves oportunidades de crecimiento en tu rol a mediano plazo?',
+			type: 'Cerrada',
+			estimated_duration: 1,
+		},
+		{
+			question_type_id: typeByKey['Pulso:90'],
+			text: '¿Qué cambiarías de tu experiencia en estos primeros tres meses?',
+			type: 'Abierta',
+			estimated_duration: 2,
+		},
+		// ── Offboarding ──────────────────────────────────────────
 		{
 			question_type_id: typeByKey['Offboarding:Salida'],
 			text: '¿El proceso de salida fue claro y ordenado?',

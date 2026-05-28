@@ -18,7 +18,9 @@ const routes_task_type = require('./routes.task_type.js');
 const routes_survey_type = require('./routes.survey_type.js');
 const routes_survey_assignment = require('./routes.survey_assignment.js');
 const routes_survey_response = require('./routes.survey_response.js');
-const { preguntarAGemini } = require('../controllers/geminiController.js');
+const { preguntarAGemini }                      = require('../controllers/geminiController.js');
+const { getMentorSuggestions }                  = require('../controllers/mentorController.js');
+const { testGeminiConnection }                  = require('../connection/geminiService.js');
 
 // Mount task type routes
 router.use('/task-type', routes_task_type);
@@ -70,5 +72,18 @@ router.use('/survey-response', routes_survey_response);
 
 //gemini
 router.post('/api/gemini/preguntar', preguntarAGemini);
+
+// AI — mentor matching
+router.post('/ai/mentor-matching', getMentorSuggestions);
+
+// AI — test Gemini connection
+router.get('/ai/test', async (_req, res, next) => {
+    try {
+        const response = await testGeminiConnection();
+        res.json({ ok: true, response });
+    } catch (error) {
+        next(error);
+    }
+});
 
 module.exports = router;
