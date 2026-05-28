@@ -11,19 +11,25 @@ import {
   LifeBuoy,
   Settings,
   Users,
+  MessageSquareHeart
 } from 'lucide-react'
 
 const navItems = [
-  { icon: Home,          label: 'Inicio',          to: '/'             },
-  { icon: User,          label: 'Mi perfil'                      },
-  { icon: Users,         label: 'Equipo',          to: '/employeelist' },
-  { icon: UserPlus,      label: 'Onboarding', to: '/onboardinghome' },
-  { icon: RotateCcw,     label: 'Feedback 360°',  to: '/feedbackhome' },
-  { icon: Target,        label: 'Objetivos'                      },
-  { icon: BookOpen,      label: 'Aprendizaje LMS'                },
-  { icon: ClipboardList, label: 'Plan de acción'                 },
-  { icon: Bell,          label: 'Notificaciones', badge: 3       },
-  { icon: LifeBuoy,      label: 'Soporte'                        },
+  { icon: Home, label: 'Inicio', to: '/' },
+  { icon: User, label: 'Mi perfil' },
+  { icon: Users, label: 'Equipo', to: '/employeelist' },
+  { icon: UserPlus, label: 'Onboarding', to: '/onboardinghome' },
+  { icon: RotateCcw, label: 'Feedback 360°', to: '/feedbackhome' },
+  { icon: Target, label: 'Objetivos' },
+  { icon: BookOpen, label: 'Aprendizaje LMS' },
+  { icon: ClipboardList, label: 'Plan de acción' },
+  { icon: Bell, label: 'Notificaciones', badge: 3 },
+  { icon: LifeBuoy, label: 'Soporte' },
+  {
+    label: 'Feedback continuo',
+    to: '/continuous-feedback',
+    icon: MessageSquareHeart,
+  }
 ]
 
 const itemClass = (active) =>
