@@ -18,6 +18,7 @@ const routes_task_type = require('./routes.task_type.js');
 const routes_survey_type = require('./routes.survey_type.js');
 const routes_survey_assignment = require('./routes.survey_assignment.js');
 const routes_survey_response = require('./routes.survey_response.js');
+const { preguntarAGemini } = require('../controllers/geminiController.js');
 
 // Mount task type routes
 router.use('/task-type', routes_task_type);
@@ -66,5 +67,8 @@ router.use('/role', role_routes);
 
 // Mount survey response routes
 router.use('/survey-response', routes_survey_response);
+
+//gemini
+router.post('/api/gemini/preguntar', preguntarAGemini);
 
 module.exports = router;
