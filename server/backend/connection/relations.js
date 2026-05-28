@@ -3,7 +3,8 @@ const ContinuousFeedback = require("../models/ContinuousFeedback");
 const core_conn_apply_associations = (sequelize) => {
 	const {
 		Department, Employee, EmployeeTask, Person, Question, QuestionOption, QuestionType, Role,
-		Survey, SurveyAssignment, SurveyResponse, SurveyType, Task, User, TaskType, Team, ContinuousFeedback
+		Survey, SurveyAssignment, SurveyResponse, SurveyType, Task, User, TaskType, Team, ContinuousFeedback,
+		Alert,
 	} = sequelize.models;
 
 	//! Department !//
@@ -235,6 +236,28 @@ const core_conn_apply_associations = (sequelize) => {
 	SurveyResponse.belongsTo(QuestionOption, {
 		foreignKey: 'question_option_id',
 		as: 'selectedOption',
+	});
+
+	//! Alert / Employee !//
+	Employee.hasMany(Alert, {
+		foreignKey: 'employee_id',
+		as: 'alerts',
+	});
+
+	Alert.belongsTo(Employee, {
+		foreignKey: 'employee_id',
+		as: 'employee',
+	});
+
+	//! Employee mentor self-association !//
+	Employee.belongsTo(Employee, {
+		foreignKey: 'mentor_id',
+		as: 'mentor',
+	});
+
+	Employee.hasMany(Employee, {
+		foreignKey: 'mentor_id',
+		as: 'mentees',
 	});
 
 	//! Team / Employee self-association !//

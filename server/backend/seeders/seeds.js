@@ -10,6 +10,7 @@ const createTeams = require('./seeds.teams.js');
 const createQuestionTypes = require('./seeds.question_types.js');
 const createQuestions = require('./seeds.questions.js');
 const createEmployeeTasks = require('./seeds.employee_tasks.js');
+const createPulseDemo     = require('./seeds.pulse_demo.js');
 
 
 module.exports = async function (sequelize) {
@@ -29,6 +30,7 @@ module.exports = async function (sequelize) {
 		await createUsers(sequelize, employees, roleNames);
 		await createTeams(sequelize);
 		await createEmployeeTasks(sequelize);
+		await createPulseDemo(sequelize);
 
 		console.log('Database seeded successfully');
 	} catch (error) {

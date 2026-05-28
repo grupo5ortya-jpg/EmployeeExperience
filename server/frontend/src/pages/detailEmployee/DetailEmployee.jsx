@@ -1,6 +1,6 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useEmployeeById } from '../../hooks/useEmployeeById'
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building2, User, AlertCircle, Calendar } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building2, User, AlertCircle, Calendar, Activity } from 'lucide-react'
 
 const STATUS_LABEL = {
   ACTIVE:     'Activo',
@@ -107,14 +107,24 @@ export default function DetailEmployee() {
   return (
     <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 flex flex-col gap-4 lg:gap-5">
 
-      {/* Back */}
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand-hover transition-colors w-fit cursor-pointer"
-      >
-        <ArrowLeft size={14} />
-        Volver
-      </button>
+      {/* Back + actions */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand-hover transition-colors cursor-pointer"
+        >
+          <ArrowLeft size={14} />
+          Volver
+        </button>
+        <Link
+          to={`/pulsesurveys?employeeId=${id}`}
+          className="flex items-center gap-1.5 text-xs font-semibold text-brand hover:text-brand-hover
+                     bg-brand-pale hover:bg-brand-light px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <Activity size={13} />
+          Encuestas de pulso
+        </Link>
+      </div>
 
       {/* Header card */}
       <div className="bg-white rounded-xl border border-brand-light shadow-sm p-5 flex items-center gap-5">

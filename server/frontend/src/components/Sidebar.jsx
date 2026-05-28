@@ -13,23 +13,20 @@ import {
   Users,
   MessageSquareHeart
 } from 'lucide-react'
+import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
-const navItems = [
-  { icon: Home, label: 'Inicio', to: '/' },
-  { icon: User, label: 'Mi perfil' },
-  { icon: Users, label: 'Equipo', to: '/employeelist' },
-  { icon: UserPlus, label: 'Onboarding', to: '/onboardinghome' },
-  { icon: RotateCcw, label: 'Feedback 360°', to: '/feedbackhome' },
-  { icon: Target, label: 'Objetivos' },
-  { icon: BookOpen, label: 'Aprendizaje LMS' },
-  { icon: ClipboardList, label: 'Plan de acción' },
-  { icon: Bell, label: 'Notificaciones', badge: 3 },
-  { icon: LifeBuoy, label: 'Soporte' },
-  {
-    label: 'Feedback continuo',
-    to: '/continuous-feedback',
-    icon: MessageSquareHeart,
-  }
+const staticNavItems = [
+  { icon: Home,             label: 'Inicio',          to: '/' },
+  { icon: User,             label: 'Mi perfil' },
+  { icon: Users,            label: 'Equipo',           to: '/employeelist' },
+  { icon: UserPlus,         label: 'Onboarding',       to: '/onboardinghome' },
+  { icon: RotateCcw,        label: 'Feedback 360°',    to: '/feedbackhome' },
+  { icon: Target,           label: 'Objetivos' },
+  { icon: BookOpen,         label: 'Aprendizaje LMS' },
+  { icon: ClipboardList,    label: 'Plan de acción' },
+  { icon: Bell,             label: 'Alertas',          to: '/alerts', dynamicBadge: true },
+  { icon: LifeBuoy,         label: 'Soporte' },
+  { icon: MessageSquareHeart, label: 'Feedback continuo', to: '/continuous-feedback' },
 ]
 
 const itemClass = (active) =>
@@ -41,8 +38,8 @@ function NavItem({ icon: Icon, label, active, badge, to }) {
     <>
       <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
       <span className="flex-1 text-left truncate">{label}</span>
-      {badge && (
-        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-white text-xs font-bold flex items-center justify-center">
+      {badge > 0 && (
+        <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
           {badge}
         </span>
       )}
@@ -73,6 +70,12 @@ function NavItem({ icon: Icon, label, active, badge, to }) {
 }
 
 export default function Sidebar() {
+  const { data: unreadCount = 0 } = useUnreadAlerts()
+
+  const navItems = staticNavItems.map((item) =>
+    item.dynamicBadge ? { ...item, badge: unreadCount } : item
+  )
+
   return (
     <aside className="hidden lg:flex w-56 shrink-0 h-screen bg-navy flex-col">
       {/* Logo */}

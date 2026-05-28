@@ -1,4 +1,5 @@
 const { SurveyResponse, Question, QuestionOption } = require('../connection/sequelize');
+const { handleOpenPulseResponse } = require('../connection/pulseSurveyService');
 
 const RESPONSE_INCLUDE = [
 	{ model: Question,       as: 'question',       attributes: ['id', 'text', 'type'] },
@@ -55,6 +56,12 @@ const createResponse = async (req, res, next) => {
 			where:   { survey_assignment_id: response.survey_assignment_id, question_id: response.question_id },
 			include: RESPONSE_INCLUDE,
 		});
+
+		// Fire-and-forget: analyze open pulse responses without blocking the API response
+		if (answerText) {
+			handleOpenPulseResponse(surveyAssignmentId, questionId, answerText).catch(console.error);
+		}
+
 		res.status(201).json(formatResponse(full));
 	} catch (err) {
 		next(err);

@@ -81,4 +81,36 @@ async function testGeminiConnection() {
     return await generarTexto('Respond with exactly: "Gemini connection OK"');
 }
 
-module.exports = { generarTexto, suggestMentors, testGeminiConnection };
+/**
+ * Analyzes an open pulse survey response to detect negative onboarding signals.
+ *
+ * @param {string} text - Employee's open text answer
+ * @returns {Promise<{ sentiment: string, riskLevel: string, topics: string[], summary: string }>}
+ */
+async function analyzePulseResponse(text) {
+    const prompt = `Eres un sistema de análisis de RRHH especializado en detectar señales de riesgo durante el proceso de onboarding de empleados nuevos.
+
+Analizá el siguiente comentario abierto de un empleado en su encuesta de pulso (primeros 30, 60 o 90 días en la empresa):
+
+"${text}"
+
+Evaluá:
+1. Sentimiento general del empleado
+2. Nivel de riesgo de problemas de integración o adaptación
+3. Temas principales que menciona (ejemplos: integración, comunicación, apoyo, estrés, carga de trabajo, claridad de rol, equipo, cultura)
+4. Posibles señales negativas: aislamiento, confusión, falta de apoyo, estrés, mala integración, problemas de comunicación
+
+Respondé ÚNICAMENTE con un JSON válido, sin texto adicional, con este formato exacto:
+{
+  "sentiment": "positive" | "neutral" | "negative",
+  "riskLevel": "low" | "medium" | "high",
+  "topics": ["tema1", "tema2"],
+  "summary": "Resumen breve en español describiendo los puntos clave del comentario."
+}`;
+
+    const raw = await generarTexto(prompt);
+    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+    return JSON.parse(jsonStr);
+}
+
+module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseResponse };
