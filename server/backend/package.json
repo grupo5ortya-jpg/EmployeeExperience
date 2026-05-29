@@ -17,6 +17,7 @@
     "employeeexperience": "file:../..",
     "express": "^5.2.1",
     "morgan": "^1.10.1",
+    "node-cron": "^4.2.1",
     "pg": "^8.20.0",
     "pgtools": "^1.0.1",
     "sequelize": "^6.37.8"

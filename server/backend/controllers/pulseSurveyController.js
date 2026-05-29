@@ -1,5 +1,7 @@
 const { Op } = require('sequelize');
-const { SurveyAssignment, Survey, QuestionType, Question, QuestionOption } = require('../connection/sequelize');
+const { SurveyAssignment, Survey, QuestionType, Question, QuestionOption, PulseAnalysis, Employee, Person } = require('../connection/sequelize');
+
+const SURVEY_LEVEL_QID = '00000000-0000-0000-0000-000000000000';
 
 const getPendingPulseSurveys = async (req, res, next) => {
 	try {
@@ -70,4 +72,70 @@ const getPendingPulseSurveys = async (req, res, next) => {
 	}
 };
 
-module.exports = { getPendingPulseSurveys };
+const getPulseAnalyses = async (req, res, next) => {
+	try {
+		const analyses = await PulseAnalysis.findAll({
+			where: { question_id: SURVEY_LEVEL_QID },
+			include: [{
+				model:    SurveyAssignment,
+				as:       'surveyAssignment',
+				include:  [
+					{
+						model:    Survey,
+						as:       'survey',
+						attributes: ['id', 'name'],
+						include: [{
+							model:      QuestionType,
+							as:         'questionType',
+							attributes: ['sub_type'],
+						}],
+					},
+					{
+						model:      Employee,
+						as:         'employee',
+						attributes: ['id', 'position'],
+						include: [{
+							model:      Person,
+							as:         'person',
+							attributes: ['first_name', 'last_name'],
+						}],
+					},
+				],
+			}],
+			order: [['createdAt', 'DESC']],
+		});
+
+		res.json(analyses.map((a) => {
+			const sa = a.surveyAssignment;
+			return {
+				surveyAssignmentId: a.survey_assignment_id,
+				overallRisk:        a.overall_risk  ?? null,
+				sentiment:          a.sentiment,
+				topics:             a.topics        ?? [],
+				summary:            a.summary       ?? null,
+				reasoning:          a.reasoning     ?? null,
+				scoresSnapshot:     a.scores_snapshot ?? [],
+				createdAt:          a.createdAt,
+				survey: sa?.survey
+					? {
+						id:      sa.survey.id,
+						name:    sa.survey.name,
+						subType: sa.survey.questionType?.sub_type ?? null,
+					}
+					: null,
+				employee: sa?.employee
+					? {
+						id:        sa.employee.id,
+						position:  sa.employee.position  ?? null,
+						firstName: sa.employee.person?.first_name ?? null,
+						lastName:  sa.employee.person?.last_name  ?? null,
+					}
+					: null,
+			};
+		}));
+	} catch (err) {
+		next(err);
+	}
+};
+
+module.exports = { getPendingPulseSurveys, getPulseAnalyses };

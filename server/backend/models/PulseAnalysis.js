@@ -29,6 +29,19 @@ module.exports = (sequelize) => {
 			type: DataTypes.TEXT,
 			allowNull: true,
 		},
+		overall_risk: {
+			type: DataTypes.STRING(20),
+			allowNull: true,
+		},
+		reasoning: {
+			type: DataTypes.TEXT,
+			allowNull: true,
+		},
+		scores_snapshot: {
+			type: DataTypes.JSONB,
+			allowNull: true,
+			defaultValue: [],
+		},
 	}, {
 		sequelize,
 		modelName: 'PulseAnalysis',

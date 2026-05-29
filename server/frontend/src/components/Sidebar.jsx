@@ -8,6 +8,7 @@ import {
   ClipboardList,
   User,
   Bell,
+  BarChart2,
   LifeBuoy,
   Settings,
   Users,
@@ -24,7 +25,8 @@ const staticNavItems = [
   { icon: Target,           label: 'Objetivos' },
   { icon: BookOpen,         label: 'Aprendizaje LMS' },
   { icon: ClipboardList,    label: 'Plan de acción' },
-  { icon: Bell,             label: 'Alertas',          to: '/alerts', dynamicBadge: true },
+  { icon: Bell,             label: 'Alertas',          to: '/alerts',        dynamicBadge: true },
+  { icon: BarChart2,        label: 'Análisis de Pulso', to: '/pulseanalysis' },
   { icon: LifeBuoy,         label: 'Soporte' },
   { icon: MessageSquareHeart, label: 'Feedback continuo', to: '/continuous-feedback' },
 ]

@@ -69,7 +69,9 @@ function formatSurvey(s) {
 const getAllSurveys = async (req, res, next) => {
 	try {
 		const surveys = await Survey.findAll({ include: SURVEY_INCLUDE });
-		res.json(surveys.map(formatSurvey));
+		// Exclude pulse surveys — those are managed separately via /pulse-surveys
+		const feedback = surveys.filter((s) => s.questionType?.name !== 'Pulso');
+		res.json(feedback.map(formatSurvey));
 	} catch (err) {
 		next(err);
 	}

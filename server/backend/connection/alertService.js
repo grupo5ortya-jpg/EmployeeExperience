@@ -2,9 +2,11 @@ const { Alert } = require('./sequelize');
 
 const RISK_LABEL = { low: 'baja', medium: 'media', high: 'alta' };
 
-async function createPulseAlert({ employeeId, pulseSubType, riskLevel, sentiment, topics, summary }) {
+async function createPulseAlert({ employeeId, pulseSubType, riskLevel, sentiment, topics, summary, reasoning }) {
 	const riskLabel = RISK_LABEL[riskLevel] ?? riskLevel;
-	const message = `Señal detectada en encuesta Pulso ${pulseSubType}: ${summary} (riesgo ${riskLabel})`;
+	const message = reasoning
+		? `Pulso ${pulseSubType}: ${summary} — ${reasoning} (riesgo ${riskLabel})`
+		: `Señal detectada en encuesta Pulso ${pulseSubType}: ${summary} (riesgo ${riskLabel})`;
 
 	await Alert.create({
 		employee_id: employeeId,

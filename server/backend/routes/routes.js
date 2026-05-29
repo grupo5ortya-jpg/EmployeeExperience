@@ -21,7 +21,7 @@ const routes_survey_response = require('./routes.survey_response.js');
 const { preguntarAGemini }                      = require('../controllers/geminiController.js');
 const { getMentorSuggestions }                  = require('../controllers/mentorController.js');
 const { testGeminiConnection }                  = require('../connection/geminiService.js');
-const { getPendingPulseSurveys }                = require('../controllers/pulseSurveyController.js');
+const { getPendingPulseSurveys, getPulseAnalyses } = require('../controllers/pulseSurveyController.js');
 const alert_routes                              = require('./routes.alert.js');
 
 // Mount task type routes
@@ -79,7 +79,9 @@ router.post('/api/gemini/preguntar', preguntarAGemini);
 router.use('/alerts', alert_routes);
 
 // Pulse surveys — pending by employee
-router.get('/pulse-surveys/pending', getPendingPulseSurveys);
+router.get('/pulse-surveys/pending',   getPendingPulseSurveys);
+// Pulse analyses — all AI results for HR
+router.get('/pulse-surveys/analyses',  getPulseAnalyses);
 
 // AI — mentor matching
 router.post('/ai/mentor-matching', getMentorSuggestions);

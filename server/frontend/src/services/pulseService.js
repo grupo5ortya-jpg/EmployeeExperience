@@ -17,3 +17,6 @@ export const completePulseAssignment = async ({ surveyId, employeeId, assignedBy
     );
     return response.data;
 };
+
+export const getPulseAnalyses = () =>
+    apiClient.get('/pulse-surveys/analyses').then((r) => r.data);

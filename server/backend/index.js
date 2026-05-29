@@ -9,6 +9,7 @@ const { PORT, DB_NAME, SYNC_PARAMS } = process.env;
 const fs = require('fs');
 const path = require('path');
 const core_seed_database = require('./seeders/seeds.js');
+const { startPulseCronJob } = require('./connection/pulseCronJob.js');
 
 
 async function core_start_server() {
@@ -30,6 +31,8 @@ async function core_start_server() {
 		server.listen(PORT, () => {
 			console.log(`Server running on port ${PORT}`);
 		});
+
+		startPulseCronJob();
 
 	} catch (error) {
 		console.error('Failed to start server:', error);

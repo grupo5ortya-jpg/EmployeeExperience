@@ -82,30 +82,55 @@ async function testGeminiConnection() {
 }
 
 /**
- * Analyzes an open pulse survey response to detect negative onboarding signals.
+ * Analyzes a complete pulse survey (closed scores + open comment) to evaluate onboarding risk.
  *
- * @param {string} text - Employee's open text answer
- * @returns {Promise<{ sentiment: string, riskLevel: string, topics: string[], summary: string }>}
+ * @param {{ surveyType: string, closedAnswers: Array<{question:string, score:number}>, openComment: string|null }} payload
+ * @returns {Promise<{ sentiment: string, riskLevel: string, topics: string[], summary: string, reasoning: string }>}
  */
-async function analyzePulseResponse(text) {
-    const prompt = `Eres un sistema de análisis de RRHH especializado en detectar señales de riesgo durante el proceso de onboarding de empleados nuevos.
+async function analyzePulseSurvey({ surveyType, closedAnswers, openComment }) {
+    const days = surveyType.replace('_DAYS', '');
 
-Analizá el siguiente comentario abierto de un empleado en su encuesta de pulso (primeros 30, 60 o 90 días en la empresa):
+    const scoresText = closedAnswers.length > 0
+        ? closedAnswers.map((a) => `- "${a.question}": ${a.score}/5`).join('\n')
+        : '(sin respuestas cerradas)';
 
-"${text}"
+    const avgScore = closedAnswers.length > 0
+        ? (closedAnswers.reduce((s, a) => s + a.score, 0) / closedAnswers.length).toFixed(1)
+        : null;
 
-Evaluá:
-1. Sentimiento general del empleado
-2. Nivel de riesgo de problemas de integración o adaptación
-3. Temas principales que menciona (ejemplos: integración, comunicación, apoyo, estrés, carga de trabajo, claridad de rol, equipo, cultura)
-4. Posibles señales negativas: aislamiento, confusión, falta de apoyo, estrés, mala integración, problemas de comunicación
+    const commentText = openComment
+        ? `"${openComment}"`
+        : '(el empleado no dejó comentario abierto)';
 
-Respondé ÚNICAMENTE con un JSON válido, sin texto adicional, con este formato exacto:
+    const prompt = `Eres un sistema de análisis de riesgos de onboarding de RRHH.
+
+Analizá la encuesta de pulso COMPLETA de un empleado en sus primeros ${days} días en la empresa.
+
+RESPUESTAS CERRADAS (puntuación 1-5, donde 1=muy mal, 5=muy bien):
+${scoresText}${avgScore ? `\nPromedio general: ${avgScore}/5` : ''}
+
+COMENTARIO ABIERTO:
+${commentText}
+
+Evaluá el riesgo de onboarding considerando AMBAS fuentes de información:
+1. Sentimiento general combinando puntajes y comentario
+2. Nivel de riesgo: GOOD (bien integrado), MEDIUM (señales de alerta moderadas), NEGATIVE (en riesgo real)
+3. Temas clave detectados (integración, apoyo, equipo, comunicación, claridad de rol, carga de trabajo, cultura, etc.)
+4. Resumen contextual de la situación del empleado
+5. Razonamiento explicando cómo los datos cuantitativos y cualitativos se correlacionan
+
+Criterios de riesgo:
+- GOOD: promedio >= 4.0 Y sentimiento positivo o neutral
+- MEDIUM: promedio 2.5–3.9, O señales mixtas, O comentario con preocupaciones leves
+- NEGATIVE: promedio < 2.5, O múltiples puntajes de 1–2, O comentario claramente negativo
+
+Respondé ÚNICAMENTE con un JSON válido, sin texto adicional:
 {
   "sentiment": "positive" | "neutral" | "negative",
-  "riskLevel": "low" | "medium" | "high",
+  "riskLevel": "GOOD" | "MEDIUM" | "NEGATIVE",
   "topics": ["tema1", "tema2"],
-  "summary": "Resumen breve en español describiendo los puntos clave del comentario."
+  "summary": "Resumen breve en español de la situación del empleado.",
+  "reasoning": "Explicación concisa en español de cómo los datos llevaron a este nivel de riesgo."
 }`;
 
     const raw = await generarTexto(prompt);
@@ -113,4 +138,4 @@ Respondé ÚNICAMENTE con un JSON válido, sin texto adicional, con este formato
     return JSON.parse(jsonStr);
 }
 
-module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseResponse };
+module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseSurvey };

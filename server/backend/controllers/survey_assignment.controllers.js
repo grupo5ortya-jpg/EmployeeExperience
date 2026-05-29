@@ -1,4 +1,5 @@
-const { SurveyAssignment, Survey, Employee, Person, SurveyResponse } = require('../connection/sequelize');
+const { SurveyAssignment, Survey, Employee, Person } = require('../connection/sequelize');
+const { handleCompletePulseSurvey } = require('../connection/pulseSurveyService');
 
 const ASSIGNMENT_INCLUDE = [
 	{ model: Survey,   as: 'survey',   attributes: ['id', 'name'] },
@@ -86,6 +87,12 @@ const updateAssignment = async (req, res, next) => {
 		if (status  !== undefined) updates.status   = status;
 
 		await assignment.update(updates);
+
+		// Fire-and-forget: full AI analysis once all responses are in
+		if (status === 'COMPLETED') {
+			handleCompletePulseSurvey(surveyId, employeeId).catch(console.error);
+		}
+
 		const updated = await SurveyAssignment.findOne({
 			where:   { survey_id: surveyId, employee_id: employeeId, assigned_by: assignedBy },
 			include: ASSIGNMENT_INCLUDE,

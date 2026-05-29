@@ -26,31 +26,31 @@ module.exports = async function (sequelize) {
 			question_type_id: typeByKey['Onboarding:Bienvenida'],
 			text: '¿Cómo calificarías la claridad de tu proceso de bienvenida?',
 			type: 'Cerrada',
-			estimated_duration: 1,
+			estimated_duration: 3,
 		},
 		{
 			question_type_id: typeByKey['Onboarding:Bienvenida'],
 			text: '¿Te entregaron la documentación necesaria a tiempo?',
 			type: 'Cerrada',
-			estimated_duration: 1,
+			estimated_duration: 3,
 		},
 		{
 			question_type_id: typeByKey['Onboarding:Bienvenida'],
 			text: '¿Sentiste acompañamiento adecuado durante tu primer día?',
 			type: 'Cerrada',
-			estimated_duration: 1,
+			estimated_duration: 3,
 		},
 		{
 			question_type_id: typeByKey['Onboarding:Bienvenida'],
 			text: '¿La capacitación inicial te ayudó a entender tu rol?',
 			type: 'Cerrada',
-			estimated_duration: 1,
+			estimated_duration: 3,
 		},
 		{
 			question_type_id: typeByKey['Onboarding:Bienvenida'],
 			text: 'Describe en una frase tu experiencia inicial con el equipo.',
 			type: 'Abierta',
-			estimated_duration: 2,
+			estimated_duration: 1,
 		},
 		{
 			question_type_id: typeByKey['Desempeño:Feedback 360'],
@@ -80,7 +80,7 @@ module.exports = async function (sequelize) {
 			question_type_id: typeByKey['Desempeño:Feedback 360'],
 			text: '¿Qué mejorarías en el seguimiento de tu desempeño?',
 			type: 'Abierta',
-			estimated_duration: 2,
+			estimated_duration: 1,
 		},
 		{
 			question_type_id: typeByKey['Pulso:30'],
@@ -108,9 +108,9 @@ module.exports = async function (sequelize) {
 		},
 		{
 			question_type_id: typeByKey['Pulso:30'],
-			text: '¿Qué temas te gustaría que se incluyeran en el próximo pulso?',
+			text: '¿Cómo te sentis en el entorno de trabajo?',
 			type: 'Abierta',
-			estimated_duration: 2,
+			estimated_duration: 1,
 		},
 		// ── Pulso: 60 días ───────────────────────────────────────
 		{
@@ -170,7 +170,7 @@ module.exports = async function (sequelize) {
 		},
 		{
 			question_type_id: typeByKey['Pulso:90'],
-			text: '¿Qué cambiarías de tu experiencia en estos primeros tres meses?',
+			text: '¿Qué cambiarías de tu experiencia en estos primeros tres meses y como te sentiste con el entorno?',
 			type: 'Abierta',
 			estimated_duration: 2,
 		},

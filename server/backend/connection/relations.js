@@ -4,7 +4,7 @@ const core_conn_apply_associations = (sequelize) => {
 	const {
 		Department, Employee, EmployeeTask, Person, Question, QuestionOption, QuestionType, Role,
 		Survey, SurveyAssignment, SurveyResponse, SurveyType, Task, User, TaskType, Team, ContinuousFeedback,
-		Alert,
+		Alert, PulseAnalysis,
 	} = sequelize.models;
 
 	//! Department !//
@@ -236,6 +236,17 @@ const core_conn_apply_associations = (sequelize) => {
 	SurveyResponse.belongsTo(QuestionOption, {
 		foreignKey: 'question_option_id',
 		as: 'selectedOption',
+	});
+
+	//! PulseAnalysis / SurveyAssignment !//
+	SurveyAssignment.hasMany(PulseAnalysis, {
+		foreignKey: 'survey_assignment_id',
+		as:         'pulseAnalyses',
+	});
+
+	PulseAnalysis.belongsTo(SurveyAssignment, {
+		foreignKey: 'survey_assignment_id',
+		as:         'surveyAssignment',
 	});
 
 	//! Alert / Employee !//
