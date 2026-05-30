@@ -44,6 +44,7 @@ export default function ResponseForm360() {
     const assignmentId    = searchParams.get('assignmentId')  // FeedbackAssignment id
 
     const [answers,   setAnswers]   = useState({})   // { [questionId]: score (1-5) }
+    const [comments,  setComments]  = useState({})   // { [competencyId]: string }
     const [submitting, setSubmitting] = useState(false)
     const [error,      setError]      = useState('')
     const [done,       setDone]       = useState(false)
@@ -72,8 +73,8 @@ export default function ResponseForm360() {
         try {
             // Mark the assignment as completed
             if (assignmentId) {
-                // Auto-generated FeedbackAssignment flow
-                await completeFeedbackAssignment(assignmentId)
+                // Auto-generated FeedbackAssignment flow — persist scores + comments
+                await completeFeedbackAssignment(assignmentId, comments, answers)
             } else {
                 // Manual SurveyAssignment flow (pulse / legacy)
                 await Promise.all(
@@ -201,6 +202,28 @@ export default function ResponseForm360() {
                                         />
                                     </div>
                                 ))}
+
+                                {/* Open comment per competency */}
+                                <div className="px-5 py-4">
+                                    <p className="text-xs text-slate-400 mb-1.5">
+                                        Comentario adicional sobre {label}
+                                        <span className="ml-1 opacity-60">(opcional)</span>
+                                    </p>
+                                    <textarea
+                                        rows={2}
+                                        value={comments[group.competencyId] ?? ''}
+                                        onChange={(e) =>
+                                            setComments((prev) => ({
+                                                ...prev,
+                                                [group.competencyId]: e.target.value,
+                                            }))
+                                        }
+                                        placeholder={`¿Querés agregar algo sobre ${label.toLowerCase()}?`}
+                                        className="w-full text-sm text-slate-700 rounded-lg border border-brand-light
+                                                   px-3.5 py-2 resize-none placeholder:text-slate-300 outline-none
+                                                   focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
+                                    />
+                                </div>
                             </div>
                         </section>
                     )

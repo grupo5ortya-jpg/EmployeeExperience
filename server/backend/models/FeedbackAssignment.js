@@ -28,6 +28,16 @@ module.exports = (sequelize) => {
 			allowNull:    false,
 			defaultValue: 'PENDING',
 		},
+		comments: {
+			type:         DataTypes.JSONB,
+			allowNull:    true,
+			defaultValue: {},
+		},
+		scores: {
+			type:         DataTypes.JSONB,
+			allowNull:    true,
+			defaultValue: {},
+		},
 	}, {
 		sequelize,
 		modelName: 'FeedbackAssignment',

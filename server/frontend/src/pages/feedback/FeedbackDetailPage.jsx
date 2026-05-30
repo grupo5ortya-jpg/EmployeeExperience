@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Building2, CalendarRange, Lock,
-    ShieldCheck, HelpCircle, CheckCircle2, Clock, Users2,
+    ShieldCheck, HelpCircle, CheckCircle2, Clock, Users2, BarChart2,
 } from 'lucide-react'
 
 import { useSurveyById }          from '../../hooks/useSurveyById'
@@ -49,6 +49,14 @@ export default function FeedbackDetailPage() {
         acc[key].items.push(a)
         return acc
     }, {})
+
+    // Unique evaluated employees (for HR results links)
+    const evaluatedEmployees = Object.values(
+        assignments.reduce((acc, a) => {
+            if (a.evaluated?.id) acc[a.evaluated.id] = a.evaluated
+            return acc
+        }, {})
+    )
 
     if (isLoading) return <PageSkeleton />
 
@@ -283,7 +291,7 @@ export default function FeedbackDetailPage() {
                                                                     Pendiente
                                                                 </span>
                                                                 <Link
-                                                                    to={`/responseform360?surveyId=${a.cycleId}&employeeId=${a.evaluatorId}&assignmentId=${a.id}`}
+                                                                    to={`/responseform360?surveyId=${a.cycleId}&employeeId=${a.evaluator?.id}&assignmentId=${a.id}`}
                                                                     className="text-xs font-semibold text-brand hover:text-brand-hover
                                                                                underline underline-offset-2 transition-colors"
                                                                 >
@@ -302,6 +310,43 @@ export default function FeedbackDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* ── Resultados por empleado evaluado ─────── */}
+            {evaluatedEmployees.length > 0 && (
+                <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden shrink-0">
+                    <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40 flex items-center gap-2">
+                        <BarChart2 size={13} className="text-brand" />
+                        <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Resultados por empleado
+                        </h2>
+                    </div>
+                    <ul className="divide-y divide-brand-light">
+                        {evaluatedEmployees.map((emp) => {
+                            const name = `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim()
+                            return (
+                                <li key={emp.id}
+                                    className="px-5 py-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-slate-700">{name}</p>
+                                        {emp.position && (
+                                            <p className="text-xs text-slate-400">{emp.position}</p>
+                                        )}
+                                    </div>
+                                    <Link
+                                        to={`/hrfeedbackreport?cycleId=${id}&evaluatedId=${emp.id}`}
+                                        className="flex items-center gap-1.5 text-xs font-semibold text-brand
+                                                   hover:text-brand-hover bg-brand-pale hover:bg-brand-light
+                                                   px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                                    >
+                                        <BarChart2 size={12} />
+                                        Ver resultados
+                                    </Link>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                </div>
+            )}
 
         </main>
     )
