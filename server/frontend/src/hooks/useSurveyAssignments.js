@@ -1,14 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
-import { getAllSurveyAssignments } from '../services/surveyAssignmentService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAssignments, createAssignment } from '../services/feedback360Service';
 
-/**
- * Devuelve todas las asignaciones de encuesta.
- * Para filtrar por surveyId podés hacerlo en el componente:
- *   const bySurvey = assignments.filter(a => a.surveyId === id)
- */
-export const useSurveyAssignments = () => {
+export function useSurveyAssignments(surveyId) {
     return useQuery({
-        queryKey: ['survey-assignments'],
-        queryFn:  getAllSurveyAssignments,
+        queryKey: ['survey-assignments', surveyId],
+        queryFn:  () => getAssignments(surveyId),
+        enabled:  !!surveyId,
     });
-};
+}
+
+export function useCreateAssignment(surveyId) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: createAssignment,
+        onSuccess:  () => qc.invalidateQueries({ queryKey: ['survey-assignments', surveyId] }),
+    });
+}

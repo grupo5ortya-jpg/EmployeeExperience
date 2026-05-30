@@ -32,7 +32,9 @@ function formatAssignment(a) {
 
 const getAllAssignments = async (req, res, next) => {
 	try {
-		const assignments = await SurveyAssignment.findAll({ include: ASSIGNMENT_INCLUDE });
+		const where = {};
+		if (req.query.surveyId) where.survey_id = req.query.surveyId;
+		const assignments = await SurveyAssignment.findAll({ where, include: ASSIGNMENT_INCLUDE });
 		res.json(assignments.map(formatAssignment));
 	} catch (err) {
 		next(err);

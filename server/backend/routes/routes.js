@@ -23,6 +23,7 @@ const { getMentorSuggestions }                  = require('../controllers/mentor
 const { testGeminiConnection }                  = require('../connection/geminiService.js');
 const { getPendingPulseSurveys, getPulseAnalyses } = require('../controllers/pulseSurveyController.js');
 const alert_routes                              = require('./routes.alert.js');
+const feedback_assignment_routes               = require('./routes.feedback_assignment.js');
 
 // Mount task type routes
 router.use('/task-type', routes_task_type);
@@ -76,7 +77,9 @@ router.use('/survey-response', routes_survey_response);
 router.post('/api/gemini/preguntar', preguntarAGemini);
 
 // Alerts
-router.use('/alerts', alert_routes);
+router.use('/alerts',              alert_routes);
+// Feedback 360 assignments
+router.use('/feedback-assignment', feedback_assignment_routes);
 
 // Pulse surveys — pending by employee
 router.get('/pulse-surveys/pending',   getPendingPulseSurveys);

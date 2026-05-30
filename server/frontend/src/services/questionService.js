@@ -24,3 +24,8 @@ export const updateQuestion = async (id, data) => {
 export const deleteQuestion = async (id) => {
     await apiClient.delete(`/question/${id}`);
 };
+
+export const getFeedback360Questions = (competencyIds = []) =>
+    apiClient.get('/question/feedback360', {
+        params: { competencies: competencyIds.join(',') },
+    }).then((r) => r.data);

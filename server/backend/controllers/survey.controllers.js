@@ -1,4 +1,5 @@
 const { Survey, SurveyType, QuestionType, Question, QuestionOption, Department } = require('../connection/sequelize');
+const { generateAssignmentsForCycle } = require('../connection/feedbackAssignmentService');
 
 const SURVEY_INCLUDE = [
 	{
@@ -113,6 +114,12 @@ const createSurvey = async (req, res, next) => {
 			competencies:             competencies          ?? [],
 		});
 		const full = await Survey.findByPk(survey.id, { include: SURVEY_INCLUDE });
+
+		// Auto-generate Feedback 360 assignments when a cycle has a department
+		if (departmentId) {
+			generateAssignmentsForCycle(survey.id, departmentId).catch(console.error);
+		}
+
 		res.status(201).json(formatSurvey(full));
 	} catch (err) {
 		next(err);

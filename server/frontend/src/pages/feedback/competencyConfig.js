@@ -57,46 +57,7 @@ export const COMPETENCY_MAP = Object.fromEntries(
     COMPETENCIES.map((c) => [c.id, c]),
 )
 
-/* ─── Preguntas por competencia (2 por cada una, escala 1–5) ─────────── */
-export const QUESTIONS_BY_COMPETENCY = {
-    communication: [
-        '¿Cómo evaluás las habilidades de comunicación de esta persona?',
-        '¿Con qué claridad comparte información con el resto del equipo?',
-    ],
-    leadership: [
-        '¿Cómo valorás la capacidad de liderazgo de esta persona?',
-        '¿En qué medida motiva e inspira a sus compañeros de equipo?',
-    ],
-    teamwork: [
-        '¿Qué tan efectivamente colabora esta persona con el equipo?',
-        '¿Cómo contribuye al clima de trabajo y la cohesión grupal?',
-    ],
-    problem_solving: [
-        '¿Qué tan efectiva es esta persona al resolver problemas complejos?',
-        '¿Con qué creatividad aborda situaciones o desafíos inesperados?',
-    ],
-    proactivity: [
-        '¿Qué tan proactiva es esta persona en sus iniciativas?',
-        '¿Con qué frecuencia identifica mejoras sin que se le solicite?',
-    ],
-    adaptability: [
-        '¿Cómo se adapta esta persona ante cambios o nuevas situaciones?',
-        '¿Qué tan bien maneja la presión y la incertidumbre en el trabajo?',
-    ],
-    results: [
-        '¿Qué tan comprometida está esta persona con los resultados del equipo?',
-        '¿Qué tan consistentemente cumple sus objetivos y entregables?',
-    ],
-}
-
-/**
- * Devuelve el total de preguntas para un conjunto de IDs de competencias.
- * @param {string[]} competencyIds
- * @returns {number}
- */
+/** 2 preguntas por competencia (fuente: DB tabla questions, QuestionType name='Feedback360') */
 export function countQuestions(competencyIds = []) {
-    return competencyIds.reduce(
-        (acc, id) => acc + (QUESTIONS_BY_COMPETENCY[id]?.length ?? 0),
-        0,
-    )
+    return competencyIds.length * 2
 }

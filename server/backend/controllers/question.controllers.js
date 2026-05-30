@@ -85,10 +85,46 @@ const deleteQuestion = async (req, res, next) => {
 	}
 };
 
+const getFeedback360Questions = async (req, res, next) => {
+	try {
+		const raw = req.query.competencies ?? '';
+		const ids = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+		if (ids.length === 0) return res.json([]);
+
+		const questionTypes = await QuestionType.findAll({
+			where: { name: 'Feedback360', sub_type: ids },
+			include: [{
+				model:   Question,
+				as:      'questions',
+				include: [{ model: QuestionOption, as: 'options', attributes: ['id', 'label', 'value', 'order'] }],
+			}],
+		});
+
+		// Return groups in the same order as requested competencies
+		const result = ids.map((id) => {
+			const qt = questionTypes.find((t) => t.sub_type === id);
+			return {
+				competencyId: id,
+				questions: (qt?.questions ?? []).map((q) => ({
+					id:      q.id,
+					text:    q.text,
+					type:    q.type,
+					options: (q.options ?? []).slice().sort((a, b) => a.order - b.order),
+				})),
+			};
+		});
+
+		res.json(result);
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
 	getAllQuestions,
 	getQuestionById,
 	createQuestion,
 	updateQuestion,
 	deleteQuestion,
+	getFeedback360Questions,
 };

@@ -6,7 +6,7 @@ import { useSurveys }     from '../../hooks/useSurveys'
 import { useDepartments } from '../../hooks/useDepartments'
 import { useFeedbackParticipants } from './hooks/useFeedbackParticipants'
 import { SurveyCard, SkeletonCard } from './components/SurveyCard'
-import { COMPETENCY_MAP }  from './constants/competencies'
+import { COMPETENCY_MAP }  from './competencyConfig'
 
 /* ─── Página ─────────────────────────────────────────────────── */
 export default function FeedbackHome() {

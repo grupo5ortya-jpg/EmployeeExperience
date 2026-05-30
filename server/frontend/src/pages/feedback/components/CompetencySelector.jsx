@@ -1,4 +1,4 @@
-import { COMPETENCIES } from '../constants/competencies'
+import { COMPETENCIES } from '../competencyConfig'
 import { CompetencyCard } from './CompetencyCard'
 
 /**

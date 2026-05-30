@@ -1,14 +1,15 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Building2, CalendarRange, Lock,
-    ShieldCheck, HelpCircle,
+    ShieldCheck, HelpCircle, CheckCircle2, Clock, Users2,
 } from 'lucide-react'
 
-import { useSurveyById } from '../../hooks/useSurveyById'
-import { COMPETENCY_MAP, countQuestions } from './constants/competencies'
-import { useFeedbackParticipants } from './hooks/useFeedbackParticipants'
-import { QuestionList } from './components/QuestionList'
-import { ParticipantsSection } from './components/ParticipantsSection'
+import { useSurveyById }          from '../../hooks/useSurveyById'
+import { COMPETENCY_MAP, countQuestions } from './competencyConfig'
+import { useFeedbackParticipants }        from './hooks/useFeedbackParticipants'
+import { useFeedbackAssignments }         from '../../hooks/useFeedbackAssignments'
+import { QuestionList }           from './components/QuestionList'
+import { ParticipantsSection }    from './components/ParticipantsSection'
 
 /* ─── Helpers ───────────────────────────────────────────────── */
 function formatDate(dateStr) {
@@ -38,9 +39,16 @@ export default function FeedbackDetailPage() {
     const navigate = useNavigate()
 
     const { data: survey, isLoading, isError } = useSurveyById(id)
+    const { participants }      = useFeedbackParticipants(survey?.department?.id ?? null)
+    const { data: assignments = [], isLoading: loadingAssignments } = useFeedbackAssignments(id)
 
-    // Participantes del departamento del ciclo (hook cachea useEmployees globalmente)
-    const { participants } = useFeedbackParticipants(survey?.department?.id ?? null)
+    // Group assignments by evaluator for display
+    const byEvaluator = assignments.reduce((acc, a) => {
+        const key = a.evaluator?.id ?? 'unknown'
+        if (!acc[key]) acc[key] = { evaluator: a.evaluator, items: [] }
+        acc[key].items.push(a)
+        return acc
+    }, {})
 
     if (isLoading) return <PageSkeleton />
 
@@ -69,7 +77,7 @@ export default function FeedbackDetailPage() {
             </button>
 
             {/* ── Header del ciclo ──────────────────────── */}
-            <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden shrink-0">
                 <div className="h-1 bg-brand" />
                 <div className="p-5">
 
@@ -136,7 +144,7 @@ export default function FeedbackDetailPage() {
 
             {/* ── Competencias evaluadas ────────────────── */}
             {competencies.length > 0 && (
-                <div className="bg-white rounded-xl border border-brand-light shadow-sm p-5">
+                <div className="bg-white rounded-xl border border-brand-light shadow-sm p-5 shrink-0">
                     <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                         Competencias evaluadas
                     </h2>
@@ -162,9 +170,9 @@ export default function FeedbackDetailPage() {
 
             {/* ── Preguntas del ciclo ───────────────────── */}
             {totalQuestions > 0 && (
-                <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col">
+                <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden shrink-0">
                     <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40
-                                    flex items-center justify-between shrink-0">
+                                    flex items-center justify-between">
                         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                             Preguntas del ciclo ({totalQuestions})
                         </h2>
@@ -174,15 +182,126 @@ export default function FeedbackDetailPage() {
                             Respuestas anónimas
                         </div>
                     </div>
-
-                    <div className="overflow-auto flex-1 min-h-0 divide-y divide-brand-light">
+                    <div className="max-h-96 overflow-y-auto divide-y divide-brand-light">
                         <QuestionList competencyIds={competencies} variant="detail" />
                     </div>
                 </div>
             )}
 
             {/* ── Participantes ─────────────────────────── */}
-            <ParticipantsSection survey={survey} participants={participants} />
+            <div className="shrink-0">
+                <ParticipantsSection survey={survey} participants={participants} />
+            </div>
+
+            {/* ── Evaluaciones generadas ───────────────── */}
+            <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden shrink-0">
+                <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40
+                                flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Users2 size={13} className="text-brand" />
+                        <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Evaluaciones generadas
+                        </h2>
+                    </div>
+                    {assignments.length > 0 && (
+                        <span className="text-xs text-slate-400">
+                            {assignments.filter(a => a.status === 'COMPLETED').length} / {assignments.length} completadas
+                        </span>
+                    )}
+                </div>
+
+                <div className="p-5">
+                    {loadingAssignments && (
+                        <div className="animate-pulse space-y-3">
+                            {[1,2,3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-lg" />)}
+                        </div>
+                    )}
+
+                    {!loadingAssignments && assignments.length === 0 && (
+                        <p className="text-xs text-slate-400 text-center py-6">
+                            {survey?.department
+                                ? 'No se generaron evaluaciones. Verificá que haya empleados activos en el departamento con líder asignado.'
+                                : 'Este ciclo no tiene departamento — las evaluaciones no se generan automáticamente.'}
+                        </p>
+                    )}
+
+                    {!loadingAssignments && assignments.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                            {Object.values(byEvaluator).map(({ evaluator, items }) => {
+                                const name = evaluator
+                                    ? `${evaluator.firstName ?? ''} ${evaluator.lastName ?? ''}`.trim()
+                                    : '—'
+                                const allDone = items.every(i => i.status === 'COMPLETED')
+
+                                return (
+                                    <div key={evaluator?.id} className="rounded-lg border border-brand-light overflow-hidden">
+                                        {/* Evaluator header */}
+                                        <div className={`px-4 py-2.5 flex items-center justify-between
+                                            ${allDone ? 'bg-emerald-50' : 'bg-brand-pale/40'}`}>
+                                            <div>
+                                                <span className="text-sm font-semibold text-slate-700">{name}</span>
+                                                {evaluator?.position && (
+                                                    <span className="text-xs text-slate-400 ml-2">{evaluator.position}</span>
+                                                )}
+                                            </div>
+                                            {allDone && (
+                                                <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                                                    <CheckCircle2 size={11} />
+                                                    Todo completado
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Assignment rows */}
+                                        <ul className="divide-y divide-brand-light">
+                                            {items.map((a) => {
+                                                const evalName = a.evaluated
+                                                    ? `${a.evaluated.firstName ?? ''} ${a.evaluated.lastName ?? ''}`.trim()
+                                                    : '—'
+                                                return (
+                                                    <li key={a.id}
+                                                        className="px-4 py-2.5 flex items-center justify-between gap-3">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0
+                                                                ${a.type === 'SELF'
+                                                                    ? 'bg-brand-pale text-brand'
+                                                                    : 'bg-slate-100 text-slate-500'}`}>
+                                                                {a.type}
+                                                            </span>
+                                                            <span className="text-sm text-slate-600 truncate">{evalName}</span>
+                                                        </div>
+                                                        {a.status === 'COMPLETED' ? (
+                                                            <span className="flex items-center gap-1 text-xs font-semibold
+                                                                             text-emerald-600 shrink-0">
+                                                                <CheckCircle2 size={11} />
+                                                                Completada
+                                                            </span>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                <span className="flex items-center gap-1 text-xs text-amber-600">
+                                                                    <Clock size={11} />
+                                                                    Pendiente
+                                                                </span>
+                                                                <Link
+                                                                    to={`/responseform360?surveyId=${a.cycleId}&employeeId=${a.evaluatorId}&assignmentId=${a.id}`}
+                                                                    className="text-xs font-semibold text-brand hover:text-brand-hover
+                                                                               underline underline-offset-2 transition-colors"
+                                                                >
+                                                                    Ir al formulario →
+                                                                </Link>
+                                                            </div>
+                                                        )}
+                                                    </li>
+                                                )
+                                            })}
+                                        </ul>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
 
         </main>
     )

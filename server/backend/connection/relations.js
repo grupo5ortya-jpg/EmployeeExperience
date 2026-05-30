@@ -4,7 +4,7 @@ const core_conn_apply_associations = (sequelize) => {
 	const {
 		Department, Employee, EmployeeTask, Person, Question, QuestionOption, QuestionType, Role,
 		Survey, SurveyAssignment, SurveyResponse, SurveyType, Task, User, TaskType, Team, ContinuousFeedback,
-		Alert, PulseAnalysis,
+		Alert, PulseAnalysis, FeedbackAssignment,
 	} = sequelize.models;
 
 	//! Department !//
@@ -237,6 +237,16 @@ const core_conn_apply_associations = (sequelize) => {
 		foreignKey: 'question_option_id',
 		as: 'selectedOption',
 	});
+
+	//! FeedbackAssignment !//
+	Survey.hasMany(FeedbackAssignment, { foreignKey: 'cycle_id',     as: 'feedbackAssignments' });
+	FeedbackAssignment.belongsTo(Survey,   { foreignKey: 'cycle_id',     as: 'cycle' });
+
+	Employee.hasMany(FeedbackAssignment, { foreignKey: 'evaluator_id', as: 'givenEvaluations' });
+	FeedbackAssignment.belongsTo(Employee, { foreignKey: 'evaluator_id', as: 'evaluator' });
+
+	Employee.hasMany(FeedbackAssignment, { foreignKey: 'evaluated_id', as: 'receivedEvaluations' });
+	FeedbackAssignment.belongsTo(Employee, { foreignKey: 'evaluated_id', as: 'evaluated' });
 
 	//! PulseAnalysis / SurveyAssignment !//
 	SurveyAssignment.hasMany(PulseAnalysis, {
