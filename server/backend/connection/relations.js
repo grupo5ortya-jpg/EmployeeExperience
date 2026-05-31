@@ -1,10 +1,29 @@
-const ContinuousFeedback = require("../models/ContinuousFeedback");
 
 const core_conn_apply_associations = (sequelize) => {
 	const {
-		Department, Employee, EmployeeTask, Person, Question, QuestionOption, QuestionType, Role,
-		Survey, SurveyAssignment, SurveyResponse, SurveyType, Task, User, TaskType, Team, ContinuousFeedback,
-		Alert, PulseAnalysis, FeedbackAssignment,
+		Department,
+		Employee,
+		EmployeeTask,
+		Person,
+		Question,
+		QuestionOption,
+		QuestionType,
+		Role,
+		Survey,
+		SurveyAssignment,
+		SurveyResponse,
+		SurveyType,
+		Task,
+		User,
+		TaskType,
+		Team,
+		ContinuousFeedback,
+		Alert,
+		PulseAnalysis,
+		FeedbackAssignment,
+		JobOpening,
+		Skill,
+		JobOpeningSkill
 	} = sequelize.models;
 
 	//! Department !//
@@ -17,12 +36,53 @@ const core_conn_apply_associations = (sequelize) => {
 		foreignKey: 'department_id',
 		as: 'department',
 	});
+	Department.hasMany(JobOpening, {
+		foreignKey: 'departmentId',
+		as: 'jobOpenings',
+	});
+
+	JobOpening.belongsTo(Department, {
+		foreignKey: 'departmentId',
+		as: 'department',
+	});
+	JobOpening.belongsToMany(Skill, {
+		through: JobOpeningSkill,
+		foreignKey: 'jobOpeningId',
+		otherKey: 'skillId',
+		as: 'skills',
+	});
+
+	Skill.belongsToMany(JobOpening, {
+		through: JobOpeningSkill,
+		foreignKey: 'skillId',
+		otherKey: 'jobOpeningId',
+		as: 'jobOpenings',
+	});
+	JobOpeningSkill.belongsTo(JobOpening, {
+		foreignKey: 'jobOpeningId',
+		as: 'jobOpening',
+	});
+
+	JobOpeningSkill.belongsTo(Skill, {
+		foreignKey: 'skillId',
+		as: 'skill',
+	});
+	JobOpening.hasMany(JobOpeningSkill, {
+		foreignKey: 'jobOpeningId',
+		as: 'jobOpeningSkills',
+	});
+
+	Skill.hasMany(JobOpeningSkill, {
+		foreignKey: 'skillId',
+		as: 'jobOpeningSkills',
+	});
 
 	//! Person / Employee !//
 	Person.hasOne(Employee, {
 		foreignKey: 'person_id',
 		as: 'employee',
 	});
+
 
 	Employee.belongsTo(Person, {
 		foreignKey: 'person_id',
@@ -239,8 +299,8 @@ const core_conn_apply_associations = (sequelize) => {
 	});
 
 	//! FeedbackAssignment !//
-	Survey.hasMany(FeedbackAssignment, { foreignKey: 'cycle_id',     as: 'feedbackAssignments' });
-	FeedbackAssignment.belongsTo(Survey,   { foreignKey: 'cycle_id',     as: 'cycle' });
+	Survey.hasMany(FeedbackAssignment, { foreignKey: 'cycle_id', as: 'feedbackAssignments' });
+	FeedbackAssignment.belongsTo(Survey, { foreignKey: 'cycle_id', as: 'cycle' });
 
 	Employee.hasMany(FeedbackAssignment, { foreignKey: 'evaluator_id', as: 'givenEvaluations' });
 	FeedbackAssignment.belongsTo(Employee, { foreignKey: 'evaluator_id', as: 'evaluator' });
@@ -251,12 +311,12 @@ const core_conn_apply_associations = (sequelize) => {
 	//! PulseAnalysis / SurveyAssignment !//
 	SurveyAssignment.hasMany(PulseAnalysis, {
 		foreignKey: 'survey_assignment_id',
-		as:         'pulseAnalyses',
+		as: 'pulseAnalyses',
 	});
 
 	PulseAnalysis.belongsTo(SurveyAssignment, {
 		foreignKey: 'survey_assignment_id',
-		as:         'surveyAssignment',
+		as: 'surveyAssignment',
 	});
 
 	//! Alert / Employee !//

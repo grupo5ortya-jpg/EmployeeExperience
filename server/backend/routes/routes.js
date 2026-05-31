@@ -18,12 +18,14 @@ const routes_task_type = require('./routes.task_type.js');
 const routes_survey_type = require('./routes.survey_type.js');
 const routes_survey_assignment = require('./routes.survey_assignment.js');
 const routes_survey_response = require('./routes.survey_response.js');
-const { preguntarAGemini }                      = require('../controllers/geminiController.js');
-const { getMentorSuggestions }                  = require('../controllers/mentorController.js');
-const { testGeminiConnection }                  = require('../connection/geminiService.js');
+const { preguntarAGemini } = require('../controllers/geminiController.js');
+const { getMentorSuggestions } = require('../controllers/mentorController.js');
+const { testGeminiConnection } = require('../connection/geminiService.js');
 const { getPendingPulseSurveys, getPulseAnalyses } = require('../controllers/pulseSurveyController.js');
-const alert_routes                              = require('./routes.alert.js');
-const feedback_assignment_routes               = require('./routes.feedback_assignment.js');
+const alert_routes = require('./routes.alert.js');
+const feedback_assignment_routes = require('./routes.feedback_assignment.js');
+const jobOpeningRoutes = require('./routes.jobOpening')
+const skillsRoutes = require('./routes.skill.js')
 
 // Mount task type routes
 router.use('/task-type', routes_task_type);
@@ -77,17 +79,21 @@ router.use('/survey-response', routes_survey_response);
 router.post('/api/gemini/preguntar', preguntarAGemini);
 
 // Alerts
-router.use('/alerts',              alert_routes);
+router.use('/alerts', alert_routes);
 // Feedback 360 assignments
 router.use('/feedback-assignment', feedback_assignment_routes);
 
 // Pulse surveys — pending by employee
-router.get('/pulse-surveys/pending',   getPendingPulseSurveys);
+router.get('/pulse-surveys/pending', getPendingPulseSurveys);
 // Pulse analyses — all AI results for HR
-router.get('/pulse-surveys/analyses',  getPulseAnalyses);
+router.get('/pulse-surveys/analyses', getPulseAnalyses);
 
 // AI — mentor matching
 router.post('/ai/mentor-matching', getMentorSuggestions);
+// Job openings
+router.use('/job-openings', jobOpeningRoutes)
+// Skills
+router.use('/skills', skillsRoutes)
 
 // AI — test Gemini connection
 router.get('/ai/test', async (_req, res, next) => {

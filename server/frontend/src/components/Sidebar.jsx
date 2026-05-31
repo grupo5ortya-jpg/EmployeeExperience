@@ -12,23 +12,25 @@ import {
   LifeBuoy,
   Settings,
   Users,
-  MessageSquareHeart
+  MessageSquareHeart,
+  Briefcase
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
 const staticNavItems = [
-  { icon: Home,             label: 'Inicio',          to: '/' },
-  { icon: User,             label: 'Mi perfil' },
-  { icon: Users,            label: 'Equipo',           to: '/employeelist' },
-  { icon: UserPlus,         label: 'Onboarding',       to: '/onboardinghome' },
-  { icon: RotateCcw,        label: 'Feedback 360°',    to: '/feedbackhome' },
-  { icon: Target,           label: 'Objetivos' },
-  { icon: BookOpen,         label: 'Aprendizaje LMS' },
-  { icon: ClipboardList,    label: 'Plan de acción' },
-  { icon: Bell,             label: 'Alertas',          to: '/alerts',        dynamicBadge: true },
-  { icon: BarChart2,        label: 'Análisis de Pulso', to: '/pulseanalysis' },
-  { icon: LifeBuoy,         label: 'Soporte' },
+  { icon: Home, label: 'Inicio', to: '/' },
+  { icon: User, label: 'Mi perfil' },
+  { icon: Users, label: 'Equipo', to: '/employeelist' },
+  { icon: UserPlus, label: 'Onboarding', to: '/onboardinghome' },
+  { icon: RotateCcw, label: 'Feedback 360°', to: '/feedbackhome' },
+  { icon: Target, label: 'Objetivos' },
+  { icon: BookOpen, label: 'Aprendizaje LMS' },
+  { icon: ClipboardList, label: 'Plan de acción' },
+  { icon: Bell, label: 'Alertas', to: '/alerts', dynamicBadge: true },
+  { icon: BarChart2, label: 'Análisis de Pulso', to: '/pulseanalysis' },
+  { icon: LifeBuoy, label: 'Soporte' },
   { icon: MessageSquareHeart, label: 'Feedback continuo', to: '/continuous-feedback' },
+  { icon: Briefcase, label: 'Vacantes', to: '/job-openings' }
 ]
 
 const itemClass = (active) =>
