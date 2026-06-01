@@ -1,6 +1,6 @@
 import { Search, X } from 'lucide-react'
 
-function Select({ value, onChange, options }) {
+function Select({ value, onChange, options = [] }) {
     return (
         <select
             value={value}
@@ -21,12 +21,12 @@ export default function JobOpeningFilters({
     setSearch,
     department,
     setDepartment,
-    departmentOptions,
+    departmentOptions = [],
     status,
     setStatus,
     skill,
     setSkill,
-    skills,
+    skills = [],
 }) {
     const hasFilters =
         search !== '' ||
@@ -83,7 +83,7 @@ export default function JobOpeningFilters({
                     onChange={setSkill}
                     options={[
                         'Todos',
-                        ...skills.map(s => s.name),
+                        ...(skills ?? []).map(s => s.name),
                     ]}
                 />
 

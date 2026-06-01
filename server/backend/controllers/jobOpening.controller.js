@@ -45,12 +45,13 @@ module.exports = {
     },
     async create(req, res) {
         try {
-            const { title, description, departmentId, skills } = req.body;
+            const { title, description, departmentId, status, skills } = req.body;
 
             const job = await JobOpening.create({
                 title,
                 description,
                 departmentId,
+                status,
             });
 
             if (skills && skills.length) {
@@ -81,15 +82,57 @@ module.exports = {
     async update(req, res) {
         try {
             const { id } = req.params;
+            const { title, description, departmentId, skills } = req.body;
 
             const job = await JobOpening.findByPk(id);
-            if (!job) return res.status(404).json({ message: 'Not found' });
 
-            await job.update(req.body);
+            if (!job) {
+                return res.status(404).json({
+                    message: 'Not found',
+                });
+            }
 
-            res.json(job);
+            await job.update({
+                title,
+                description,
+                departmentId,
+            });
+
+            if (skills) {
+
+                await JobOpeningSkill.destroy({
+                    where: {
+                        jobOpeningId: id,
+                    },
+                });
+
+                const records = skills.map((s) => ({
+                    jobOpeningId: id,
+                    skillId: s.skillId,
+                    requiredLevel: s.requiredLevel,
+                }));
+
+                await JobOpeningSkill.bulkCreate(records);
+            }
+
+            const result = await JobOpening.findByPk(id, {
+                include: [
+                    {
+                        model: Skill,
+                        as: 'skills',
+                        through: {
+                            attributes: ['requiredLevel'],
+                        },
+                    },
+                ],
+            });
+
+            res.json(result);
+
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({
+                error: error.message,
+            });
         }
     },
     async remove(req, res) {

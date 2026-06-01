@@ -22,8 +22,8 @@ function Skeleton() {
 }
 
 export default function JobOpeningTable({
-	data,
-	total,
+	data = [],          // 👈 FIX CRÍTICO
+	total = 0,          // 👈 FIX CRÍTICO
 	isLoading,
 	isError,
 	onSelect,
@@ -64,7 +64,7 @@ export default function JobOpeningTable({
 								</td>
 							</tr>
 						) : (
-							data.map((job, i) => (
+							(Array.isArray(data) ? data : []).map((job, i) => (
 								<JobOpeningRow
 									key={job.id}
 									job={job}

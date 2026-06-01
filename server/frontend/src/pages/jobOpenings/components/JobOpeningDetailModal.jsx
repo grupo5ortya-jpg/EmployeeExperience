@@ -1,4 +1,10 @@
-import { X, Briefcase, Building2, BrainCircuit } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { X, Save, Trash2 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+
+import { useSkills } from '../hooks/useSkills'
+import { useDepartments } from '../../../hooks/useDepartments'
+import { useUpdateJobOpening } from '../hooks/useUpdateJobOpening'
 
 import {
     getSkillLevelLabel,
@@ -6,97 +12,138 @@ import {
 } from '../helpers/skillLevel'
 
 export default function JobOpeningDetailModal({
-    jobOpening,
+    isOpen,
     onClose,
+    job,
 }) {
-    if (!jobOpening) return null
+    const { mutateAsync: updateJobOpening } = useUpdateJobOpening()
+
+    const [form, setForm] = useState(null)
+
+    useEffect(() => {
+        if (job) {
+            setForm({
+                title: job.title,
+                description: job.description,
+                departmentId: job.departmentId,
+                skills: job.skills?.map((s) => ({
+                    skillId: s.id,
+                    name: s.name,
+                    requiredLevel: s.JobOpeningSkill?.requiredLevel ?? 3,
+                })) || [],
+            })
+        }
+    }, [job])
+
+    if (!isOpen || !form) return null
+
+    const updateSkillLevel = (skillId, level) => {
+        setForm((prev) => ({
+            ...prev,
+            skills: prev.skills.map((s) =>
+                s.skillId === skillId
+                    ? { ...s, requiredLevel: Number(level) }
+                    : s
+            ),
+        }))
+    }
+
+    const handleSave = async () => {
+        await updateJobOpening({
+            id: job.id,
+            payload: {
+                title: form.title,
+                description: form.description,
+                skills: form.skills,
+            },
+        })
+
+        onClose()
+    }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-navy/40 backdrop-blur-sm py-6 px-4">
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4">
 
-            <div className="bg-white rounded-2xl border border-brand-light shadow-xl w-full max-w-3xl">
+            <div className="bg-white w-full max-w-2xl rounded-xl border">
 
                 {/* HEADER */}
-                <div className="flex justify-between px-6 py-4 border-b border-brand-light">
-                    <div className="flex items-center gap-3">
-                        <Briefcase className="text-brand" />
-                        <div>
-                            <h2 className="font-bold text-slate-800">
-                                {jobOpening.title}
-                            </h2>
-                            <p className="text-xs text-slate-400">
-                                Detalle de vacante
-                            </p>
-                        </div>
-                    </div>
-
+                <div className="flex justify-between px-5 py-4 border-b">
+                    <h2 className="font-semibold">Detalle vacante</h2>
                     <button onClick={onClose}>
-                        <X />
+                        <X size={18} />
                     </button>
                 </div>
 
                 {/* BODY */}
-                <div className="px-6 py-5 flex flex-col gap-6">
+                <div className="p-5 flex flex-col gap-4">
 
-                    <div>
-                        <h3 className="text-xs font-semibold text-slate-400">
-                            Área
-                        </h3>
-                        <p>{jobOpening.department?.name}</p>
-                    </div>
+                    <input
+                        value={form.title}
+                        onChange={(e) =>
+                            setForm((p) => ({ ...p, title: e.target.value }))
+                        }
+                        className="border px-3 py-2 rounded"
+                    />
 
-                    <div>
-                        <h3 className="text-xs font-semibold text-slate-400">
-                            Descripción
-                        </h3>
-                        <p className="text-sm text-slate-600">
-                            {jobOpening.description}
+                    <textarea
+                        value={form.description}
+                        onChange={(e) =>
+                            setForm((p) => ({ ...p, description: e.target.value }))
+                        }
+                        className="border px-3 py-2 rounded"
+                    />
+
+                    {/* SKILLS */}
+                    <div className="border rounded p-3">
+                        <p className="text-sm font-semibold mb-2">
+                            Skills requeridas
                         </p>
+
+                        {form.skills.map((s) => (
+                            <div
+                                key={s.skillId}
+                                className="flex items-center justify-between mb-2"
+                            >
+                                <span className="text-sm">{s.name}</span>
+
+                                <select
+                                    value={s.requiredLevel}
+                                    onChange={(e) =>
+                                        updateSkillLevel(s.skillId, e.target.value)
+                                    }
+                                    className={`text-xs px-2 py-1 rounded ${getSkillLevelStyle(
+                                        s.requiredLevel
+                                    )}`}
+                                >
+                                    {[1, 2, 3, 4, 5].map((n) => (
+                                        <option key={n} value={n}>
+                                            {getSkillLevelLabel(n)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ))}
                     </div>
 
-                    <div>
-                        <h3 className="text-xs font-semibold text-slate-400">
-                            Skills
-                        </h3>
+                    {/* FOOTER */}
+                    <div className="flex justify-end gap-2">
+                        <button
+                            onClick={onClose}
+                            className="px-3 py-2 border rounded"
+                        >
+                            Cancelar
+                        </button>
 
-                        <div className="grid gap-2">
-                            {jobOpening.skills?.map(s => {
-                                const level =
-                                    s.JobOpeningSkill?.requiredLevel
-
-                                return (
-                                    <div
-                                        key={s.id}
-                                        className="flex justify-between border p-3 rounded-lg"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <BrainCircuit size={14} />
-                                            {s.name}
-                                        </div>
-
-                                        <span className={`text-xs px-2 py-1 rounded-full ${getSkillLevelStyle(level)}`}>
-                                            {getSkillLevelLabel(level)}
-                                        </span>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                        <button
+                            onClick={handleSave}
+                            className="px-3 py-2 bg-brand text-white rounded"
+                        >
+                            Guardar cambios
+                        </button>
                     </div>
 
                 </div>
-
-                {/* FOOTER */}
-                <div className="px-6 py-4 border-t border-brand-light flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="text-sm text-slate-500 hover:text-slate-700"
-                    >
-                        Cerrar
-                    </button>
-                </div>
-
             </div>
-
         </div>
     )
 }
