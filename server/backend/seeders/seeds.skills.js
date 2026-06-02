@@ -1,7 +1,8 @@
-const { type } = require("node:os");
-
 module.exports = async function (sequelize) {
     const Skill = sequelize.models.Skill;
+
+    const count = await Skill.count();
+    if (count > 0) return;
 
     await Skill.bulkCreate([
         // HARD

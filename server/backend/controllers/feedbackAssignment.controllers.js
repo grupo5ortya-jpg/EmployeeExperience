@@ -1,5 +1,7 @@
-const { FeedbackAssignment, Employee, Person, Survey, QuestionType, Question } = require('../connection/sequelize');
+const { FeedbackAssignment, FeedbackGapAnalysis, Employee, Person, Department, Survey, QuestionType, Question } = require('../connection/sequelize');
 const { generateAssignmentsForCycle } = require('../connection/feedbackAssignmentService');
+const { analyzeGapAnalysis }          = require('../connection/geminiService');
+const { getIdealProfile }             = require('../connection/gapAnalysisConfig');
 
 async function attachEmployees(assignments) {
 	if (assignments.length === 0) return [];
@@ -106,7 +108,9 @@ const getResults = async (req, res, next) => {
 			return res.status(400).json({ error: 'cycleId and evaluatedId are required' });
 
 		// 1. Fetch cycle to get selected competency IDs
-		const cycle = await Survey.findByPk(cycleId, { attributes: ['id', 'name', 'competencies'] });
+		const cycle = await Survey.findByPk(cycleId, {
+			attributes: ['id', 'name', 'competencies', 'min_anonymous_responses'],
+		});
 		if (!cycle) return res.status(404).json({ error: 'Cycle not found' });
 		const competencyIds = cycle.competencies ?? [];
 
@@ -198,15 +202,20 @@ const getResults = async (req, res, next) => {
 			};
 		});
 
+		const minRequired = cycle.min_anonymous_responses ?? 0;
+		const isBlocked   = minRequired > 0 && assignments.length < minRequired;
+
 		res.json({
 			cycle:        { id: cycle.id, name: cycle.name },
 			evaluated:    fmtEmp(evaluatedId),
 			competencies,
 			breakdown,
 			stats: {
-				completed: assignments.length,
-				pending:   pendingCount,
-				total:     allAssignments.length,
+				completed:   assignments.length,
+				pending:     pendingCount,
+				total:       allAssignments.length,
+				minRequired,
+				blocked:     isBlocked,
 			},
 		});
 	} catch (err) {
@@ -215,4 +224,194 @@ const getResults = async (req, res, next) => {
 	}
 };
 
-module.exports = { getAssignments, generateAssignments, updateAssignment, getResults };
+// GET /feedback-assignment/gap-analysis?cycleId=xxx&evaluatedId=xxx
+const getGapAnalysis = async (req, res, next) => {
+	try {
+		const { cycleId, evaluatedId } = req.query;
+		if (!cycleId || !evaluatedId)
+			return res.status(400).json({ error: 'cycleId and evaluatedId are required' });
+
+		const existing = await FeedbackGapAnalysis.findOne({
+			where: { cycle_id: cycleId, employee_id: evaluatedId },
+		});
+
+		if (!existing) return res.json(null);
+
+		res.json({
+			department:      existing.department,
+			actualResults:   existing.actual_results,
+			expectedResults: existing.expected_results,
+			analysis: {
+				strengths:   existing.strengths,
+				gaps:        existing.gaps,
+				suggestions: existing.suggestions,
+				summary:     existing.summary,
+			},
+			createdAt: existing.createdAt,
+		});
+	} catch (err) {
+		console.error('[feedbackAssignment] getGapAnalysis:', err.message);
+		next(err);
+	}
+};
+
+// POST /feedback-assignment/gap-analysis  { cycleId, evaluatedId }
+const generateGapAnalysis = async (req, res, next) => {
+	try {
+		const { cycleId, evaluatedId } = req.body;
+		if (!cycleId || !evaluatedId)
+			return res.status(400).json({ error: 'cycleId and evaluatedId are required' });
+
+		// 1. Get cycle competencies
+		const cycle = await Survey.findByPk(cycleId, { attributes: ['id', 'competencies'] });
+		if (!cycle) return res.status(404).json({ error: 'Cycle not found' });
+
+		// 2. Get evaluated employee + department name
+		const evaluated = await Employee.findByPk(evaluatedId, {
+			attributes: ['id', 'position'],
+			include: [
+				{ model: Person,     as: 'person',     attributes: ['first_name', 'last_name'] },
+				{ model: Department, as: 'department',  attributes: ['name'] },
+			],
+		});
+		if (!evaluated) return res.status(404).json({ error: 'Employee not found' });
+
+		// 3. Get completed assignments and aggregate scores per competency
+		const questionTypes = await QuestionType.findAll({
+			where: { name: 'Feedback360', sub_type: cycle.competencies ?? [] },
+			include: [{ model: Question, as: 'questions', attributes: ['id'] }],
+		});
+		const qToComp = {};
+		for (const qt of questionTypes)
+			for (const q of qt.questions ?? []) qToComp[q.id] = qt.sub_type;
+
+		const assignments = await FeedbackAssignment.findAll({
+			where: { cycle_id: cycleId, evaluated_id: evaluatedId, status: 'COMPLETED' },
+		});
+
+		if (assignments.length === 0)
+			return res.status(400).json({ error: 'No completed evaluations found for this employee.' });
+
+		// Return cached analysis if already generated
+		const cached = await FeedbackGapAnalysis.findOne({
+			where: { cycle_id: cycleId, employee_id: evaluatedId },
+		});
+		if (cached) {
+			return res.json({
+				department:      cached.department,
+				actualResults:   cached.actual_results,
+				expectedResults: cached.expected_results,
+				analysis: {
+					strengths:   cached.strengths,
+					gaps:        cached.gaps,
+					suggestions: cached.suggestions,
+					summary:     cached.summary,
+				},
+				createdAt: cached.createdAt,
+				cached: true,
+			});
+		}
+
+		const selfScores         = {};
+		const peerScores         = {};
+		const leaderScores       = {};
+		const directReportScores = {};
+		const commentsByComp     = {};
+
+		const scoreTarget = (type) => {
+			if (type === 'SELF')          return selfScores;
+			if (type === 'PEER')          return peerScores;
+			if (type === 'LEADER')        return leaderScores;
+			if (type === 'DIRECT_REPORT') return directReportScores;
+			return peerScores;
+		};
+
+		for (const a of assignments) {
+			const target = scoreTarget(a.type);
+			for (const [qId, score] of Object.entries(a.scores ?? {})) {
+				const compId = qToComp[qId];
+				if (!compId) continue;
+				(target[compId] = target[compId] ?? []).push(Number(score));
+			}
+			for (const [compId, text] of Object.entries(a.comments ?? {})) {
+				if (!text?.trim()) continue;
+				(commentsByComp[compId] = commentsByComp[compId] ?? []).push(text.trim());
+			}
+		}
+
+		const avg = (arr) => arr?.length
+			? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2))
+			: null;
+
+		// Build per-source averages
+		const toAvg = (map) => Object.fromEntries(
+			Object.entries(map).map(([k, v]) => [k, avg(v)])
+		);
+
+		const selfResults         = toAvg(selfScores);
+		const peerResults         = toAvg(peerScores);
+		const leaderResults       = toAvg(leaderScores);
+		const directReportResults = toAvg(directReportScores);
+
+		// Overall actual = weighted avg of all scores combined
+		const allScores = {};
+		for (const [compId, s] of Object.entries(selfScores))
+			allScores[compId] = [...(allScores[compId] ?? []), ...s];
+		for (const [compId, p] of Object.entries(peerScores))
+			allScores[compId] = [...(allScores[compId] ?? []), ...p];
+
+		const actualResults = {};
+		for (const [compId, scores] of Object.entries(allScores))
+			actualResults[compId] = avg(scores);
+
+		// 4. Load ideal profile for the department
+		const departmentName  = evaluated.department?.name ?? '';
+		const expectedResults = getIdealProfile(departmentName);
+
+		// Filter expected to only evaluated competencies
+		const filteredExpected = Object.fromEntries(
+			Object.entries(expectedResults).filter(([k]) => actualResults[k] != null),
+		);
+
+		// 5. Call Gemini with scores + written comments
+		const employeeName = `${evaluated.person?.first_name ?? ''} ${evaluated.person?.last_name ?? ''}`.trim();
+		const analysis = await analyzeGapAnalysis({
+			employeeName,
+			department:          departmentName || 'General',
+			selfResults,
+			peerResults,
+			leaderResults,
+			directReportResults,
+			actualResults,
+			expectedResults:     filteredExpected,
+			commentsByComp,
+		});
+
+		// Persist the analysis
+		await FeedbackGapAnalysis.create({
+			employee_id:      evaluatedId,
+			cycle_id:         cycleId,
+			department:       departmentName,
+			strengths:        analysis.strengths   ?? [],
+			gaps:             analysis.gaps        ?? [],
+			suggestions:      analysis.suggestions ?? [],
+			summary:          analysis.summary     ?? '',
+			actual_results:   actualResults,
+			expected_results: filteredExpected,
+		});
+
+		res.json({
+			employeeName,
+			department:      departmentName,
+			actualResults,
+			expectedResults: filteredExpected,
+			analysis,
+			cached: false,
+		});
+	} catch (err) {
+		console.error('[feedbackAssignment] generateGapAnalysis:', err.message);
+		next(err);
+	}
+};
+
+module.exports = { getAssignments, generateAssignments, updateAssignment, getResults, getGapAnalysis, generateGapAnalysis };

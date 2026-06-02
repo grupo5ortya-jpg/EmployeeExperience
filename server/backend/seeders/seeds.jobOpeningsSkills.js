@@ -1,8 +1,13 @@
 module.exports = async (sequelize) => {
     const { JobOpening, Skill, JobOpeningSkill } = sequelize.models;
 
+    const count = await JobOpeningSkill.count();
+    if (count > 0) return;
+
     const openings = await JobOpening.findAll();
-    const skills = await Skill.findAll();
+    const skills   = await Skill.findAll();
+
+    if (openings.length === 0 || skills.length === 0) return;
 
     await JobOpeningSkill.bulkCreate([
         {

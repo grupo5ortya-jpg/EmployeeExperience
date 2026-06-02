@@ -21,6 +21,7 @@ const core_conn_apply_associations = (sequelize) => {
 		Alert,
 		PulseAnalysis,
 		FeedbackAssignment,
+		FeedbackGapAnalysis,
 		JobOpening,
 		Skill,
 		JobOpeningSkill
@@ -307,6 +308,12 @@ const core_conn_apply_associations = (sequelize) => {
 
 	Employee.hasMany(FeedbackAssignment, { foreignKey: 'evaluated_id', as: 'receivedEvaluations' });
 	FeedbackAssignment.belongsTo(Employee, { foreignKey: 'evaluated_id', as: 'evaluated' });
+
+	//! FeedbackGapAnalysis !//
+	Employee.hasMany(FeedbackGapAnalysis, { foreignKey: 'employee_id', as: 'gapAnalyses' });
+	FeedbackGapAnalysis.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
+	Survey.hasMany(FeedbackGapAnalysis,    { foreignKey: 'cycle_id',    as: 'gapAnalyses' });
+	FeedbackGapAnalysis.belongsTo(Survey,  { foreignKey: 'cycle_id',    as: 'cycle' });
 
 	//! PulseAnalysis / SurveyAssignment !//
 	SurveyAssignment.hasMany(PulseAnalysis, {

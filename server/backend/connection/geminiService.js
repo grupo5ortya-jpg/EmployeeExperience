@@ -138,4 +138,82 @@ Respondé ÚNICAMENTE con un JSON válido, sin texto adicional:
     return JSON.parse(jsonStr);
 }
 
-module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseSurvey };
+/**
+ * Generates a Feedback 360 gap analysis comparing actual vs expected competency scores.
+ *
+ * @param {{ employeeName: string, department: string, actualResults: object, expectedResults: object }} payload
+ * @returns {Promise<{ strengths: string[], gaps: string[], suggestions: string[], summary: string }>}
+ */
+async function analyzeGapAnalysis({ employeeName, department, selfResults = {}, peerResults = {}, leaderResults = {}, directReportResults = {}, actualResults, expectedResults, commentsByComp = {} }) {
+    const fmt = (obj) => Object.keys(obj).length
+        ? Object.entries(obj).map(([k, v]) => `  - ${k}: ${v != null ? Number(v).toFixed(2) : 'N/A'} / 5`).join('\n')
+        : '  (sin datos)';
+
+    // Sources summary
+    const sourceLines = [];
+    if (Object.keys(selfResults).length)         sourceLines.push(`\nAUTO-EVALUACIÓN (cómo se percibe a sí mismo):\n${fmt(selfResults)}`);
+    if (Object.keys(peerResults).length)         sourceLines.push(`\nEVALUACIÓN DE PARES:\n${fmt(peerResults)}`);
+    if (Object.keys(leaderResults).length)       sourceLines.push(`\nEVALUACIÓN DEL LÍDER DIRECTO:\n${fmt(leaderResults)}`);
+    if (Object.keys(directReportResults).length) sourceLines.push(`\nEVALUACIÓN DE REPORTES DIRECTOS:\n${fmt(directReportResults)}`);
+
+    // Self-awareness gap (auto vs pares)
+    const gapComps = [...new Set([...Object.keys(selfResults), ...Object.keys(peerResults)])];
+    const hasBoth  = Object.keys(selfResults).length > 0 && Object.keys(peerResults).length > 0;
+    const gapSection = hasBoth
+        ? '\n\nAUTOCONCIENCIA (auto-evaluación vs percepción de pares):\n' +
+          gapComps.map(k => {
+              const s = selfResults[k], p = peerResults[k];
+              if (s == null || p == null) return null;
+              const diff = (s - p).toFixed(2);
+              const dir  = s > p ? 'se sobreestima' : s < p ? 'se subestima' : 'alineado';
+              return `  - ${k}: auto=${Number(s).toFixed(2)}, pares=${Number(p).toFixed(2)}, Δ=${diff} (${dir})`;
+          }).filter(Boolean).join('\n')
+        : '';
+
+    const hasComments = Object.values(commentsByComp).some(arr => arr.length > 0);
+    const commentsSection = hasComments
+        ? '\n\nCOMENTARIOS ESCRITOS:\n' +
+          Object.entries(commentsByComp)
+              .filter(([, texts]) => texts.length > 0)
+              .map(([compId, texts]) => `  ${compId}:\n${texts.map(t => `    · "${t}"`).join('\n')}`)
+              .join('\n')
+        : '';
+
+    const prompt = `Sos un especialista en desarrollo de talento y evaluación de desempeño.
+
+Analizá los resultados de Feedback 360° del empleado ${employeeName} del departamento ${department}.
+
+PROMEDIO GENERAL POR COMPETENCIA (todas las fuentes combinadas):
+${fmt(actualResults)}
+${sourceLines.join('\n')}
+PERFIL ESPERADO PARA EL DEPARTAMENTO ${department.toUpperCase()}:
+${fmt(expectedResults)}${gapSection}${commentsSection}
+
+Considerá todas las fuentes para un análisis completo y respondé ÚNICAMENTE con JSON válido:
+{
+  "strengths": ["fortaleza redactada en términos de competencia y comportamiento observable"],
+  "gaps": ["brecha redactada en términos de competencia, sin mencionar qué fuente la detectó"],
+  "suggestions": ["acción concreta y aplicable orientada al desarrollo"],
+  "summary": "Resumen en 2-3 oraciones sobre el perfil general del empleado y sus oportunidades de crecimiento."
+}
+
+Criterios:
+- Fortaleza: resultado ≥ esperado, o consistencia positiva entre fuentes
+- Brecha: resultado < esperado en >0.3 puntos, o diferencia auto/externa >1 punto
+- Autoconciencia: sobreestimación propia vs percepción externa es una brecha relevante
+
+RESTRICCIÓN IMPORTANTE DE ANONIMATO:
+En los textos de strengths, gaps, suggestions y summary NO menciones nunca:
+· palabras como "líder", "pares", "pares evaluadores", "reporte directo", "evaluadores"
+· frases como "tu líder piensa", "tus compañeros perciben", "según tus pares"
+· ninguna referencia a qué fuente específica aportó qué puntaje
+Hablá siempre en términos de competencias y comportamientos observables, de manera impersonal.
+Ejemplos correctos: "Se observa consistencia en...", "Existe una oportunidad de mejora en...", "Las evaluaciones reflejan..."
+Tono: constructivo, profesional y orientado al crecimiento`;
+
+    const raw = await generarTexto(prompt);
+    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+    return JSON.parse(jsonStr);
+}
+
+module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseSurvey, analyzeGapAnalysis };

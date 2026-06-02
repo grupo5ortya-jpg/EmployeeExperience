@@ -3,13 +3,14 @@ const { Employee, FeedbackAssignment } = require('./sequelize');
 const PEERS_PER_EMPLOYEE = 2;
 
 /**
- * Generates SELF + PEER FeedbackAssignments for a cycle.
+ * Generates SELF, PEER, LEADER and DIRECT_REPORT FeedbackAssignments for a cycle.
  *
  * Rules:
- *   - SELF  → always, for every active employee in the department.
- *   - PEER  → only if the employee has a leader assigned (via Team).
- *             Peers must share the same leader. Up to PEERS_PER_EMPLOYEE,
- *             or as many valid peers as exist (no duplicates).
+ *   SELF          → always, for every active employee in the department.
+ *   PEER          → same-leader teammates (up to PEERS_PER_EMPLOYEE). Requires leader assigned.
+ *   LEADER        → the employee's direct leader evaluates them. Requires leader assigned.
+ *   DIRECT_REPORT → each collaborator-within-dept evaluates their leader (if that leader
+ *                   is also a department employee and has reports in the dept).
  *
  * Safe to call multiple times — skips if assignments already exist for the cycle.
  */
@@ -18,20 +19,22 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 	if (existing > 0) return { skipped: true };
 
 	const employees = await Employee.findAll({
-		where:   { department_id: departmentId, status: 'ACTIVE' },
+		where:      { department_id: departmentId, status: 'ACTIVE' },
 		attributes: ['id'],
-		include: [{
-			model:   Employee,
-			as:      'leaders',
-			through: { attributes: [] },
+		include:    [{
+			model:      Employee,
+			as:         'leaders',
+			through:    { attributes: [] },
 			attributes: ['id'],
 		}],
 	});
 
 	if (employees.length === 0) return { created: 0 };
 
-	// Group employee IDs by their leader ID
-	const byLeader = {}; // { leaderId: Set<employeeId> }
+	const employeeIds = new Set(employees.map(e => e.id));
+
+	// Map: leaderId → Set<collaboratorId> (only within this department)
+	const byLeader = {};
 	for (const emp of employees) {
 		const leaderId = emp.leaders?.[0]?.id ?? null;
 		if (!leaderId) continue;
@@ -42,6 +45,8 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 	const rows = [];
 
 	for (const employee of employees) {
+		const leaderId = employee.leaders?.[0]?.id ?? null;
+
 		// SELF — always
 		rows.push({
 			cycle_id:     cycleId,
@@ -51,23 +56,42 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 			status:       'PENDING',
 		});
 
-		// PEER — only if employee has a leader
-		const leaderId = employee.leaders?.[0]?.id ?? null;
-		if (!leaderId) continue;
+		if (leaderId) {
+			// PEER — same-leader teammates, random selection
+			const teammates = [...(byLeader[leaderId] ?? [])].filter(id => id !== employee.id);
+			const shuffled  = [...teammates].sort(() => Math.random() - 0.5);
+			for (const peerId of shuffled.slice(0, PEERS_PER_EMPLOYEE)) {
+				rows.push({
+					cycle_id:     cycleId,
+					evaluator_id: employee.id,
+					evaluated_id: peerId,
+					type:         'PEER',
+					status:       'PENDING',
+				});
+			}
 
-		const teammates = [...(byLeader[leaderId] ?? [])]
-			.filter((id) => id !== employee.id);
-
-		const shuffled = [...teammates].sort(() => Math.random() - 0.5);
-
-		for (const peerId of shuffled.slice(0, PEERS_PER_EMPLOYEE)) {
+			// LEADER — the leader evaluates this employee
 			rows.push({
 				cycle_id:     cycleId,
-				evaluator_id: employee.id,
-				evaluated_id: peerId,
-				type:         'PEER',
+				evaluator_id: leaderId,
+				evaluated_id: employee.id,
+				type:         'LEADER',
 				status:       'PENDING',
 			});
+		}
+
+		// DIRECT_REPORT — collaborators within the dept who report to this employee evaluate them
+		const directReports = byLeader[employee.id];
+		if (directReports && directReports.size > 0) {
+			for (const reportId of directReports) {
+				rows.push({
+					cycle_id:     cycleId,
+					evaluator_id: reportId,
+					evaluated_id: employee.id,
+					type:         'DIRECT_REPORT',
+					status:       'PENDING',
+				});
+			}
 		}
 	}
 

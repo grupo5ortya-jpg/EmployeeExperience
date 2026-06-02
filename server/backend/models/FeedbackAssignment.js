@@ -20,7 +20,7 @@ module.exports = (sequelize) => {
 			allowNull: false,
 		},
 		type: {
-			type:      DataTypes.ENUM('SELF', 'PEER'),
+			type:      DataTypes.ENUM('SELF', 'PEER', 'LEADER', 'DIRECT_REPORT'),
 			allowNull: false,
 		},
 		status: {
