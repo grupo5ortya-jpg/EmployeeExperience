@@ -2,7 +2,7 @@ import {
     Building2, CalendarRange, Lock,
     Star, HelpCircle, ShieldCheck, Users,
 } from 'lucide-react'
-import { COMPETENCIES } from '../constants/competencies'
+import { COMPETENCIES } from '../competencyConfig'
 
 function formatDateRange(start, end) {
     if (!start && !end) return null

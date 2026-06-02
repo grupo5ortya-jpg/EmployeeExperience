@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -16,26 +15,32 @@ const durationCls = `w-20 rounded-lg border border-brand-light px-3 py-2 text-sm
   text-center outline-none bg-white
   focus:border-brand focus:ring-2 focus:ring-brand-light transition-colors`
 
-// Contador de IDs locales para tareas nuevas (fuera del componente = no se resetea en re-renders)
+// Contador fuera del componente → no se resetea en re-renders
 let newTaskSeq = 0
 
 /* ─────────────────────────────────────────────────────────── */
 export default function OnboardingHome() {
-    const navigate = useNavigate()
+    const navigate    = useNavigate()
     const queryClient = useQueryClient()
     const { data: tasks = [], isLoading, isError } = useTasks()
 
     // ── Estado del panel derecho ──────────────────────────────
-    const [selectedType, setSelectedType] = useState(null)
-    const [localSiblings, setLocalSiblings] = useState([])   // copia editable de las tareas
-    const [saving, setSaving] = useState(false)
-    const [saveError, setSaveError] = useState('')
+    const [selectedType,  setSelectedType]  = useState(null)
+    const [localSiblings, setLocalSiblings] = useState([])
+    const [saving,        setSaving]        = useState(false)
+    const [saveError,     setSaveError]     = useState('')
 
-    // ── Guard: cambios sin guardar ────────────────────────────
-    // discardIntent = null (nada pendiente) | 'CLOSE' (cerrar panel) | TaskType (cambiar a otro)
+    // Clave de la última tarea nueva agregada (para autoFocus preciso)
+    const [lastAddedKey, setLastAddedKey] = useState(null)
+
+    // Guard: discardIntent = null | 'CLOSE' | TaskType
     const [discardIntent, setDiscardIntent] = useState(null)
 
-    // ── Derivar TaskTypes únicos desde las tareas ─────────────
+    // ── Filtros del panel izquierdo ───────────────────────────
+    const [filterName, setFilterName] = useState('')
+    const [filterSub,  setFilterSub]  = useState('')
+
+    // ── Derivar TaskTypes únicos ──────────────────────────────
     const taskTypes = useMemo(() => {
         const map = {}
         tasks.forEach((t) => {
@@ -46,26 +51,52 @@ export default function OnboardingHome() {
         return Object.values(map)
     }, [tasks])
 
-    // ── Clave única por tarea (DB id para existentes, _localId para nuevas) ──
+    // Opciones de los selects de filtro
+    const typeNames = useMemo(() =>
+        [...new Set(taskTypes.map((tt) => tt.name).filter(Boolean))],
+        [taskTypes],
+    )
+
+    const subTypes = useMemo(() =>
+        [...new Set(
+            taskTypes
+                .filter((tt) => filterName ? tt.name === filterName : true)
+                .map((tt) => tt.sub_type)
+                .filter(Boolean),
+        )],
+        [taskTypes, filterName],
+    )
+
+    const filteredTypes = useMemo(() =>
+        taskTypes.filter((tt) => {
+            const okName = filterName ? tt.name === filterName : true
+            const okSub  = filterSub  ? tt.sub_type === filterSub : true
+            return okName && okSub
+        }),
+        [taskTypes, filterName, filterSub],
+    )
+
+    // ── Clave única por tarea ─────────────────────────────────
     const getKey = (t) => t._isNew ? t._localId : t.id
 
-    // ── Cargar una plantilla en el editor (sin guard) ─────────
+    // ── Cargar plantilla en el editor (sin guard) ─────────────
     const doSelectType = (type) => {
         const siblings = tasks.filter((t) => t.taskType?.id === type.id)
         setSelectedType(type)
         setLocalSiblings(siblings.map((t) => ({
-            id: t.id,
-            name: t.name,
+            id:                t.id,
+            name:              t.name,
             estimatedDuration: t.estimatedDuration ?? '',
-            _isNew: false,
-            _modified: false,
-            _deleted: false,
+            _isNew:            false,
+            _modified:         false,
+            _deleted:          false,
         })))
         setSaveError('')
         setDiscardIntent(null)
+        setLastAddedKey(null)
     }
 
-    // ── Seleccionar un tipo de plantilla (con guard) ──────────
+    // ── Seleccionar plantilla (con guard) ─────────────────────
     const handleSelectType = (type) => {
         if (hasChanges && selectedType && selectedType.id !== type.id) {
             setDiscardIntent(type)
@@ -74,7 +105,7 @@ export default function OnboardingHome() {
         doSelectType(type)
     }
 
-    // ── Cancelar edición (con guard si hay cambios) ───────────
+    // ── Cancelar edición ──────────────────────────────────────
     const handleCancelEdit = () => {
         if (hasChanges) {
             setDiscardIntent('CLOSE')
@@ -83,7 +114,7 @@ export default function OnboardingHome() {
         }
     }
 
-    // ── Confirmar descarte de cambios ─────────────────────────
+    // ── Confirmar descarte ────────────────────────────────────
     const handleConfirmDiscard = () => {
         if (discardIntent === 'CLOSE') {
             setSelectedType(null)
@@ -93,30 +124,30 @@ export default function OnboardingHome() {
         }
     }
 
-    // ── Agregar nueva fila (nueva tarea aún no persistida) ────
+    // ── Agregar nueva fila ────────────────────────────────────
     const handleAddNewTask = () => {
         newTaskSeq += 1
+        const localId = `new-${newTaskSeq}`
+        setLastAddedKey(localId)
         setLocalSiblings((prev) => [
             ...prev,
             {
-                _localId: `new-${newTaskSeq}`,
-                _isNew: true,
-                _deleted: false,
-                name: '',
+                _localId:          localId,
+                _isNew:            true,
+                _deleted:          false,
+                name:              '',
                 estimatedDuration: '',
             },
         ])
     }
 
-    // ── Editar campo de cualquier tarea ──────────────────────
+    // ── Editar campo ──────────────────────────────────────────
     const updateSibling = (key, field, value) =>
         setLocalSiblings((prev) =>
-            prev.map((t) => getKey(t) === key ? { ...t, [field]: value, _modified: true } : t)
+            prev.map((t) => getKey(t) === key ? { ...t, [field]: value, _modified: true } : t),
         )
 
-    // ── Eliminar tarea ────────────────────────────────────────
-    // Tareas nuevas (_isNew): se remueven directo del array (nunca existieron en DB)
-    // Tareas existentes: soft-delete con strikethrough + opción de deshacer
+    // ── Eliminar / deshacer ───────────────────────────────────
     const markDeleted = (key) =>
         setLocalSiblings((prev) => {
             const task = prev.find((t) => getKey(t) === key)
@@ -126,40 +157,51 @@ export default function OnboardingHome() {
 
     const undoDelete = (key) =>
         setLocalSiblings((prev) =>
-            prev.map((t) => getKey(t) === key ? { ...t, _deleted: false } : t)
+            prev.map((t) => getKey(t) === key ? { ...t, _deleted: false } : t),
         )
 
-    // ── Guardar todos los cambios ─────────────────────────────
+    // ── Guardar ───────────────────────────────────────────────
     const handleSave = async (e) => {
         e.preventDefault()
         setSaving(true)
         setSaveError('')
         try {
-            // PATCH tareas existentes modificadas (no eliminadas)
+            // PATCH modificadas
             const toUpdate = localSiblings.filter((t) => !t._isNew && t._modified && !t._deleted)
             await Promise.all(toUpdate.map((t) =>
                 updateTask(t.id, {
-                    name: t.name,
+                    name:              t.name,
                     estimatedDuration: t.estimatedDuration !== '' ? Number(t.estimatedDuration) : null,
-                })
+                }),
             ))
 
-            // DELETE tareas existentes marcadas
+            // DELETE marcadas
             const toDelete = localSiblings.filter((t) => !t._isNew && t._deleted)
             await Promise.all(toDelete.map((t) => deleteTask(t.id)))
 
-            // POST tareas nuevas con nombre cargado (filas vacías se ignoran)
+            // POST nuevas con nombre
             const toCreate = localSiblings.filter((t) => t._isNew && !t._deleted && t.name.trim())
             await Promise.all(toCreate.map((t) =>
                 createTask({
-                    name: t.name.trim(),
-                    taskTypeId: selectedType.id,
+                    name:              t.name.trim(),
+                    taskTypeId:        selectedType.id,
                     estimatedDuration: t.estimatedDuration !== '' ? Number(t.estimatedDuration) : null,
-                })
+                }),
             ))
 
-            await queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            setSelectedType(null)
+            // Refetch y recargar panel con datos frescos (sin cerrar)
+            await queryClient.refetchQueries({ queryKey: ['tasks'] })
+            const freshTasks    = queryClient.getQueryData(['tasks']) ?? []
+            const freshSiblings = freshTasks.filter((t) => t.taskType?.id === selectedType.id)
+            setLocalSiblings(freshSiblings.map((t) => ({
+                id:                t.id,
+                name:              t.name,
+                estimatedDuration: t.estimatedDuration ?? '',
+                _isNew:            false,
+                _modified:         false,
+                _deleted:          false,
+            })))
+            setLastAddedKey(null)
         } catch {
             setSaveError('No se pudo guardar. Verificá los campos e intentá de nuevo.')
         } finally {
@@ -168,10 +210,10 @@ export default function OnboardingHome() {
     }
 
     // ── Contadores derivados ──────────────────────────────────
-    const activeCount = localSiblings.filter((t) => !t._deleted).length
+    const activeCount  = localSiblings.filter((t) => !t._deleted).length
     const deletedCount = localSiblings.filter((t) => t._deleted).length
-    const canAddMore = activeCount < MAX_TASKS
-    const hasChanges =
+    const canAddMore   = activeCount < MAX_TASKS
+    const hasChanges   =
         localSiblings.some((t) => t._modified || t._deleted || (t._isNew && t.name.trim() !== ''))
 
     /* ── JSX ─────────────────────────────────────────────────── */
@@ -209,10 +251,30 @@ export default function OnboardingHome() {
 
                 {/* ── Izquierda: lista de plantillas (TaskTypes) ── */}
                 <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden">
-                    <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40">
+
+                    <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40 flex flex-col gap-3">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                            Plantillas ({isLoading ? '…' : taskTypes.length})
+                            Plantillas ({isLoading ? '…' : filteredTypes.length})
                         </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <select
+                                value={filterName}
+                                onChange={(e) => { setFilterName(e.target.value); setFilterSub('') }}
+                                className={inputCls}
+                            >
+                                <option value="">Todos los tipos</option>
+                                {typeNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                            <select
+                                value={filterSub}
+                                onChange={(e) => setFilterSub(e.target.value)}
+                                disabled={!filterName || subTypes.length === 0}
+                                className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed`}
+                            >
+                                <option value="">Todos los subtipos</option>
+                                {subTypes.map((s) => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
                     </div>
 
                     {isLoading ? (
@@ -229,11 +291,25 @@ export default function OnboardingHome() {
                         </div>
                     ) : isError ? (
                         <p className="px-5 py-10 text-center text-sm text-red-400">Error al cargar las plantillas.</p>
-                    ) : taskTypes.length === 0 ? (
-                        <p className="px-5 py-10 text-center text-sm text-slate-400">No hay plantillas todavía.</p>
+                    ) : filteredTypes.length === 0 ? (
+                        <div className="px-5 py-10 text-center">
+                            <p className="text-sm text-slate-500">
+                                {taskTypes.length === 0
+                                    ? 'No hay plantillas todavía.'
+                                    : 'No hay plantillas para esos filtros.'}
+                            </p>
+                            {(filterName || filterSub) && (
+                                <button
+                                    onClick={() => { setFilterName(''); setFilterSub('') }}
+                                    className="mt-3 text-xs font-medium text-brand hover:text-brand-hover transition-colors cursor-pointer"
+                                >
+                                    Limpiar filtros
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         <ul className="divide-y divide-brand-light">
-                            {taskTypes.map((type) => (
+                            {filteredTypes.map((type) => (
                                 <li
                                     key={type.id}
                                     onClick={() => handleSelectType(type)}
@@ -282,7 +358,7 @@ export default function OnboardingHome() {
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        const first = tasks.find(t => t.taskType?.id === selectedType.id)
+                                        const first = tasks.find((t) => t.taskType?.id === selectedType.id)
                                         if (first) navigate(`/onboarding-template/${first.id}`)
                                     }}
                                     className="text-xs text-brand hover:text-brand-hover font-medium transition-colors cursor-pointer"
@@ -300,11 +376,10 @@ export default function OnboardingHome() {
                                     <p className="text-xs text-slate-400">días est.</p>
                                 </div>
 
-                                {/* Todas las tareas (existentes + nuevas) */}
                                 {localSiblings.map((t) => {
                                     const key = getKey(t)
                                     return t._deleted ? (
-                                        /* Tarea marcada para eliminar (solo existentes) */
+                                        /* Tarea marcada para eliminar */
                                         <div key={key} className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg border border-red-100">
                                             <p className="flex-1 text-xs text-red-400 line-through truncate">{t.name}</p>
                                             <button
@@ -324,9 +399,8 @@ export default function OnboardingHome() {
                                                 onChange={(e) => updateSibling(key, 'name', e.target.value)}
                                                 placeholder="Nombre de la tarea"
                                                 className={`${inputCls} flex-1`}
-                                                // required solo en existentes; las nuevas vacías se ignoran al guardar
                                                 required={!t._isNew}
-                                                autoFocus={t._isNew}
+                                                autoFocus={t._isNew && getKey(t) === lastAddedKey}
                                             />
                                             <div className="flex items-center gap-1 shrink-0">
                                                 <input
@@ -351,7 +425,7 @@ export default function OnboardingHome() {
                                     )
                                 })}
 
-                                {/* Botón agregar tarea */}
+                                {/* Botón agregar */}
                                 {canAddMore ? (
                                     <button
                                         type="button"
@@ -417,7 +491,8 @@ export default function OnboardingHome() {
                     >
                         <h3 className="text-base font-bold text-slate-800 mb-1">¿Descartar cambios?</h3>
                         <p className="text-sm text-slate-400 mb-5">
-                            Tenés cambios sin guardar en <span className="font-semibold text-slate-600">{selectedType?.name}</span>.
+                            Tenés cambios sin guardar en{' '}
+                            <span className="font-semibold text-slate-600">{selectedType?.name}</span>.
                             Si continuás se perderán.
                         </p>
                         <div className="flex items-center justify-end gap-3">

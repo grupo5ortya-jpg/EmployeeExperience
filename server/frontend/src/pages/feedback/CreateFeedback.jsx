@@ -5,7 +5,7 @@ import { ArrowLeft, Lock, HelpCircle } from 'lucide-react'
 
 import { useDepartments }   from '../../hooks/useDepartments'
 import { createSurvey }     from '../../services/surveyService'
-import { countQuestions }   from './constants/competencies'
+import { countQuestions }   from './competencyConfig'
 import { useFeedbackParticipants } from './hooks/useFeedbackParticipants'
 import { CompetencySelector } from './components/CompetencySelector'
 import { QuestionList }       from './components/QuestionList'
@@ -60,7 +60,7 @@ export default function CreateFeedback() {
 
     const handleSave = async (e) => {
         e.preventDefault()
-        if (!form.name.trim()) return
+        if (!form.name.trim() || !form.departmentId) return
         setSaving(true)
         setSaveError('')
         try {
@@ -124,7 +124,7 @@ export default function CreateFeedback() {
                         </button>
                         <button
                             type="submit"
-                            disabled={saving || !form.name.trim()}
+                            disabled={saving || !form.name.trim() || !form.departmentId}
                             className="bg-brand hover:bg-brand-hover text-white text-sm font-semibold
                                        px-5 py-2.5 rounded-lg transition-colors cursor-pointer
                                        disabled:opacity-50 disabled:cursor-not-allowed"
@@ -168,17 +168,17 @@ export default function CreateFeedback() {
 
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-xs font-semibold text-slate-600">
-                                    Departamento
+                                    Departamento <span className="text-red-400">*</span>
                                 </label>
                                 <select
                                     name="departmentId"
                                     value={form.departmentId}
                                     onChange={handleChange}
-                                    className={inputCls}
+                                    className={`${inputCls} ${!form.departmentId ? 'border-red-200 focus:border-red-400 focus:ring-red-400/20' : ''}`}
                                     disabled={loadingDepts}
                                 >
                                     <option value="">
-                                        {loadingDepts ? 'Cargando departamentos...' : 'Todos los departamentos'}
+                                        {loadingDepts ? 'Cargando departamentos...' : 'Seleccioná un departamento...'}
                                     </option>
                                     {departments.map((d) => (
                                         <option key={d.id} value={d.id}>{d.name}</option>

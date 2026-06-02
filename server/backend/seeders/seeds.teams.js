@@ -1,29 +1,46 @@
+
+const { Op } = require('sequelize');
+
 module.exports = async function (sequelize) {
-	const { Team, Employee } = sequelize.models;
+	const { Team, Employee, User, Role } = sequelize.models;
 
 	const count = await Team.count();
 	if (count > 0) return;
 
-	const employees = await Employee.findAll({ limit: 20 });
-	if (employees.length < 18) {
-		throw new Error('seeds.teams.js requires at least 18 Employee records.');
+	const leaderRole = await Role.findOne({ where: { name: 'Líder' } });
+	if (!leaderRole) {
+		throw new Error('No role found: Líder. Run seeds.roles.js first.');
 	}
 
-	// Indices 14-17 are seeded as Líder role — index 17 is the top leader
-	const leaderIndices       = [14, 15, 16, 17];
-	const collaboratorIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19];
+	const leaderUsers = await User.findAll({ where: { role_id: leaderRole.id } });
+	if (leaderUsers.length < 4) {
+		throw new Error('seeds.teams.js requires at least 4 users with role Líder.');
+	}
 
-	// Distribute collaborators evenly across the 4 leaders
-	const collaboratorTeams = collaboratorIndices.map((collabIdx, i) => ({
-		leader_id:       employees[leaderIndices[i % leaderIndices.length]].id,
-		collaborator_id: employees[collabIdx].id,
+	const leaderEmployeeIds = leaderUsers
+		.map(user => user.employee_id)
+		.filter(Boolean);
+	if (leaderEmployeeIds.length < leaderUsers.length) {
+		throw new Error('Some Líder users are not linked to an employee.');
+	}
+
+	const employees = await Employee.findAll({
+		where: {
+			id: {
+				[Op.notIn]: leaderEmployeeIds,
+			},
+		},
+	});
+
+	if (employees.length < 14) {
+		throw new Error('seeds.teams.js requires at least 14 non-leader Employee records.');
+	}
+
+	const collaborators = employees.slice(0, 14);
+	const leaderTeams = collaborators.map((employee, index) => ({
+		leader_id: leaderEmployeeIds[index % leaderEmployeeIds.length],
+		collaborator_id: employee.id,
 	}));
 
-	// Leaders 14, 15, 16 report to leader 17 (top of hierarchy — no leader)
-	const leaderTeams = [14, 15, 16].map(idx => ({
-		leader_id:       employees[17].id,
-		collaborator_id: employees[idx].id,
-	}));
-
-	await Team.bulkCreate([...collaboratorTeams, ...leaderTeams], { individualHooks: true });
+	await Team.bulkCreate(leaderTeams, { individualHooks: true });
 };

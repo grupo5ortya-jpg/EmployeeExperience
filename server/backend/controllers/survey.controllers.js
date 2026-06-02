@@ -1,4 +1,5 @@
 const { Survey, SurveyType, QuestionType, Question, QuestionOption, Department } = require('../connection/sequelize');
+const { generateAssignmentsForCycle } = require('../connection/feedbackAssignmentService');
 
 const SURVEY_INCLUDE = [
 	{
@@ -69,7 +70,9 @@ function formatSurvey(s) {
 const getAllSurveys = async (req, res, next) => {
 	try {
 		const surveys = await Survey.findAll({ include: SURVEY_INCLUDE });
-		res.json(surveys.map(formatSurvey));
+		// Exclude pulse surveys — those are managed separately via /pulse-surveys
+		const feedback = surveys.filter((s) => s.questionType?.name !== 'Pulso');
+		res.json(feedback.map(formatSurvey));
 	} catch (err) {
 		next(err);
 	}
@@ -111,6 +114,12 @@ const createSurvey = async (req, res, next) => {
 			competencies:             competencies          ?? [],
 		});
 		const full = await Survey.findByPk(survey.id, { include: SURVEY_INCLUDE });
+
+		// Auto-generate Feedback 360 assignments when a cycle has a department
+		if (departmentId) {
+			generateAssignmentsForCycle(survey.id, departmentId).catch(console.error);
+		}
+
 		res.status(201).json(formatSurvey(full));
 	} catch (err) {
 		next(err);

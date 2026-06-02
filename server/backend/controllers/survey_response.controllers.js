@@ -55,6 +55,7 @@ const createResponse = async (req, res, next) => {
 			where:   { survey_assignment_id: response.survey_assignment_id, question_id: response.question_id },
 			include: RESPONSE_INCLUDE,
 		});
+
 		res.status(201).json(formatResponse(full));
 	} catch (err) {
 		next(err);

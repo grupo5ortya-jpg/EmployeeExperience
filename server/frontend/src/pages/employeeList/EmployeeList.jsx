@@ -47,11 +47,9 @@ export default function EmployeeList() {
   )
 
   const handleSave = async (data) => {
-    await createEmployee(data)
-    // invalidateQueries marca el cache global como stale, forzando a todos los
-    // componentes que usen ['employees'] (incluyendo AllAssignmentsPage) a refetchear
-    // con data fresca en cuanto monten — más robusto que refetch() local.
+    const created = await createEmployee(data)
     await queryClient.invalidateQueries({ queryKey: ['employees'] })
+    return created
   }
 
   return (

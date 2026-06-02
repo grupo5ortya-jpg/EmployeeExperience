@@ -1,5 +1,5 @@
 import { ChevronRight, Building2, CalendarRange, Lock } from 'lucide-react'
-import { COMPETENCY_MAP } from '../constants/competencies'
+import { COMPETENCY_MAP } from '../competencyConfig'
 
 /* ─── Helpers ───────────────────────────────────────────────── */
 function formatShortDate(dateStr) {
