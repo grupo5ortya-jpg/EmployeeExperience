@@ -19,5 +19,5 @@ module.exports = async function (sequelize) {
 		{ name: 'Administrativo - acceso', sub_type: 'Accesos' },
 	];
 
-	await TaskType.bulkCreate(taskTypes);
+	await TaskType.bulkCreate(taskTypes, { individualHooks: true });
 };

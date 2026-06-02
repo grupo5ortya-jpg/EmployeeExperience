@@ -1,7 +1,7 @@
 
 const core_conn_apply_associations = (sequelize) => {
 	const {
-		Department, Employee, EmployeeTask, Person, Question, QuestionOption, QuestionType, Role,
+		Asset, Department, Employee, EmployeeAsset, EmployeeTask, EmployeeHistory, Person, Question, QuestionOption, QuestionType, Role,
 		Survey, SurveyAssignment, SurveyResponse, SurveyType, Task, User, TaskType, Team
 	} = sequelize.models;
 
@@ -14,6 +14,47 @@ const core_conn_apply_associations = (sequelize) => {
 		Employee.belongsTo(Department, {
 			foreignKey: 'department_id',
 			as: 'department',
+		});
+
+		Employee.hasMany(EmployeeHistory, {
+			foreignKey: 'employee_id',
+			as: 'departmentHistories',
+		});
+
+		EmployeeHistory.belongsTo(Employee, {
+			foreignKey: 'employee_id',
+			as: 'employee',
+		});
+
+		Department.hasMany(EmployeeHistory, {
+			foreignKey: 'department_id',
+			as: 'employeeHistories',
+		});
+
+		EmployeeHistory.belongsTo(Department, {
+			foreignKey: 'department_id',
+			as: 'department',
+		});
+
+	//! Asset / Employee !//
+		Asset.hasMany(EmployeeAsset, {
+			foreignKey: 'asset_id',
+			as: 'assignments',
+		});
+
+		EmployeeAsset.belongsTo(Asset, {
+			foreignKey: 'asset_id',
+			as: 'asset',
+		});
+
+		Employee.hasMany(EmployeeAsset, {
+			foreignKey: 'employee_id',
+			as: 'assets',
+		});
+
+		EmployeeAsset.belongsTo(Employee, {
+			foreignKey: 'employee_id',
+			as: 'employee',
 		});
 
 	//! Person / Employee !//

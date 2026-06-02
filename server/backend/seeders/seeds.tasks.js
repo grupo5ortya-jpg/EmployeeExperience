@@ -111,5 +111,5 @@ module.exports = async function (sequelize) {
 		throw new Error(`Missing TaskType for some seeded tasks: ${missingTypes.map((task) => task.name).join(', ')}`);
 	}
 
-	await Task.bulkCreate(tasks);
+	await Task.bulkCreate(tasks, { individualHooks: true });
 };

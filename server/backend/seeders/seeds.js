@@ -1,34 +1,38 @@
 
-const createRoles = require('./seeds.roles.js');
-const createPersons = require('./seeds.persons.js');
-const createDepartments = require('./seeds.departments.js');
-const createTaskTypes = require('./seeds.task_types.js');
-const createTasks = require('./seeds.tasks.js');
-const createEmployees = require('./seeds.employees.js');
-const createUsers = require('./seeds.users.js');
-const createTeams = require('./seeds.teams.js');
-const createQuestionTypes = require('./seeds.question_types.js');
-const createQuestions = require('./seeds.questions.js');
-const createEmployeeTasks = require('./seeds.employee_tasks.js');
+const core_seed_create_roles = require('./seeds.roles.js');
+const core_seed_create_persons = require('./seeds.persons.js');
+const core_seed_create_departments = require('./seeds.departments.js');
+const core_seed_create_task_types = require('./seeds.task_types.js');
+const core_seed_create_tasks = require('./seeds.tasks.js');
+const core_seed_create_employees = require('./seeds.employees.js');
+const core_seed_create_users = require('./seeds.users.js');
+const core_seed_create_teams = require('./seeds.teams.js');
+const core_seed_create_question_types = require('./seeds.question_types.js');
+const core_seed_create_questions = require('./seeds.questions.js');
+const core_seed_create_employee_tasks = require('./seeds.employee_tasks.js');
+const core_seed_create_assets = require('./seeds.assets.js');
+const core_seed_create_employee_assets = require('./seeds.employee_assets.js');
 
 
 module.exports = async function (sequelize) {
 	try {
-		await createRoles(sequelize);
-		await createDepartments(sequelize);
-		await createQuestionTypes(sequelize);
-		await createQuestions(sequelize);
-		await createPersons(sequelize);
-		await createTaskTypes(sequelize);
-		await createTasks(sequelize);
+		await core_seed_create_roles(sequelize);
+		await core_seed_create_departments(sequelize);
+		await core_seed_create_question_types(sequelize);
+		await core_seed_create_questions(sequelize);
+		await core_seed_create_persons(sequelize);
+		await core_seed_create_task_types(sequelize);
+		await core_seed_create_tasks(sequelize);
 
-		await createEmployees(sequelize);
+		await core_seed_create_employees(sequelize);
 
 		const roleNames = [ 'Talento', 'Talento', 'Alumni', 'Alumni', 'Colaborador', 'Colaborador', 'Colaborador', 'Colaborador', 'Colaborador', 'Colaborador', 'Colaborador', 'Colaborador', 'Colaborador', 'Colaborador', 'Líder', 'Líder', 'Líder', 'Líder', 'Colaborador', 'Talento'];
 		const employees = await sequelize.models.Employee.findAll({ limit: 20 });
-		await createUsers(sequelize, employees, roleNames);
-		await createTeams(sequelize);
-		await createEmployeeTasks(sequelize);
+		await core_seed_create_users(sequelize, employees, roleNames);
+		await core_seed_create_teams(sequelize);
+		await core_seed_create_employee_tasks(sequelize);
+		await core_seed_create_assets(sequelize);
+		await core_seed_create_employee_assets(sequelize);
 
 		console.log('Database seeded successfully');
 	} catch (error) {

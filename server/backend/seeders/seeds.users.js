@@ -41,5 +41,5 @@ module.exports = async function (sequelize, employees, roleNames) {
 		};
 	});
 
-	await User.bulkCreate(usersData);
+	await User.bulkCreate(usersData, { individualHooks: true });
 };

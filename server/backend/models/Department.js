@@ -25,6 +25,24 @@ module.exports = (sequelize) => {
 			timestamps: true,
 			paranoid: true,
 			schema: process.env.DB_SCHEMA || 'public',
+			hooks: {
+				beforeDestroy: async (department, options) => {
+					const Employee = sequelize.models.Employee;
+
+					const employee = await Employee.findOne({
+						where: {
+							department_id: department.id,
+						},
+						transaction: options.transaction,
+					});
+
+					if (employee) {
+						throw new Error(
+							'No se puede eliminar el departamento porque tiene empleados asignados.'
+						);
+					}
+				},
+			},
 		}
 	);
 };

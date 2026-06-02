@@ -25,5 +25,5 @@ module.exports = async function (sequelize) {
 		collaborator_id: employees[idx].id,
 	}));
 
-	await Team.bulkCreate([...collaboratorTeams, ...leaderTeams]);
+	await Team.bulkCreate([...collaboratorTeams, ...leaderTeams], { individualHooks: true });
 };

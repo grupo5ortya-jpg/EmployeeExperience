@@ -2,6 +2,43 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
+
+	const syncEmployeeStatus = async (user, transaction) => {
+		const Role = sequelize.models.Role;
+		const Employee = sequelize.models.Employee;
+
+		if (!Role || !Employee || !user.employee_id) return;
+
+		const role = await Role.findByPk(user.role_id, { transaction });
+
+		if (!role) return;
+
+		const employee = await Employee.findByPk(user.employee_id, {
+			transaction,
+		});
+
+		if (!employee) return;
+
+		if (role.name === 'Alumni') {
+			await employee.update(
+				{
+					status: 'INACTIVE',
+					department_id: null,
+					position: null,
+				},
+				{ transaction }
+			);
+		} else {
+			await employee.update(
+				{
+					status: 'ACTIVE',
+				},
+				{ transaction }
+			);
+		}
+	};
+
+
 	sequelize.define('User',
 		{
 			id: {
@@ -42,6 +79,22 @@ module.exports = (sequelize) => {
 			tableName: 'users',
 			timestamps: true,
 			schema: process.env.DB_SCHEMA || 'public',
+			hooks: {
+				afterCreate: async (user, options) => {
+					await syncEmployeeStatus(
+						user,
+						options.transaction
+					);
+				},
+				afterUpdate: async (user, options) => {
+					if (!user.changed('role_id')) return;
+
+					await syncEmployeeStatus(
+						user,
+						options.transaction
+					);
+				},
+			},
 		}
 	);
 };

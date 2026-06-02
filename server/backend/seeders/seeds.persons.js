@@ -630,5 +630,5 @@ module.exports = async function (sequelize) {
 		}
 	];
 
-	await Person.bulkCreate(persons);
+	await Person.bulkCreate(persons, { individualHooks: true });
 };

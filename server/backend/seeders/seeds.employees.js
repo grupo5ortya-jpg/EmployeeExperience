@@ -3,7 +3,7 @@ const createUsers = require('./seeds.users.js');
 const { Op } = require('sequelize');
 
 module.exports = async function (sequelize) {
-	const { Employee, Person, Role, Department } = sequelize.models;
+	const { Employee, Person, Department } = sequelize.models;
 
 	await createDepartments(sequelize);
 
@@ -47,9 +47,8 @@ module.exports = async function (sequelize) {
 			department_id: department.id,
 			position:      POSITIONS[index % POSITIONS.length],
 			hire_date:     HIRE_DATES[index % HIRE_DATES.length],
-			status:        'ACTIVE',
 		};
 	});
 
-	const createdEmployees = await Employee.bulkCreate(employeesData, { returning: true });
+	const createdEmployees = await Employee.bulkCreate(employeesData, { returning: true }, { individualHooks: true });
 };

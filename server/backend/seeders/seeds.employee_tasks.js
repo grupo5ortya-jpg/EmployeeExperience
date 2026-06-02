@@ -69,6 +69,6 @@ module.exports = async function (sequelize) {
 	push(7, 9,  'COMPLETED',   -3);
 	push(7, 10, 'IN_PROGRESS',  4);
 
-	await EmployeeTask.bulkCreate(assignments);
+	await EmployeeTask.bulkCreate(assignments, { individualHooks: true });
 	console.log(`Seeded ${assignments.length} employee_tasks`);
 };

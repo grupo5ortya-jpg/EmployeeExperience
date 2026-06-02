@@ -18,5 +18,5 @@ module.exports = async function (sequelize) {
 		{ name: 'Alumni', sub_type: 'Reencuentro' },
 	];
 
-	await QuestionType.bulkCreate(questionTypes);
+	await QuestionType.bulkCreate(questionTypes, { individualHooks: true });
 };

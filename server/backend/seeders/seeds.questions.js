@@ -158,6 +158,6 @@ module.exports = async function (sequelize) {
 		);
 
 	if (optionsData.length > 0) {
-		await QuestionOption.bulkCreate(optionsData);
+		await QuestionOption.bulkCreate(optionsData, { individualHooks: true });
 	}
 };
