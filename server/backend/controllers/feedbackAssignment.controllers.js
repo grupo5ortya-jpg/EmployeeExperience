@@ -1,4 +1,4 @@
-const { FeedbackAssignment, FeedbackGapAnalysis, Employee, Person, Department, Survey, QuestionType, Question } = require('../connection/sequelize');
+const { FeedbackAssignment, FeedbackGapAnalysis, Employee, Person, Department, Survey, QuestionType, Question, Alert } = require('../connection/sequelize');
 const { generateAssignmentsForCycle } = require('../connection/feedbackAssignmentService');
 const { analyzeGapAnalysis }          = require('../connection/geminiService');
 const { getIdealProfile }             = require('../connection/gapAnalysisConfig');
@@ -94,11 +94,54 @@ const updateAssignment = async (req, res, next) => {
 		const updated = await FeedbackAssignment.findByPk(assignment.id);
 		const [formatted] = await attachEmployees([updated]);
 		res.json(formatted);
+
+		// Fire-and-forget: check if all evaluations for this employee in this cycle are done
+		if (updates.status === 'COMPLETED') {
+			notifyIfCycleComplete(updated.cycle_id, updated.evaluated_id).catch(console.error);
+		}
 	} catch (err) {
 		console.error('[feedbackAssignment] updateAssignment:', err.message);
 		next(err);
 	}
 };
+
+async function notifyIfCycleComplete(cycleId, evaluatedId) {
+	const all = await FeedbackAssignment.findAll({
+		where: { cycle_id: cycleId, evaluated_id: evaluatedId },
+	});
+
+	if (!all.length || !all.every(a => a.status === 'COMPLETED')) return;
+
+	// Avoid duplicate alerts
+	const existing = await Alert.findOne({
+		where: { employee_id: evaluatedId, type: 'FEEDBACK_CYCLE_COMPLETED' },
+	});
+	if (existing) return;
+
+	// Fetch evaluated employee name for the message
+	const emp = await Employee.findByPk(evaluatedId, {
+		include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+	});
+	const name = emp
+		? `${emp.person?.first_name ?? ''} ${emp.person?.last_name ?? ''}`.trim()
+		: 'El empleado';
+
+	// Alert for HR — to know they can view full results and generate gap analysis
+	await Alert.create({
+		employee_id: evaluatedId,
+		type:        'FEEDBACK_CYCLE_COMPLETED',
+		message:     `Todas las evaluaciones de Feedback 360° de ${name} fueron completadas. Ya podés ver el informe y generar el análisis de brechas.`,
+		status:      'UNREAD',
+	});
+
+	// Alert for the employee — to know their evaluation is ready to view
+	await Alert.create({
+		employee_id: evaluatedId,
+		type:        'FEEDBACK_EVALUATION_READY',
+		message:     'Tu evaluación de Feedback 360° está completa. Ya podés ver tus resultados y análisis de desarrollo.',
+		status:      'UNREAD',
+	});
+}
 
 // GET /feedback-assignment/results?cycleId=xxx&evaluatedId=xxx
 const getResults = async (req, res, next) => {
