@@ -4,7 +4,6 @@ const COLUMNS = [
 	{ label: 'Vacante', vis: '' },
 	{ label: 'Área', vis: 'hidden md:table-cell' },
 	{ label: 'Skills', vis: 'hidden lg:table-cell' },
-	{ label: 'Nivel prom.', vis: 'hidden lg:table-cell' },
 	{ label: 'Estado', vis: '' },
 	{ label: '', vis: '' },
 ]
