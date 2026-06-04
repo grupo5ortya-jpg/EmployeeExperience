@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { EMPLOYEE_TASK } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	const EmployeeTask = sequelize.define('EmployeeTask',
@@ -15,9 +17,9 @@ module.exports = (sequelize) => {
 				primaryKey: true
 			},
 			status: {
-				type: DataTypes.ENUM('ENROLLED', 'IN_PROGRESS', 'SUBMITED', 'COMPLETED', 'DROPPED'),
+				type: DataTypes.ENUM(...Object.values(EMPLOYEE_TASK.STATUS)),
 				allowNull: false,
-				defaultValue: 'ENROLLED',
+				defaultValue: EMPLOYEE_TASK.STATUS_ENROLLED,
 			},
 			due_date: {
 				type: DataTypes.DATE,
@@ -37,5 +39,3 @@ module.exports = (sequelize) => {
 
 	return EmployeeTask;
 }
-
-

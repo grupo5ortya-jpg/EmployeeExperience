@@ -1,9 +1,10 @@
 
 const { DataTypes } = require('sequelize');
+const { JOB_OPENING } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
-	sequelize.define(
-		'JobOpening',
+	sequelize.define('JobOpening',
 		{
 			id: {
 				type: DataTypes.UUID,
@@ -29,8 +30,8 @@ module.exports = (sequelize) => {
 				allowNull: true,
 			},
 			status: {
-				type: DataTypes.ENUM('open', 'closed'),
-				defaultValue: 'open',
+				type: DataTypes.ENUM(...Object.values(JOB_OPENING.STATUS)),
+				defaultValue: JOB_OPENING.STATUS_OPEN,
 			},
 		},
 		{

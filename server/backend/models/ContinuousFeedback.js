@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { CONTINUOUS_FEEDBACK } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	sequelize.define('ContinuousFeedback',
@@ -25,7 +27,7 @@ module.exports = (sequelize) => {
 				allowNull: false,
 			},
 			type: {
-				type: DataTypes.ENUM('RECOGNITION', 'SUGGESTION'),
+				type: DataTypes.ENUM(...Object.values(CONTINUOUS_FEEDBACK.TYPES)),
 				allowNull: false,
 			},
 			isAnonymous: {

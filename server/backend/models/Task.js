@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { TASK } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	sequelize.define('Task',
@@ -21,9 +23,9 @@ module.exports = (sequelize) => {
 				type: DataTypes.INTEGER,
 				allowNull: true,
 				validate: {
-					min: 0,
+					min: TASK.ESTIMATED_DURATION.MIN,
 				},
-				comment: 'Estimated duration in days',
+				comment: TASK.ESTIMATED_DURATION.COMMENT,
 			}
 		},
 		{

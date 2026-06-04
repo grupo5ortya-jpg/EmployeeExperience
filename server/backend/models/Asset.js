@@ -1,4 +1,7 @@
+
 const { DataTypes } = require('sequelize');
+const { ASSET_ERR } = require('../utils/constants/messages.constants.js').ERRORS.MODEL;
+
 
 module.exports = (sequelize) => {
 	sequelize.define('Asset',
@@ -51,7 +54,7 @@ module.exports = (sequelize) => {
 
 					if (assignment) {
 						throw new Error(
-							'No se puede eliminar el activo porque está asignado a un empleado.'
+							ASSET_ERR.ASSIGNED_TO_EMPLOYEE
 						);
 					}
 				},

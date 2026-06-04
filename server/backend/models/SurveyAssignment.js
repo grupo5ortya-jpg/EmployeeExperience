@@ -1,5 +1,6 @@
 
 const { DataTypes } = require('sequelize');
+const { SURVEY_ASSIGNMENT } = require('../utils/constants/models.constants.js');
 
 module.exports = (sequelize) => {
 	const SurveyAssignment = sequelize.define('SurveyAssignment', {
@@ -22,11 +23,8 @@ module.exports = (sequelize) => {
 			type: DataTypes.DATE,
 		},
 		status: {
-			type: DataTypes.ENUM(
-				'PENDING',
-				'COMPLETED'
-			),
-			defaultValue: 'PENDING',
+			type: DataTypes.ENUM(...Object.values(SURVEY_ASSIGNMENT.STATUS)),
+			defaultValue: SURVEY_ASSIGNMENT.STATUS_PENDING,
 		},
 	}, {
 		sequelize,

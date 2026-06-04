@@ -1,4 +1,7 @@
+
 const { DataTypes } = require('sequelize');
+const { PULSE_ANALYSIS } = require('../utils/constants/models.constants.js');;
+
 
 module.exports = (sequelize) => {
 	const PulseAnalysis = sequelize.define('PulseAnalysis', {
@@ -13,11 +16,11 @@ module.exports = (sequelize) => {
 			primaryKey: true,
 		},
 		sentiment: {
-			type: DataTypes.ENUM('positive', 'neutral', 'negative'),
+			type: DataTypes.ENUM(...Object.values(PULSE_ANALYSIS.SENTIMENTS)),
 			allowNull: false,
 		},
 		risk_level: {
-			type: DataTypes.ENUM('low', 'medium', 'high'),
+			type: DataTypes.ENUM(...Object.values(PULSE_ANALYSIS.RISK_LEVELS)),
 			allowNull: false,
 		},
 		topics: {

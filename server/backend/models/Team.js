@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { TEAM_ERR } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	const validateTeamMembers = async (team, options) => {
@@ -9,11 +11,11 @@ module.exports = (sequelize) => {
 		if (!Employee || !User || !Role || !Team) return;
 
 		if (!team.leader_id || !team.collaborator_id) {
-			throw new Error('leader_id and collaborator_id are required');
+			throw new Error(TEAM_ERR.LEADER_AND_COLLABORATOR_REQUIRED);
 		}
 
 		if (team.leader_id === team.collaborator_id) {
-			throw new Error('leader_id and collaborator_id must be different');
+			throw new Error(TEAM_ERR.LEADER_AND_COLLABORATOR_MUST_BE_DIFFERENT);
 		}
 
 		const [leader, collaborator] = await Promise.all([
@@ -22,22 +24,22 @@ module.exports = (sequelize) => {
 		]);
 
 		if (!leader) {
-			throw new Error('leader_id must point to an existing employee');
+			throw new Error(TEAM_ERR.LEADER_NOT_FOUND);
 		}
 
 		if (!collaborator) {
-			throw new Error('collaborator_id must point to an existing employee');
+			throw new Error(TEAM_ERR.COLLABORATOR_NOT_FOUND);
 		}
 
 		if (team.isNewRecord || team.changed('leader_id')) {
 			const user = await User.findOne({ where: { employee_id: team.leader_id }, transaction });
 			if (!user) {
-				throw new Error('leader_id must belong to a user with role Líder');
+				throw new Error(TEAM_ERR.LEADER_MUST_HAVE_LEADER_ROLE);
 			}
 
 			const role = await Role.findByPk(user.role_id, { transaction });
 			if (!role || role.name !== 'Líder') {
-				throw new Error('leader_id must belong to a user with role Líder');
+				throw new Error(TEAM_ERR.LEADER_MUST_HAVE_LEADER_ROLE);
 			}
 		}
 
@@ -53,7 +55,7 @@ module.exports = (sequelize) => {
 			});
 
 			if (existingMembership) {
-				throw new Error('collaborator_id already belongs to another group');
+				throw new Error(TEAM_ERR.COLLABORATOR_ALREADY_ASSIGNED);
 			}
 		}
 	};
@@ -88,7 +90,7 @@ module.exports = (sequelize) => {
 			validate: {
 				differentUsers() {
 					if (this.leader_id === this.collaborator_id) {
-						throw new Error('leader_id and collaborator_id must be different');
+						throw new Error(TEAM_ERR.LEADER_AND_COLLABORATOR_MUST_BE_DIFFERENT);
 					}
 				},
 			},

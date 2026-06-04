@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { QUESTION } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	sequelize.define('Question',
@@ -18,7 +20,7 @@ module.exports = (sequelize) => {
 				allowNull: false,
 			},
 			type: {
-				type: DataTypes.ENUM('Abierta', 'Cerrada'),
+				type: DataTypes.ENUM(...Object.values(QUESTION.TYPES)),
 				allowNull: false,
 			},
 			estimated_duration: {
@@ -27,7 +29,7 @@ module.exports = (sequelize) => {
 				validate: {
 					min: 0,
 				},
-				comment: 'Estimated duration in days',
+				comment: QUESTION.ESTIMATED_DURATION.COMMENT,
 			}
 		},
 		{

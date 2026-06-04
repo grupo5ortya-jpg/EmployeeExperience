@@ -1,4 +1,7 @@
+
 const { DataTypes } = require('sequelize');
+const { ALERT } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	sequelize.define('Alert', {
@@ -20,11 +23,11 @@ module.exports = (sequelize) => {
 			allowNull: false,
 		},
 		sentiment: {
-			type: DataTypes.ENUM('positive', 'neutral', 'negative'),
+			type: DataTypes.ENUM(...Object.values(ALERT.SENTIMENTS)),
 			allowNull: true,
 		},
 		risk_level: {
-			type: DataTypes.ENUM('low', 'medium', 'high'),
+			type: DataTypes.ENUM(...Object.values(ALERT.RISK_LEVELS)),
 			allowNull: true,
 		},
 		topics: {
@@ -33,9 +36,9 @@ module.exports = (sequelize) => {
 			defaultValue: [],
 		},
 		status: {
-			type: DataTypes.ENUM('UNREAD', 'READ'),
+			type: DataTypes.ENUM(...Object.values(ALERT.STATUS)),
 			allowNull: false,
-			defaultValue: 'UNREAD',
+			defaultValue: ALERT.STATUS_UNREAD,
 		},
 	}, {
 		sequelize,

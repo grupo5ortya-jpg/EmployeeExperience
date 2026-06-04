@@ -1,9 +1,10 @@
 
 const { DataTypes } = require('sequelize');
+const { JOB_OPENING_SKILL_ERR } = require('../utils/constants/models.constants.js').ERRORS.MODEL;
+
 
 module.exports = (sequelize) => {
-	sequelize.define(
-		'JobOpeningSkill',
+	sequelize.define('JobOpeningSkill',
 		{
 			id: {
 				type: DataTypes.UUID,
@@ -36,14 +37,14 @@ module.exports = (sequelize) => {
 					if (!Skill) return;
 
 					if (!jobOpeningSkill.skill_id) {
-						throw new Error('skill_id es requerido para validar required_level');
+						throw new Error(JOB_OPENING_SKILL_ERR.SKILL_ID_REQUIRED_FOR_LEVEL_VALIDATION);
 					}
 
 					const skill = await Skill.findByPk(jobOpeningSkill.skill_id, {
 						transaction: options.transaction,
 					});
 					if (!skill) {
-						throw new Error('Skill no encontrada para skill_id proporcionado');
+						throw new Error(JOB_OPENING_SKILL_ERR.SKILL_NOT_FOUND);
 					}
 
 					const levels = Array.isArray(skill.levels) ? skill.levels : [];
@@ -54,13 +55,11 @@ module.exports = (sequelize) => {
 					const requiredLevel = Number(jobOpeningSkill.required_level);
 
 					if (!Number.isInteger(requiredLevel)) {
-						throw new Error('required_level debe ser un número entero');
+						throw new Error(JOB_OPENING_SKILL_ERR.REQUIRED_LEVEL_MUST_BE_INTEGER);
 					}
 
 					if (!validOrders.includes(requiredLevel)) {
-						throw new Error(
-							`required_level debe existir en los niveles de la skill (${skill.name}). Valores válidos: ${validOrders.join(', ')}`
-						);
+						throw new Error(JOB_OPENING_SKILL_ERR.REQUIRED_LEVEL_NOT_IN_SKILL_LEVELS);
 					}
 				},
 			},

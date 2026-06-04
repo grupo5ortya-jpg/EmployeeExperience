@@ -1,5 +1,8 @@
 
 const { DataTypes } = require('sequelize');
+const { SKILL } = require('../utils/constants/models.constants.js');
+const { SKILL_ERR } = require('../utils/constants/messages.constants.js').ERRORS.MODEL;;
+
 
 module.exports = (sequelize) => {
 	sequelize.define(
@@ -19,7 +22,7 @@ module.exports = (sequelize) => {
 				},
 			},
 			type: {
-				type: DataTypes.ENUM('hard', 'soft'),
+				type: DataTypes.ENUM(...Object.values(SKILL.TYPES)),
 				allowNull: false,
 			},
 			levels: {
@@ -29,7 +32,7 @@ module.exports = (sequelize) => {
 				validate: {
 					isValidLevels(value) {
 						if (!Array.isArray(value)) {
-							throw new Error('levels debe ser un array');
+							throw new Error(SKILL_ERR.LEVELS_MUST_BE_ARRAY);
 						}
 						value.forEach((level, index) => {
 							if (
@@ -38,7 +41,7 @@ module.exports = (sequelize) => {
 								typeof level.order !== 'number'
 							) {
 								throw new Error(
-									`Nivel inválido en posición ${index}`
+									SKILL_ERR.INVALID_LEVEL_AT_POSITION(index)
 								);
 							}
 						});

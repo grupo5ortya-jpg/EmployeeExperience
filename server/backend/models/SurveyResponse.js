@@ -2,6 +2,7 @@
 
 const { DataTypes } = require('sequelize');
 
+
 module.exports = (sequelize) => {
 	const SurveyResponse = sequelize.define('SurveyResponse', {
 		survey_assignment_id: {

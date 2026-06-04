@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { ROLE, EMPLOYEE } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 
@@ -19,10 +21,10 @@ module.exports = (sequelize) => {
 
 		if (!employee) return;
 
-		if (role.name === 'Alumni') {
+		if (ROLE.INACTIVE_ROLES.includes(role.name)) {
 			await employee.update(
 				{
-					status: 'INACTIVE',
+					status: EMPLOYEE.STATUS_INACTIVE,
 					department_id: null,
 					position: null,
 				},
@@ -31,7 +33,7 @@ module.exports = (sequelize) => {
 		} else {
 			await employee.update(
 				{
-					status: 'ACTIVE',
+					status: EMPLOYEE.STATUS_ACTIVE,
 				},
 				{ transaction }
 			);

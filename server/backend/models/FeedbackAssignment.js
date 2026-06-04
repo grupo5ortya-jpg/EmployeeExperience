@@ -1,4 +1,7 @@
+
 const { DataTypes } = require('sequelize');
+const { FEEDBACK_ASSIGNMENT } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	sequelize.define('FeedbackAssignment', {
@@ -20,13 +23,13 @@ module.exports = (sequelize) => {
 			allowNull: false,
 		},
 		type: {
-			type:      DataTypes.ENUM('SELF', 'PEER', 'LEADER', 'DIRECT_REPORT'),
+			type:      DataTypes.ENUM(...DataTypes.Utils.values(FEEDBACK_ASSIGNMENT.TYPES)),
 			allowNull: false,
 		},
 		status: {
-			type:         DataTypes.ENUM('PENDING', 'COMPLETED'),
+			type:         DataTypes.ENUM(...DataTypes.Utils.values(FEEDBACK_ASSIGNMENT.STATUS)),
 			allowNull:    false,
-			defaultValue: 'PENDING',
+			defaultValue: FEEDBACK_ASSIGNMENT.STATUS_PENDING,
 		},
 		comments: {
 			type:         DataTypes.JSONB,

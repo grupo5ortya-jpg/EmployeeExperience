@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { EMPLOYEE } =require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	const Employee = sequelize.define('Employee',
@@ -27,9 +29,9 @@ module.exports = (sequelize) => {
 				allowNull: true,
 			},
 			status: {
-				type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
+				type: DataTypes.ENUM(...Object.values(EMPLOYEE.STATUS)),
 				allowNull: false,
-				defaultValue: 'ACTIVE',
+				defaultValue: EMPLOYEE.STATUS_ACTIVE,
 			},
 			mentor_id: {
 				type: DataTypes.UUID,

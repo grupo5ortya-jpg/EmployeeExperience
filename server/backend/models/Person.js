@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { PERSON } = require('../utils/constants/models.constants.js');
+
 
 module.exports = (sequelize) => {
 	sequelize.define('Person',
@@ -24,7 +26,7 @@ module.exports = (sequelize) => {
 				},
 			},
 			document_type: {
-				type: DataTypes.ENUM('DNI', 'LC', 'LE', 'CI', 'PASAPORTE EXTRANJERO', 'OTRO'),
+				type: DataTypes.ENUM(...Object.values(PERSON.DOCUMENT_TYPES)),
 				allowNull: false,
 			},
 			document_number: {

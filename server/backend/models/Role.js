@@ -1,6 +1,7 @@
 
 const { DataTypes } = require('sequelize');
-const { MODEL_ROLE } = require('../utils/constants');
+const { ROLE } = require('../utils/constants/models.constants.js');
+const { ROLE_ERR } = require('../utils/constants/messages.constants.js').ERRORS.MODEL;
 
 
 module.exports = (sequelize) => {
@@ -18,10 +19,10 @@ module.exports = (sequelize) => {
 				validate: {
 					notEmpty: true,
 					isValidRole(value) {
-						const allRoles = [...MODEL_ROLE.ACTIVE_ROLES, ...MODEL_ROLE.INACTIVE_ROLES];
+						const allRoles = [...ROLE.ACTIVE_ROLES, ...ROLE.INACTIVE_ROLES];
 						if (!allRoles.includes(value)) {
 							throw new Error(
-								`Role must be one of: ${allRoles.join(', ')}`
+								ROLE_ERR.INVALID_ROLE(allRoles)
 							);
 						}
 					}

@@ -1,5 +1,7 @@
 
 const { DataTypes } = require('sequelize');
+const { DEPARTMENT_ERR } = require('../utils/constants/messages.constants.js').ERRORS.MODEL;
+
 
 module.exports = (sequelize) => {
 	sequelize.define('Department',
@@ -38,7 +40,7 @@ module.exports = (sequelize) => {
 
 					if (employee) {
 						throw new Error(
-							'No se puede eliminar el departamento porque tiene empleados asignados.'
+							DEPARTMENT_ERR.HAS_ASSIGNED_EMPLOYEES
 						);
 					}
 				},
