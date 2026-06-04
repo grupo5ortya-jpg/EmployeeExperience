@@ -50,8 +50,8 @@ module.exports = (sequelize) => {
 			sequelize,
 			modelName: 'Skill',
 			tableName: 'skills',
-			timestamps: true,
-			paranoid: true,
+			timestamps: false,
+			paranoid: false,
 			schema: process.env.DB_SCHEMA || 'public',
 		}
 	);

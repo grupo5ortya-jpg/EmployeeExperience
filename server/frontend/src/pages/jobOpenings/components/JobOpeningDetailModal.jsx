@@ -55,6 +55,7 @@ export default function JobOpeningDetailModal({
             payload: {
                 title: form.title,
                 description: form.description,
+                departmentId: form.departmentId,
                 skills: form.skills,
             },
         })

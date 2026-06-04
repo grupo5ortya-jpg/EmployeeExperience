@@ -33,7 +33,7 @@ export default function CreateContinuousFeedbackModal({
         e.preventDefault()
 
         // hardcode temporal hasta implementar auth
-        const emitter_id = 'HARDCODED-EMPLOYEE-ID'
+        const emitter_id = '5563dfc8-c425-4609-bdde-bf65cecf8f82'
 
         await onSubmit({
             ...form,

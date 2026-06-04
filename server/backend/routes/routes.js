@@ -1,17 +1,16 @@
 
 const { Router } = require('express');
 const router = Router();
-const question_routes = require('./routes.question.js');
-const question_type_routes = require('./routes.question_type.js');
-const department_routes = require('./routes.department.js');
-const employee_routes = require('./routes.employee.js');
-const person_routes = require('./routes.person.js');
-const role_routes = require('./routes.role.js');
-const question_option_routes = require('./routes.question_option.js');
-const employee_task_routes = require('./routes.employee_task.js');
-const task_routes = require('./routes.task.js');
-const survey_routes = require('./routes.survey.js');
+const routes_question = require('./routes.question.js');
+const routes_question_type = require('./routes.question_type.js');
+const routes_department = require('./routes.department.js');
+const routes_employee = require('./routes.employee.js');
+const routes_person = require('./routes.person.js');
+const routes_role = require('./routes.role.js');
+const routes_question_option = require('./routes.question_option.js');
+const routes_employee_task = require('./routes.employee_task.js');
 const routes_task = require('./routes.task.js');
+const routes_survey = require('./routes.survey.js');
 const routes_user = require('./routes.user.js');
 const routes_team = require('./routes.team.js');
 const routes_task_type = require('./routes.task_type.js');
@@ -22,10 +21,12 @@ const { preguntarAGemini } = require('../controllers/geminiController.js');
 const { getMentorSuggestions } = require('../controllers/mentorController.js');
 const { testGeminiConnection } = require('../connection/geminiService.js');
 const { getPendingPulseSurveys, getPulseAnalyses } = require('../controllers/pulseSurveyController.js');
-const alert_routes = require('./routes.alert.js');
-const feedback_assignment_routes = require('./routes.feedback_assignment.js');
+const routes_alert = require('./routes.alert.js');
+const routes_feedback_assignment = require('./routes.feedback_assignment.js');
 const routes_job_opening = require('./routes.jobOpening')
-const skillsRoutes = require('./routes.skill.js')
+const routes_skills = require('./routes.skill.js')
+const routes_continuous_feedback = require('./routes.continuousFeedback.js');
+
 
 // Mount task type routes
 router.use('/task-type', routes_task_type);
@@ -43,45 +44,48 @@ router.use('/survey-assignment', routes_survey_assignment);
 router.use('/user', routes_user);
 
 // Mount survey routes
-router.use('/survey', survey_routes);
+router.use('/survey', routes_survey);
 
 // Mount employee task routes
-router.use('/employee-task', employee_task_routes);
+router.use('/employee-task', routes_employee_task);
 
 // Mount task routes
-router.use('/task', task_routes);
+router.use('/task', routes_task);
 
 // Mount question option routes
-router.use('/question-option', question_option_routes);
+router.use('/question-option', routes_question_option);
 
 // Mount employee routes
-router.use('/employees', employee_routes);
+router.use('/employees', routes_employee);
 
 // Mount question routes
-router.use('/question', question_routes);
+router.use('/question', routes_question);
 
 // Mount department routes
-router.use('/department', department_routes);
+router.use('/department', routes_department);
 
 // Mount person routes
-router.use('/person', person_routes);
+router.use('/person', routes_person);
 
 // Mount question type routes
-router.use('/question-type', question_type_routes);
+router.use('/question-type', routes_question_type);
 
 // Mount role routes
-router.use('/role', role_routes);
+router.use('/role', routes_role);
 
 // Mount survey response routes
 router.use('/survey-response', routes_survey_response);
+
+// Mount continuous feedback routes
+router.use('/continuous-feedback', routes_continuous_feedback);
 
 //gemini
 router.post('/api/gemini/preguntar', preguntarAGemini);
 
 // Alerts
-router.use('/alerts', alert_routes);
+router.use('/alerts', routes_alert);
 // Feedback 360 assignments
-router.use('/feedback-assignment', feedback_assignment_routes);
+router.use('/feedback-assignment', routes_feedback_assignment);
 
 // Pulse surveys — pending by employee
 router.get('/pulse-surveys/pending', getPendingPulseSurveys);
@@ -93,7 +97,7 @@ router.post('/ai/mentor-matching', getMentorSuggestions);
 // Job openings
 router.use('/job-openings', routes_job_opening)
 // Skills
-router.use('/skills', skillsRoutes)
+router.use('/skills', routes_skills)
 
 // AI — test Gemini connection
 router.get('/ai/test', async (_req, res, next) => {
@@ -104,5 +108,6 @@ router.get('/ai/test', async (_req, res, next) => {
         next(error);
     }
 });
+
 
 module.exports = router;

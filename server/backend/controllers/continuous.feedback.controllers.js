@@ -1,3 +1,6 @@
+
+const { ContinuousFeedback, Employee, Person } = require('../connection/sequelize');
+
 const formatEmployeeMini = (employee) => {
     if (!employee) return null;
 
@@ -59,8 +62,8 @@ const createContinuousFeedback = async (req, res, next) => {
         const {
             type,
             description,
-            emitterId,
-            receiverId,
+            emitter_id,
+            receiver_id,
         } = req.body;
 
         const isAnonymous =
@@ -68,7 +71,7 @@ const createContinuousFeedback = async (req, res, next) => {
                 ? true
                 : Boolean(req.body.isAnonymous);
 
-        if (emitterId === receiverId) {
+        if (emitter_id === receiver_id) {
             return res.status(400).json({
                 status: 'error',
                 message: 'No podés enviarte feedback a vos mismo.',
@@ -78,15 +81,15 @@ const createContinuousFeedback = async (req, res, next) => {
         const feedback = await ContinuousFeedback.create({
             type,
             description,
-            emitter_id: emitterId,
-            receiver_id: receiverId,
+            emitter_id,
+            receiver_id,
             is_anonymous: Boolean(isAnonymous),
         });
 
         const full = await ContinuousFeedback.findByPk(feedback.id, {
             include: CONTINUOUS_FEEDBACK_INCLUDE,
         });
-
+console.log('Feedback creado:', full.toJSON());
         res.status(201).json(formatContinuousFeedback(full));
 
     } catch (err) {
