@@ -57,16 +57,6 @@ export default function JobOpeningRow({ job, striped, onSelect }) {
                 </div>
             </td>
 
-            <td className="hidden lg:table-cell px-4 py-3">
-                {avg && (
-                    <span
-                        className={`text-xs px-2 py-1 rounded-full ${getSkillLevelStyle(avg)}`}
-                    >
-                        {getSkillLevelLabel(avg)}
-                    </span>
-                )}
-            </td>
-
             <td className="px-4 py-3">
                 <span className={`text-xs px-2 py-1 rounded-full ${STATUS_STYLE[job.status]
                     }`}>
