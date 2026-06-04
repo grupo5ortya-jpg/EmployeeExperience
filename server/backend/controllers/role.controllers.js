@@ -1,7 +1,7 @@
 
 const { Role } = require('../connection/sequelize');
 const { Op } = require('sequelize');
-const { MODEL_ROLE } = require('../utils/constants');
+const { ROLE } = require('../utils/constants/models.constants.js');
 
 
 function core_ctrl_format_outcomming_role(role) {
@@ -24,7 +24,7 @@ const core_ctrl_get_roles_all = async (req, res, next) => {
 
 const core_ctrl_get_active_roles = async (req, res, next) => {
 	try {
-		const roles = await Role.findAll({ where: { name: { [Op.in]: MODEL_ROLE.ACTIVE_ROLES } } });
+		const roles = await Role.findAll({ where: { name: { [Op.in]: ROLE.ACTIVE_ROLES } } });
 		res.json(roles.map(core_ctrl_format_outcomming_role));
 	} catch (err) {
 		next(err);

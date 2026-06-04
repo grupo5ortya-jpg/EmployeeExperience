@@ -15,7 +15,7 @@ module.exports = async function (sequelize) {
 	const today = new Date();
 	const addDays = (d) => new Date(today.getTime() + d * 24 * 60 * 60 * 1000);
 
-	const STATUSES = ['ENROLLED', 'IN_PROGRESS', 'SUBMITED', 'COMPLETED'];
+	const STATUSES = ['ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED'];
 
 	// Asignamos las primeras 6 tareas (onboarding) a los primeros 5 empleados
 	// y 2 tareas adicionales a los empleados 6-8 (aprendizaje/admin)
@@ -53,7 +53,7 @@ module.exports = async function (sequelize) {
 	push(2, 3, 'ENROLLED',     6);
 	push(2, 5, 'ENROLLED',     8);
 
-	push(3, 0, 'SUBMITED',    -2);
+	push(3, 0, 'SUBMITTED',    -2);
 	push(3, 2, 'IN_PROGRESS',  3);
 	push(3, 4, 'ENROLLED',     7);
 

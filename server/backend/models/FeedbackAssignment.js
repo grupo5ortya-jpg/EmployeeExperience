@@ -23,11 +23,11 @@ module.exports = (sequelize) => {
 			allowNull: false,
 		},
 		type: {
-			type:      DataTypes.ENUM(...DataTypes.Utils.values(FEEDBACK_ASSIGNMENT.TYPES)),
+			type:      DataTypes.ENUM(...Object.values(FEEDBACK_ASSIGNMENT.TYPES)),
 			allowNull: false,
 		},
 		status: {
-			type:         DataTypes.ENUM(...DataTypes.Utils.values(FEEDBACK_ASSIGNMENT.STATUS)),
+			type:         DataTypes.ENUM(...Object.values(FEEDBACK_ASSIGNMENT.STATUS)),
 			allowNull:    false,
 			defaultValue: FEEDBACK_ASSIGNMENT.STATUS_PENDING,
 		},
