@@ -1,15 +1,8 @@
-
-import { configureStore, createSlice } from "@reduxjs/toolkit";
-
-// Reducer temporal para evitar errores
-const dummySlice = createSlice({
-	name: "dummy",
-	initialState: {},
-	reducers: {}
-});
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from './authSlice';
 
 export const store = configureStore({
-	reducer: {
-		dummy: dummySlice.reducer,
-	},
+    reducer: {
+        auth: authReducer,
+    },
 });

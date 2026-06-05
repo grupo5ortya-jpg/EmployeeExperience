@@ -1,5 +1,6 @@
 
 const { DataTypes } = require('sequelize');
+const bcrypt = require('bcryptjs');
 const { ROLE, EMPLOYEE } = require('../utils/constants/models.constants.js');
 
 
@@ -82,19 +83,22 @@ module.exports = (sequelize) => {
 			timestamps: true,
 			schema: process.env.DB_SCHEMA || 'public',
 			hooks: {
+				beforeCreate: async (user) => {
+					if (user.passwordHash) {
+						user.passwordHash = await bcrypt.hash(user.passwordHash, 10);
+					}
+				},
+				beforeUpdate: async (user) => {
+					if (user.changed('passwordHash') && user.passwordHash) {
+						user.passwordHash = await bcrypt.hash(user.passwordHash, 10);
+					}
+				},
 				afterCreate: async (user, options) => {
-					await syncEmployeeStatus(
-						user,
-						options.transaction
-					);
+					await syncEmployeeStatus(user, options.transaction);
 				},
 				afterUpdate: async (user, options) => {
 					if (!user.changed('role_id')) return;
-
-					await syncEmployeeStatus(
-						user,
-						options.transaction
-					);
+					await syncEmployeeStatus(user, options.transaction);
 				},
 			},
 		}

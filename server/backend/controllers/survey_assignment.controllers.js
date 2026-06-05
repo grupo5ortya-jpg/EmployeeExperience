@@ -1,4 +1,4 @@
-const { SurveyAssignment, Survey, Employee, Person } = require('../connection/sequelize');
+const { SurveyAssignment, Survey, Employee, Person, Alert } = require('../connection/sequelize');
 const { handleCompletePulseSurvey } = require('../connection/pulseSurveyService');
 
 const ASSIGNMENT_INCLUDE = [
@@ -90,9 +90,14 @@ const updateAssignment = async (req, res, next) => {
 
 		await assignment.update(updates);
 
-		// Fire-and-forget: full AI analysis once all responses are in
 		if (status === 'COMPLETED') {
+			// Fire-and-forget: AI analysis
 			handleCompletePulseSurvey(surveyId, employeeId).catch(console.error);
+			// Mark PULSE_SURVEY_DUE alert as read so it disappears from the employee's alerts
+			Alert.update(
+				{ status: 'READ' },
+				{ where: { employee_id: employeeId, type: 'PULSE_SURVEY_DUE', status: 'UNREAD' } },
+			).catch(console.error);
 		}
 
 		const updated = await SurveyAssignment.findOne({

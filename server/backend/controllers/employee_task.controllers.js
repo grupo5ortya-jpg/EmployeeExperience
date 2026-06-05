@@ -1,4 +1,11 @@
-const { EmployeeTask, Employee, Task, Person } = require('../connection/sequelize');
+const { EmployeeTask, Employee, Task, TaskType, Person, Alert } = require('../connection/sequelize');
+
+const TASK_INCLUDE = {
+	model:      Task,
+	as:         'task',
+	attributes: ['id', 'name', 'estimated_duration'],
+	include:    [{ model: TaskType, as: 'taskType', attributes: ['id', 'name', 'sub_type'] }],
+};
 
 const EMPLOYEE_TASK_INCLUDE = [
 	{
@@ -7,7 +14,7 @@ const EMPLOYEE_TASK_INCLUDE = [
 		attributes: ['id', 'position', 'status'],
 		include:    [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
 	},
-	{ model: Task, as: 'task', attributes: ['id', 'name', 'estimated_duration'] },
+	TASK_INCLUDE,
 ];
 
 function formatEmployeeTask(et) {
@@ -27,15 +34,48 @@ function formatEmployeeTask(et) {
 				lastName:  et.employee.person?.last_name  ?? null,
 			}
 			: null,
-		task: et.task ?? null,
+		task: et.task
+			? {
+				id:                et.task.id,
+				name:              et.task.name,
+				estimatedDuration: et.task.estimated_duration ?? null,
+				taskType:          et.task.taskType ?? null,
+			}
+			: null,
 	};
+}
+
+// Fire-and-forget: alert HR when employee completes all tasks
+async function checkOnboardingCompletion(employeeId) {
+	const allTasks = await EmployeeTask.findAll({ where: { employee_id: employeeId } });
+	if (!allTasks.length || !allTasks.every((t) => t.status === 'COMPLETED')) return;
+
+	const existing = await Alert.findOne({
+		where: { employee_id: employeeId, type: 'ONBOARDING_COMPLETED' },
+	});
+	if (existing) return;
+
+	const emp = await Employee.findByPk(employeeId, {
+		include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+	});
+	const name = emp
+		? `${emp.person?.first_name ?? ''} ${emp.person?.last_name ?? ''}`.trim()
+		: 'El empleado';
+
+	await Alert.create({
+		employee_id: employeeId,
+		type:        'ONBOARDING_COMPLETED',
+		message:     `${name} completó todas las tareas de onboarding asignadas.`,
+		status:      'UNREAD',
+	});
 }
 
 const getAllEmployeeTasks = async (req, res, next) => {
 	try {
 		const where = {};
-		if (req.query.taskId) where.task_id = req.query.taskId;
-		const records = await EmployeeTask.findAll({ where, include: EMPLOYEE_TASK_INCLUDE });
+		if (req.query.taskId)     where.task_id     = req.query.taskId;
+		if (req.query.employeeId) where.employee_id = req.query.employeeId;
+		const records = await EmployeeTask.findAll({ where, include: EMPLOYEE_TASK_INCLUDE, subQuery: false });
 		res.json(records.map(formatEmployeeTask));
 	} catch (err) {
 		next(err);
@@ -62,7 +102,7 @@ const createEmployeeTask = async (req, res, next) => {
 		const record = await EmployeeTask.create({
 			employee_id: employeeId,
 			task_id:     taskId,
-			status:      status   || 'ENROLLED',
+			status:      status || 'ENROLLED',
 			due_date:    dueDate,
 		});
 		const full = await EmployeeTask.findOne({
@@ -93,6 +133,28 @@ const updateEmployeeTask = async (req, res, next) => {
 			where:   { employee_id: employeeId, task_id: taskId },
 			include: EMPLOYEE_TASK_INCLUDE,
 		});
+
+		if (status === 'SUBMITTED') {
+			// Alert HR that employee submitted a task for review
+			const emp      = updated.employee;
+			const taskName = updated.task?.name ?? 'una tarea';
+			const name     = emp
+				? `${emp.person?.first_name ?? ''} ${emp.person?.last_name ?? ''}`.trim()
+				: 'Un empleado';
+
+			Alert.create({
+				employee_id: employeeId,
+				type:        'ONBOARDING_TASK_SUBMITTED',
+				message:     `${name} marcó "${taskName}" como completada. Pendiente de aprobación.`,
+				status:      'UNREAD',
+			}).catch(console.error);
+		}
+
+		// Check if all tasks completed → alert HR
+		if (status === 'COMPLETED') {
+			checkOnboardingCompletion(employeeId).catch(console.error);
+		}
+
 		res.json(formatEmployeeTask(updated));
 	} catch (err) {
 		next(err);

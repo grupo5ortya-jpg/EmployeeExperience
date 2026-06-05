@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState }        from 'react'
+import { useSelector }     from 'react-redux'
 import { X } from 'lucide-react'
 
 const inputCls = `w-full rounded-lg border border-brand-light px-3.5 py-2.5 text-sm
@@ -11,11 +12,13 @@ export default function CreateContinuousFeedbackModal({
     employees,
     onSubmit,
 }) {
+    const { user } = useSelector((s) => s.auth)
+
     const [form, setForm] = useState({
-        receiver_id: '',
+        receiverId:  '',
         description: '',
-        type: 'RECOGNITION',
-        is_anonymous: false,
+        type:        'RECOGNITION',
+        isAnonymous: false,
     })
 
     if (!isOpen) return null
@@ -31,15 +34,10 @@ export default function CreateContinuousFeedbackModal({
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-
-        // hardcode temporal hasta implementar auth
-        const emitter_id = '5563dfc8-c425-4609-bdde-bf65cecf8f82'
-
         await onSubmit({
             ...form,
-            emitter_id,
+            emitterId: user?.employeeId ?? '',
         })
-
         onClose()
     }
 
@@ -101,8 +99,8 @@ export default function CreateContinuousFeedbackModal({
                         </label>
 
                         <select
-                            name="receiver_id"
-                            value={form.receiver_id}
+                            name="receiverId"
+                            value={form.receiverId}
                             onChange={handleChange}
                             className={inputCls}
                             required
@@ -139,8 +137,8 @@ export default function CreateContinuousFeedbackModal({
                     <label className="flex items-center gap-2 text-sm text-slate-600">
                         <input
                             type="checkbox"
-                            name="is_anonymous"
-                            checked={form.is_anonymous}
+                            name="isAnonymous"
+                            checked={form.isAnonymous}
                             onChange={handleChange}
                         />
 

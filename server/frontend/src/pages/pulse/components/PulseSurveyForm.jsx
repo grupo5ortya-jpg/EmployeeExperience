@@ -125,6 +125,8 @@ export default function PulseSurveyForm({ assignment, onClose, onCompleted }) {
 
       // Invalidate so the card disappears from the list
       await queryClient.invalidateQueries({ queryKey: ['pending-pulse-surveys', employeeId] })
+      queryClient.invalidateQueries({ queryKey: ['alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['alerts-unread-count'] })
 
       setDone(true)
     } catch (err) {

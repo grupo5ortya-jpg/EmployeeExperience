@@ -1,5 +1,5 @@
 import { useState, useMemo }      from 'react'
-import { useSearchParams, Link }  from 'react-router-dom'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { CheckCircle2, ArrowLeft } from 'lucide-react'
 
 import { useSurveyById }           from '../../hooks/useSurveyById'
@@ -39,9 +39,10 @@ function ScaleInput({ questionId, value, onChange }) {
 /* ── Página ──────────────────────────────────────────────────── */
 export default function ResponseForm360() {
     const [searchParams]  = useSearchParams()
+    const navigate        = useNavigate()
     const surveyId        = searchParams.get('surveyId')
     const employeeId      = searchParams.get('employeeId')
-    const assignmentId    = searchParams.get('assignmentId')  // FeedbackAssignment id
+    const assignmentId    = searchParams.get('assignmentId')
 
     const [answers,   setAnswers]   = useState({})   // { [questionId]: score (1-5) }
     const [comments,  setComments]  = useState({})   // { [competencyId]: string }
@@ -89,12 +90,18 @@ export default function ResponseForm360() {
                 await completeAssignment({ surveyId, employeeId })
             }
             setDone(true)
-        } catch {
-            setError('Hubo un error al enviar. Verificá tu conexión e intentá de nuevo.')
+            if (assignmentId) navigate('/myevaluations', { replace: true })
+        } catch (err) {
+            const msg = err?.response?.data?.error ?? err?.message ?? 'Error desconocido'
+            setError(`Error al enviar: ${msg}`)
+            console.error('[ResponseForm360] submit error:', err?.response?.data ?? err)
         } finally {
             setSubmitting(false)
         }
     }
+
+    const backTo    = assignmentId ? '/myevaluations' : '/feedbackhome'
+    const backLabel = assignmentId ? 'Volver a mis evaluaciones' : 'Volver a ciclos'
 
     /* ── Success state ───────────────────────────────────────── */
     if (done) {
@@ -111,10 +118,10 @@ export default function ResponseForm360() {
                         </p>
                     </div>
                     <Link
-                        to="/feedbackhome"
+                        to={backTo}
                         className="text-xs font-semibold text-brand hover:text-brand-hover transition-colors"
                     >
-                        ← Volver a ciclos
+                        ← {backLabel}
                     </Link>
                 </div>
             </main>
@@ -149,12 +156,12 @@ export default function ResponseForm360() {
             {/* Header */}
             <div>
                 <Link
-                    to="/feedbackhome"
+                    to={backTo}
                     className="flex items-center gap-1.5 text-xs font-medium text-brand
                                hover:text-brand-hover transition-colors w-fit mb-3"
                 >
                     <ArrowLeft size={13} />
-                    Volver a ciclos
+                    {backLabel}
                 </Link>
                 <div className="border-l-4 border-brand pl-4">
                     <h1 className="text-lg font-bold text-slate-800">{survey.name}</h1>

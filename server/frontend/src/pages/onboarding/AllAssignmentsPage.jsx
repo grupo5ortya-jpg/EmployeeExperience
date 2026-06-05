@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Search, ChevronDown, ChevronRight, CheckCircle2, Circle, Clock } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAllEmployeeTasks } from '../../hooks/useAllEmployeeTasks'
 import { useEmployees }        from '../../hooks/useEmployees'
+import { updateTaskStatus }    from '../../services/employeeTaskService'
 import EmployeeAvatar from '../employeeList/components/EmployeeAvatar'
 
 /* ─── Constantes ─────────────────────────────────────────── */
@@ -10,6 +12,7 @@ const STATUS_LABEL = {
     ENROLLED:    'Inscripto',
     IN_PROGRESS: 'En progreso',
     SUBMITED:    'Entregado',
+    SUBMITTED:   'Entregado',
     COMPLETED:   'Completado',
     DROPPED:     'Abandonado',
 }
@@ -17,6 +20,7 @@ const STATUS_STYLE = {
     ENROLLED:    'bg-sky-100 text-sky-600',
     IN_PROGRESS: 'bg-amber-100 text-amber-600',
     SUBMITED:    'bg-violet-100 text-violet-600',
+    SUBMITTED:   'bg-violet-100 text-violet-600',
     COMPLETED:   'bg-green-100 text-green-600',
     DROPPED:     'bg-slate-100 text-slate-500',
 }
@@ -49,18 +53,33 @@ function SkeletonRow() {
 /* ─── Página ─────────────────────────────────────────────── */
 export default function AllAssignmentsPage() {
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
+    const prefilterEmployeeId = searchParams.get('employeeId')
 
     const { data: assignments = [], isLoading: loadingTasks, isFetching: fetchingTasks, isError: errorTasks     } = useAllEmployeeTasks()
     const { data: employees  = [], isLoading: loadingEmployees,                          isError: errorEmployees } = useEmployees()
 
-    // isFetching cubre el refetch en background (tras invalidateQueries) — sin él,
-    // React Query muestra datos stale mientras refetchea y el usuario no ve la nueva asignación
-    // hasta que hace alguna interacción que dispara un re-render post-fetch.
     const isLoading = loadingTasks || fetchingTasks || loadingEmployees
     const isError   = errorTasks   || errorEmployees
 
     const [search,       setSearch]       = useState('')
     const [filterStatus, setFilterStatus] = useState('Todos')
+    const [expanded, setExpanded] = useState(
+        () => prefilterEmployeeId ? new Set([prefilterEmployeeId]) : new Set()
+    )
+
+    const toggleExpanded = (empId) =>
+        setExpanded((prev) => {
+            const next = new Set(prev)
+            next.has(empId) ? next.delete(empId) : next.add(empId)
+            return next
+        })
+
+    const qc = useQueryClient()
+    const { mutate: approve, isPending: approving } = useMutation({
+        mutationFn: ({ employeeId, taskId }) => updateTaskStatus(employeeId, taskId, 'COMPLETED'),
+        onSuccess:  () => qc.invalidateQueries({ queryKey: ['employee-tasks', 'all'] }),
+    })
 
     const statusOptions = ['Todos', ...Object.keys(STATUS_LABEL)]
 
@@ -100,26 +119,39 @@ export default function AllAssignmentsPage() {
         const q = search.toLowerCase()
 
         return allRows.filter((row) => {
+            // If navigated from an alert, pre-filter to that employee only
+            if (prefilterEmployeeId && row.employee?.id !== prefilterEmployeeId) return false
+
             const matchSearch =
                 !search ||
                 `${row.employee?.firstName ?? ''} ${row.employee?.lastName ?? ''}`.toLowerCase().includes(q) ||
                 row.task?.name?.toLowerCase().includes(q) ||
                 row.employee?.position?.toLowerCase().includes(q)
 
-            // Filas sin asignación solo aparecen cuando el filtro es "Todos"
             const matchStatus =
                 filterStatus === 'Todos' ||
                 (!row._unassigned && row.status === filterStatus)
 
             return matchSearch && matchStatus
         })
-    }, [allRows, search, filterStatus])
+    }, [allRows, search, filterStatus, prefilterEmployeeId])
+
+    // Group filtered rows by employee
+    const grouped = useMemo(() => {
+        const map = {}
+        filtered.forEach((row) => {
+            const key = row.employeeId
+            if (!map[key]) map[key] = { employee: row.employee, tasks: [] }
+            if (!row._unassigned) map[key].tasks.push(row)
+        })
+        return Object.values(map)
+    }, [filtered])
 
     const totalAssigned   = assignments.length
     const totalUnassigned = employees.filter((e) => !isAssigned(e.id, assignments)).length
 
     return (
-        <main className="flex-1 min-h-0 p-4 lg:p-6 flex flex-col gap-5">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 flex flex-col gap-5">
 
             {/* Back */}
             <button
@@ -169,109 +201,123 @@ export default function AllAssignmentsPage() {
                 </select>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col">
-                <div className="overflow-auto flex-1 min-h-0">
-                    <table className="w-full text-sm">
-                        <thead className="sticky top-0 z-10">
-                            <tr className="bg-navy">
-                                {COLUMNS.map((col) => (
-                                    <th key={col} className="text-left text-xs font-semibold text-sky-200 px-4 py-3 whitespace-nowrap">
-                                        {col}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoading ? (
-                                Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-                            ) : isError ? (
-                                <tr>
-                                    <td colSpan={COLUMNS.length} className="text-center py-10 text-sm text-red-400 bg-brand-pale">
-                                        Error al cargar los datos. Intentá de nuevo.
-                                    </td>
-                                </tr>
-                            ) : filtered.length === 0 ? (
-                                <tr>
-                                    <td colSpan={COLUMNS.length} className="text-center py-10 text-sm text-slate-400 bg-brand-pale">
-                                        {allRows.length === 0
-                                            ? 'No hay empleados registrados.'
-                                            : 'No se encontraron resultados para los filtros aplicados.'}
-                                    </td>
-                                </tr>
-                            ) : (
-                                filtered.map((row, i) => (
-                                    <tr
-                                        key={row._unassigned
-                                            ? `unassigned-${row.employeeId}`
-                                            : `${row.employeeId}-${row.taskId}`}
-                                        onClick={() => !row._unassigned && navigate(`/onboarding-template/${row.taskId}`)}
-                                        className={`border-b border-brand-light transition-colors
-                                            ${row._unassigned
-                                                ? 'bg-white opacity-60'
-                                                : `cursor-pointer hover:bg-brand-light/70 ${i % 2 === 0 ? 'bg-white' : 'bg-brand-pale/30'}`
-                                            }`}
-                                    >
-                                        {/* Empleado */}
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2.5">
-                                                <EmployeeAvatar
-                                                    firstName={row.employee?.firstName ?? ''}
-                                                    lastName={row.employee?.lastName ?? ''}
-                                                    size="sm"
-                                                />
-                                                <span className="font-semibold text-slate-700 whitespace-nowrap">
-                                                    {row.employee?.firstName} {row.employee?.lastName}
+            {/* Accordion list */}
+            {isLoading && (
+                <div className="flex flex-col gap-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="h-14 rounded-xl bg-slate-100 animate-pulse" />
+                    ))}
+                </div>
+            )}
+
+            {isError && (
+                <p className="text-sm text-red-400 text-center py-10">Error al cargar los datos.</p>
+            )}
+
+            {!isLoading && !isError && grouped.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-10">
+                    {allRows.length === 0 ? 'No hay empleados registrados.' : 'Sin resultados para los filtros aplicados.'}
+                </p>
+            )}
+
+            {!isLoading && !isError && grouped.length > 0 && (
+                <div className="flex flex-col gap-3">
+                    {grouped.map(({ employee, tasks }) => {
+                        const empId   = employee?.id
+                        const isOpen  = expanded.has(empId)
+                        const done    = tasks.filter((t) => t.status === 'COMPLETED').length
+                        const total   = tasks.length
+                        const allDone = total > 0 && done === total
+
+                        return (
+                            <div key={empId}
+                                className={`bg-white rounded-xl border shadow-sm overflow-hidden
+                                    ${allDone ? 'border-emerald-200' : 'border-brand-light'}`}>
+
+                                {/* Employee header — click to expand */}
+                                <button
+                                    type="button"
+                                    onClick={() => toggleExpanded(empId)}
+                                    className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors
+                                        hover:bg-brand-pale/40
+                                        ${allDone ? 'bg-emerald-50/50' : 'bg-white'}`}
+                                >
+                                    <EmployeeAvatar
+                                        firstName={employee?.firstName ?? ''}
+                                        lastName={employee?.lastName  ?? ''}
+                                        size="sm"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-slate-800 truncate">
+                                            {employee?.firstName} {employee?.lastName}
+                                        </p>
+                                        {employee?.position && (
+                                            <p className="text-xs text-slate-400">{employee.position}</p>
+                                        )}
+                                    </div>
+                                    {total === 0 ? (
+                                        <span className="text-xs text-slate-400 italic shrink-0">Sin tareas</span>
+                                    ) : (
+                                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full shrink-0
+                                            ${allDone ? 'bg-emerald-100 text-emerald-600' : 'bg-brand-pale text-brand'}`}>
+                                            {done}/{total}
+                                        </span>
+                                    )}
+                                    {total > 0 && (
+                                        isOpen
+                                            ? <ChevronDown size={16} className="text-slate-400 shrink-0" />
+                                            : <ChevronRight size={16} className="text-slate-400 shrink-0" />
+                                    )}
+                                </button>
+
+                                {/* Tasks — expanded */}
+                                {isOpen && tasks.length > 0 && (
+                                    <div className="border-t border-brand-light divide-y divide-brand-light">
+                                        {tasks.map((row) => (
+                                            <div key={row.taskId}
+                                                className="flex items-center gap-3 px-5 py-3">
+                                                {row.status === 'COMPLETED'
+                                                    ? <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
+                                                    : <Circle      size={15} className="text-slate-300 shrink-0" />
+                                                }
+                                                <span className={`flex-1 text-sm truncate
+                                                    ${row.status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                                                    {row.task?.name ?? '—'}
                                                 </span>
-                                            </div>
-                                        </td>
-
-                                        {/* Posición */}
-                                        <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                                            {row.employee?.position ?? '—'}
-                                        </td>
-
-                                        {/* Tarea */}
-                                        <td className="px-4 py-3">
-                                            {row._unassigned ? (
-                                                <span className="text-xs text-slate-400 italic">Sin tareas asignadas</span>
-                                            ) : (
-                                                <p className="text-slate-700 font-medium">{row.task?.name ?? '—'}</p>
-                                            )}
-                                        </td>
-
-                                        {/* Estado */}
-                                        <td className="px-4 py-3">
-                                            {row._unassigned || !row.status ? (
-                                                <span className="text-xs text-slate-400">—</span>
-                                            ) : (
-                                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap
+                                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0
                                                     ${STATUS_STYLE[row.status] ?? 'bg-slate-100 text-slate-500'}`}>
                                                     {STATUS_LABEL[row.status] ?? row.status}
                                                 </span>
-                                            )}
-                                        </td>
+                                                {row.dueDate && (
+                                                    <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
+                                                        <Clock size={11} />
+                                                        {formatDate(row.dueDate)}
+                                                    </span>
+                                                )}
+                                                {(row.status === 'SUBMITED' || row.status === 'SUBMITTED') && (
+                                                    <button
+                                                        onClick={() => approve({ employeeId: row.employeeId, taskId: row.taskId })}
+                                                        disabled={approving}
+                                                        className="text-xs font-semibold text-white bg-emerald-500
+                                                                   hover:bg-emerald-600 px-2.5 py-1 rounded-lg
+                                                                   transition-colors disabled:opacity-50 shrink-0"
+                                                    >
+                                                        Aprobar
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
 
-                                        {/* Vencimiento */}
-                                        <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                                            {formatDate(row.dueDate)}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Footer count */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-brand-light bg-brand-pale/50">
-                    <p className="text-xs text-brand-hover font-medium">
-                        {isLoading
-                            ? 'Cargando...'
-                            : `Mostrando ${filtered.length} de ${employees.length} empleados · ${totalAssigned} asignaciones · ${totalUnassigned} sin tareas`}
+                    <p className="text-xs text-slate-400 text-center">
+                        {grouped.length} empleado{grouped.length !== 1 ? 's' : ''} · {totalAssigned} asignaciones
                     </p>
                 </div>
-            </div>
+            )}
 
         </main>
     )

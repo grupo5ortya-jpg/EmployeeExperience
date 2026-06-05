@@ -49,6 +49,10 @@ export default function EmployeeList() {
   const handleSave = async (data) => {
     const created = await createEmployee(data)
     await queryClient.invalidateQueries({ queryKey: ['employees'] })
+    queryClient.invalidateQueries({ queryKey: ['employee-tasks', 'all'] })
+    if (created?.id) {
+      queryClient.invalidateQueries({ queryKey: ['my-tasks', created.id] })
+    }
     return created
   }
 

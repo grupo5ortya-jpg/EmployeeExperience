@@ -23,6 +23,13 @@ export const completeAssignment = ({ surveyId, employeeId }) =>
 export const getFeedbackAssignments = (cycleId) =>
     apiClient.get('/feedback-assignment', { params: { cycleId } }).then((r) => r.data);
 
+export const getMyFeedbackAssignments = (evaluatorId) =>
+    apiClient.get('/feedback-assignment', { params: { evaluatorId } }).then((r) => r.data);
+
+export const getMyResultCycles = (evaluatedId) =>
+    apiClient.get('/feedback-assignment', { params: { evaluatedId, status: 'COMPLETED' } })
+        .then((r) => r.data);
+
 export const completeFeedbackAssignment = (assignmentId, comments = {}, scores = {}) =>
     apiClient.patch(`/feedback-assignment/${assignmentId}`, {
         status: 'COMPLETED',

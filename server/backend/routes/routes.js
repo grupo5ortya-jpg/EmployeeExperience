@@ -1,6 +1,12 @@
 
-const { Router } = require('express');
-const router = Router();
+const { Router }            = require('express');
+const router                = Router();
+const routes_auth           = require('./routes.auth.js');
+const { authenticateToken } = require('../middleware/authenticateToken');
+// TODO: eliminar este import cuando se quite el endpoint de admin/cron (solo para pruebas)
+const { assignDuePulseSurveys } = require('../connection/pulseCronJob.js');
+// TODO: eliminar — solo para pruebas de desarrollo
+const { checkOverdueTasks }     = require('../connection/onboardingCronJob.js');
 const routes_question = require('./routes.question.js');
 const routes_question_type = require('./routes.question_type.js');
 const routes_department = require('./routes.department.js');
@@ -27,6 +33,12 @@ const routes_job_opening = require('./routes.jobOpening')
 const routes_skills = require('./routes.skill.js')
 const routes_continuous_feedback = require('./routes.continuousFeedback.js');
 
+
+// Auth — public, must be first
+router.use('/auth', routes_auth);
+
+// All routes below require a valid JWT cookie
+router.use(authenticateToken);
 
 // Mount task type routes
 router.use('/task-type', routes_task_type);
@@ -98,6 +110,23 @@ router.post('/ai/mentor-matching', getMentorSuggestions);
 router.use('/job-openings', routes_job_opening)
 // Skills
 router.use('/skills', routes_skills)
+
+// TODO: eliminar estos endpoints — solo para pruebas de desarrollo
+router.post('/admin/cron/onboarding-run', async (_req, res, next) => {
+    try {
+        await checkOverdueTasks();
+        res.json({ ok: true, message: 'Onboarding cron ejecutado manualmente.' });
+    } catch (err) { next(err); }
+});
+
+router.post('/admin/cron/pulse-run', async (_req, res, next) => {
+    try {
+        await assignDuePulseSurveys();
+        res.json({ ok: true, message: 'Pulse cron ejecutado manualmente.' });
+    } catch (err) {
+        next(err);
+    }
+});
 
 // AI — test Gemini connection
 router.get('/ai/test', async (_req, res, next) => {

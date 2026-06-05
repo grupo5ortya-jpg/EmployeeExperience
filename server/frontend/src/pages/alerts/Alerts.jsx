@@ -19,9 +19,9 @@ export default function Alerts() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="border-l-4 border-brand pl-4">
-          <h1 className="text-lg lg:text-xl font-bold text-slate-800">Alertas de onboarding</h1>
+          <h1 className="text-lg lg:text-xl font-bold text-slate-800">Alertas</h1>
           <p className="text-xs lg:text-sm text-slate-400 mt-0.5">
-            Señales de riesgo detectadas en encuestas de pulso
+            Notificaciones del sistema
           </p>
         </div>
       </div>

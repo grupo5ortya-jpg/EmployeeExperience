@@ -10,24 +10,17 @@ const { errorHandler } = require('./middlewares/errorHandler.js')
 const server = express();
 server.name = PROJECT_NAME;
 
-server.use(cors());
+const { FRONTEND_URL } = process.env;
+server.use(cors({
+	origin:      FRONTEND_URL || 'http://localhost:5173',
+	credentials: true,
+	methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+	allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept'],
+}));
 server.use(express.json({ limit: '50mb' }));
 server.use(express.urlencoded({ extended: true, limit: '50mb' }));
 server.use(cookieParser());
 server.use(morgan('dev'));
-server.use((req, res, next) => {
-	res.header('Access-Control-Allow-Origin', ALLOWED_DOMAINS); // update to match the domain you will make the request from
-	res.header('Access-Control-Allow-Credentials', 'true');
-	// eslint-disable-next-line max-len
-	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-	res.header('Access-Control-Allow-Methods', ALLOWED_METHODS);
-	// res.cookie('token', jwt, {
-	// 	httpOnly: true,
-	// 	secure: true,       // obligatorio en HTTPS
-	// 	sameSite: 'None'    // necesario si el frontend está en otro dominio
-	// });
-	next();
-});
 
 server.use('/', routes);
 server.use(notFound);

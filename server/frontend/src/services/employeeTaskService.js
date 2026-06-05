@@ -1,16 +1,19 @@
 import apiClient from './apiClient';
 
-export const getAllEmployeeTasks = async () => {
-    const response = await apiClient.get('/employee-task');
-    return response.data;
-};
+export const getAllEmployeeTasks = () =>
+    apiClient.get('/employee-task').then((r) => r.data);
 
-export const getEmployeeTasksByTaskId = async (taskId) => {
-    const response = await apiClient.get('/employee-task', { params: { taskId } });
-    return response.data;
-};
+export const getEmployeeTasksByTaskId = (taskId) =>
+    apiClient.get('/employee-task', { params: { taskId } }).then((r) => r.data);
 
-export const createEmployeeTask = async (data) => {
-    const response = await apiClient.post('/employee-task', data);
-    return response.data;
-};
+export const getMyTasks = (employeeId) =>
+    apiClient.get('/employee-task', { params: { employeeId } }).then((r) => r.data);
+
+export const createEmployeeTask = (data) =>
+    apiClient.post('/employee-task', data).then((r) => r.data);
+
+export const updateTaskStatus = (employeeId, taskId, status) =>
+    apiClient.patch(`/employee-task/${employeeId}/${taskId}`, { status }).then((r) => r.data);
+
+export const deleteEmployeeTask = (employeeId, taskId) =>
+    apiClient.delete(`/employee-task/${employeeId}/${taskId}`).then((r) => r.data);

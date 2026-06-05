@@ -1,4 +1,4 @@
-const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask } = require('../connection/sequelize');
+const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask, Alert } = require('../connection/sequelize');
 
 const DOC_TYPE_MAP = Person.rawAttributes.document_type.values;
 
@@ -209,6 +209,16 @@ const createEmployee = async (req, res, next) => {
 		// =========================================
 
 		await t.commit();
+
+		// Alert the employee that their onboarding tasks are ready
+		if (onboardingTasks.length > 0) {
+			Alert.create({
+				employee_id: employee.id,
+				type:        'ONBOARDING_TASKS_ASSIGNED',
+				message:     `Se te asignaron ${onboardingTasks.length} tareas de onboarding. ¡Comenzá tu incorporación!`,
+				status:      'UNREAD',
+			}).catch(console.error);
+		}
 
 		const full = await Employee.findByPk(employee.id, {
 			include: EMPLOYEE_INCLUDE,

@@ -1,10 +1,11 @@
-import { CheckCheck, User } from 'lucide-react'
-import { useMarkAlertAsRead } from '../../../hooks/useAlerts'
+import { CheckCheck, User, BarChart2 } from 'lucide-react'
+import { Link }                        from 'react-router-dom'
+import { useMarkAlertAsRead }          from '../../../hooks/useAlerts'
 
 const RISK_STYLE = {
-  high:   { bg: 'bg-red-50',    border: 'border-red-200',   badge: 'bg-red-100 text-red-600',   dot: 'bg-red-500',   label: 'Alto' },
-  medium: { bg: 'bg-amber-50',  border: 'border-amber-200', badge: 'bg-amber-100 text-amber-600', dot: 'bg-amber-500', label: 'Medio' },
-  low:    { bg: 'bg-green-50',  border: 'border-green-200', badge: 'bg-green-100 text-green-600', dot: 'bg-green-500', label: 'Bajo' },
+  high:   { bg: 'bg-red-50',   border: 'border-red-200',   badge: 'bg-red-100 text-red-600',    dot: 'bg-red-500',   label: 'Alto' },
+  medium: { bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-600', dot: 'bg-amber-500', label: 'Medio' },
+  low:    { bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-100 text-green-600', dot: 'bg-green-500', label: 'Bajo' },
 }
 
 const SENTIMENT_STYLE = {
@@ -12,11 +13,50 @@ const SENTIMENT_STYLE = {
   neutral:  'bg-slate-100 text-slate-500',
   positive: 'bg-green-100 text-green-600',
 }
+const SENTIMENT_LABEL = { negative: 'Negativo', neutral: 'Neutral', positive: 'Positivo' }
 
-const SENTIMENT_LABEL = {
-  negative: 'Negativo',
-  neutral:  'Neutral',
-  positive: 'Positivo',
+// Alert types that embed a cycleId in topics[0] and link to a report
+const REPORT_TYPES = {
+  NEGATIVE_PULSE_SIGNAL: {
+    link:  () => `/pulseanalysis`,
+    label: 'Ver análisis de pulso',
+  },
+  PULSE_SURVEY_DUE: {
+    link:  (alert) => `/pulsesurveys?employeeId=${alert.employee?.id}`,
+    label: 'Completar encuesta',
+  },
+  FEEDBACK_EVALUATION_READY: {
+    link:  (alert) => `/employeefeedbackreport?cycleId=${alert.topics?.[0]}&evaluatedId=${alert.employee?.id}`,
+    label: 'Ver mis resultados',
+  },
+  FEEDBACK_CYCLE_COMPLETED: {
+    link:  (alert) => `/hrfeedbackreport?cycleId=${alert.topics?.[0]}&evaluatedId=${alert.employee?.id}`,
+    label: 'Ver resultados',
+  },
+  ONBOARDING_TASKS_ASSIGNED: {
+    link:  () => `/mytasks`,
+    label: 'Ver mis tareas',
+  },
+  ONBOARDING_TASK_SUBMITTED: {
+    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label: 'Revisar tarea',
+  },
+  ONBOARDING_TASK_OVERDUE: {
+    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label: 'Ver tarea vencida',
+  },
+  TEAM_TASK_OVERDUE: {
+    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label: 'Ver tarea vencida',
+  },
+  TEAM_PULSE_ALERT: {
+    link:  () => `/alerts`,
+    label: 'Ver detalle',
+  },
+  ONBOARDING_COMPLETED: {
+    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label: 'Ver onboarding',
+  },
 }
 
 function formatDate(dateStr) {
@@ -30,18 +70,28 @@ function formatDate(dateStr) {
 export default function AlertCard({ alert }) {
   const { mutate: markRead, isPending } = useMarkAlertAsRead()
 
-  const risk    = RISK_STYLE[alert.riskLevel]   ?? RISK_STYLE.low
+  const risk     = RISK_STYLE[alert.riskLevel] ?? RISK_STYLE.low
   const isUnread = alert.status === 'UNREAD'
-  const employeeName = alert.employee
+  const name     = alert.employee
     ? `${alert.employee.firstName ?? ''} ${alert.employee.lastName ?? ''}`.trim()
     : 'Empleado desconocido'
 
+  const reportConfig = REPORT_TYPES[alert.type] ?? null
+  const reportLink   = reportConfig?.link(alert) ?? null
+  const reportLabel  = reportConfig?.label ?? 'Ver resultados'
+  // Don't show topics that are UUIDs (used internally as references)
+  const displayTopics = (alert.topics ?? []).filter(
+    (t) => !reportLink || !/^[0-9a-f-]{36}$/i.test(t)
+  )
+
+  const handleMarkRead = () => markRead(alert.id)
+
   return (
-    <div className={`relative rounded-xl border ${risk.border} ${risk.bg} p-4 flex flex-col gap-3 transition-opacity ${isPending ? 'opacity-50' : ''}`}>
+    <div className={`relative rounded-xl border ${risk.border} ${risk.bg} p-4 flex flex-col gap-3
+                     transition-opacity ${isPending ? 'opacity-50' : ''}`}>
+
       {/* Unread dot */}
-      {isUnread && (
-        <span className={`absolute top-3.5 right-3.5 w-2 h-2 rounded-full ${risk.dot}`} />
-      )}
+      {isUnread && <span className={`absolute top-3.5 right-3.5 w-2 h-2 rounded-full ${risk.dot}`} />}
 
       {/* Header */}
       <div className="flex items-start gap-2 pr-4">
@@ -49,7 +99,7 @@ export default function AlertCard({ alert }) {
           <User size={15} className="text-slate-500" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-800 leading-tight truncate">{employeeName}</p>
+          <p className="text-sm font-semibold text-slate-800 leading-tight truncate">{name}</p>
           <p className="text-xs text-slate-400 mt-0.5">{formatDate(alert.createdAt)}</p>
         </div>
       </div>
@@ -68,26 +118,45 @@ export default function AlertCard({ alert }) {
         )}
       </div>
 
-      {/* Message */}
-      <p className="text-sm text-slate-600 leading-snug">{alert.message}</p>
+      {/* Message — truncated to 3 lines */}
+      <p className="text-sm text-slate-600 leading-snug line-clamp-3">{alert.message}</p>
 
-      {/* Topics */}
-      {alert.topics?.length > 0 && (
+      {/* Topics — max 4, rest shown as +N */}
+      {displayTopics.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {alert.topics.map((t) => (
+          {displayTopics.slice(0, 4).map((t) => (
             <span key={t} className="text-xs bg-white/80 border border-slate-200 text-slate-500 px-2 py-0.5 rounded-full">
               {t}
             </span>
           ))}
+          {displayTopics.length > 4 && (
+            <span className="text-xs bg-white/80 border border-slate-200 text-slate-400 px-2 py-0.5 rounded-full">
+              +{displayTopics.length - 4}
+            </span>
+          )}
         </div>
       )}
 
+      {/* CTA for report types */}
+      {reportLink && (
+        <Link
+          to={reportLink}
+          onClick={isUnread ? handleMarkRead : undefined}
+          className="self-start flex items-center gap-1.5 text-xs font-semibold text-white
+                     bg-brand hover:bg-brand-hover px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <BarChart2 size={12} />
+          {reportLabel}
+        </Link>
+      )}
+
       {/* Mark as read */}
-      {isUnread && (
+      {isUnread && !reportLink && (
         <button
-          onClick={() => markRead(alert.id)}
+          onClick={handleMarkRead}
           disabled={isPending}
-          className="self-end flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-brand transition-colors disabled:pointer-events-none"
+          className="self-end flex items-center gap-1.5 text-xs font-medium text-slate-400
+                     hover:text-brand transition-colors disabled:pointer-events-none"
         >
           <CheckCheck size={13} />
           Marcar como leída

@@ -6,21 +6,26 @@ const { getIdealProfile }             = require('../connection/gapAnalysisConfig
 async function attachEmployees(assignments) {
 	if (assignments.length === 0) return [];
 
-	const ids = [...new Set([
+	const employeeIds = [...new Set([
 		...assignments.map((a) => a.evaluator_id),
 		...assignments.map((a) => a.evaluated_id),
 	])];
+	const cycleIds = [...new Set(assignments.map((a) => a.cycle_id))];
 
-	const employees = await Employee.findAll({
-		where:      { id: ids },
-		attributes: ['id', 'position'],
-		include:    [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
-	});
+	const [employees, cycles] = await Promise.all([
+		Employee.findAll({
+			where:      { id: employeeIds },
+			attributes: ['id', 'position'],
+			include:    [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+		}),
+		Survey.findAll({ where: { id: cycleIds }, attributes: ['id', 'name'] }),
+	]);
 
-	const map = Object.fromEntries(employees.map((e) => [e.id, e]));
+	const empMap   = Object.fromEntries(employees.map((e) => [e.id, e]));
+	const cycleMap = Object.fromEntries(cycles.map((c) => [c.id, c]));
 
-	const fmt = (id) => {
-		const e = map[id];
+	const fmtEmp = (id) => {
+		const e = empMap[id];
 		if (!e) return null;
 		return {
 			id:        e.id,
@@ -36,8 +41,11 @@ async function attachEmployees(assignments) {
 		type:      a.type,
 		status:    a.status,
 		createdAt: a.createdAt,
-		evaluator: fmt(a.evaluator_id),
-		evaluated: fmt(a.evaluated_id),
+		evaluator: fmtEmp(a.evaluator_id),
+		evaluated: fmtEmp(a.evaluated_id),
+		cycle:     cycleMap[a.cycle_id]
+			? { id: cycleMap[a.cycle_id].id, name: cycleMap[a.cycle_id].name }
+			: null,
 	}));
 }
 
@@ -126,19 +134,21 @@ async function notifyIfCycleComplete(cycleId, evaluatedId) {
 		? `${emp.person?.first_name ?? ''} ${emp.person?.last_name ?? ''}`.trim()
 		: 'El empleado';
 
-	// Alert for HR — to know they can view full results and generate gap analysis
+	// Alert for HR — topics[0] stores cycleId so the frontend can link directly to HR report
 	await Alert.create({
 		employee_id: evaluatedId,
 		type:        'FEEDBACK_CYCLE_COMPLETED',
 		message:     `Todas las evaluaciones de Feedback 360° de ${name} fueron completadas. Ya podés ver el informe y generar el análisis de brechas.`,
+		topics:      [cycleId],
 		status:      'UNREAD',
 	});
 
-	// Alert for the employee — to know their evaluation is ready to view
+	// Alert for the employee — topics[0] stores cycleId so the frontend can link directly to the report
 	await Alert.create({
 		employee_id: evaluatedId,
 		type:        'FEEDBACK_EVALUATION_READY',
 		message:     'Tu evaluación de Feedback 360° está completa. Ya podés ver tus resultados y análisis de desarrollo.',
+		topics:      [cycleId],
 		status:      'UNREAD',
 	});
 }

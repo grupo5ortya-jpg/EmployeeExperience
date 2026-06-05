@@ -1,36 +1,34 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink }              from 'react-router-dom'
+import { useSelector }           from 'react-redux'
 import {
-  Home,
-  UserPlus,
-  RotateCcw,
-  Target,
-  BookOpen,
-  ClipboardList,
-  User,
-  Bell,
-  BarChart2,
-  LifeBuoy,
-  Settings,
-  Users,
-  MessageSquareHeart,
-  Briefcase
+  Home, UserPlus, RotateCcw, Target, BookOpen,
+  ClipboardList, User, Bell, BarChart2, LifeBuoy,
+  Settings, Users, MessageSquareHeart, Briefcase,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
-const staticNavItems = [
-  { icon: Home, label: 'Inicio', to: '/' },
-  { icon: User, label: 'Mi perfil' },
-  { icon: Users, label: 'Equipo', to: '/employeelist' },
-  { icon: UserPlus, label: 'Onboarding', to: '/onboardinghome' },
-  { icon: RotateCcw, label: 'Feedback 360°', to: '/feedbackhome' },
-  { icon: Target, label: 'Objetivos' },
-  { icon: BookOpen, label: 'Aprendizaje LMS' },
-  { icon: ClipboardList, label: 'Plan de acción' },
-  { icon: Bell, label: 'Alertas', to: '/alerts', dynamicBadge: true },
-  { icon: BarChart2, label: 'Análisis de Pulso', to: '/pulseanalysis' },
-  { icon: LifeBuoy, label: 'Soporte' },
-  { icon: MessageSquareHeart, label: 'Feedback continuo', to: '/continuous-feedback' },
-  { icon: Briefcase, label: 'Vacantes', to: '/job-openings' }
+/**
+ * roles: which roles can see this item.
+ * Omit (or empty array) → visible to all authenticated users.
+ */
+const ALL_NAV_ITEMS = [
+  { icon: Home,               label: 'Inicio',            to: '/' },
+  { icon: User,               label: 'Mi perfil' },
+  { icon: Users,              label: 'Equipo',             to: '/employeelist',      roles: ['Talento', 'Líder'] },
+  { icon: UserPlus,           label: 'Onboarding',         to: '/onboardinghome',    roles: ['Talento'] },
+  { icon: ClipboardList,      label: 'Onboarding equipo',  to: '/all-assignments',   roles: ['Líder'] },
+  { icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Talento', 'Líder'] },
+  { icon: Target,             label: 'Objetivos' },
+  { icon: BookOpen,           label: 'Aprendizaje LMS' },
+  { icon: ClipboardList,      label: 'Plan de acción' },
+  { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
+  { icon: BarChart2,          label: 'Análisis de Pulso',  to: '/pulseanalysis',     roles: ['Talento'] },
+  { icon: ClipboardList,      label: 'Mis tareas',         to: '/mytasks',                  roles: ['Colaborador', 'Líder'] },
+  { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',           roles: ['Colaborador', 'Líder'] },
+  { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
+  { icon: MessageSquareHeart, label: 'Feedback continuo',  to: '/continuous-feedback' },
+  { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento'] },
+  { icon: LifeBuoy,           label: 'Soporte' },
 ]
 
 const itemClass = (active) =>
@@ -43,7 +41,8 @@ function NavItem({ icon: Icon, label, active, badge, to }) {
       <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
       <span className="flex-1 text-left truncate">{label}</span>
       {badge > 0 && (
-        <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+        <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold
+                         flex items-center justify-center">
           {badge}
         </span>
       )}
@@ -53,11 +52,7 @@ function NavItem({ icon: Icon, label, active, badge, to }) {
   if (to) {
     return (
       <li>
-        <NavLink
-          to={to}
-          end={to === '/'}
-          className={({ isActive }) => itemClass(isActive)}
-        >
+        <NavLink to={to} end={to === '/'} className={({ isActive }) => itemClass(isActive)}>
           {({ isActive }) => content(isActive)}
         </NavLink>
       </li>
@@ -66,19 +61,19 @@ function NavItem({ icon: Icon, label, active, badge, to }) {
 
   return (
     <li>
-      <button className={itemClass(active)}>
-        {content(active)}
-      </button>
+      <button className={itemClass(active)}>{content(active)}</button>
     </li>
   )
 }
 
 export default function Sidebar() {
   const { data: unreadCount = 0 } = useUnreadAlerts()
+  const { user } = useSelector((s) => s.auth)
+  const role = user?.role ?? ''
 
-  const navItems = staticNavItems.map((item) =>
-    item.dynamicBadge ? { ...item, badge: unreadCount } : item
-  )
+  const navItems = ALL_NAV_ITEMS
+    .filter((item) => !item.roles?.length || item.roles.includes(role))
+    .map((item)   => item.dynamicBadge ? { ...item, badge: unreadCount } : item)
 
   return (
     <aside className="hidden lg:flex w-56 shrink-0 h-screen bg-navy flex-col">
@@ -99,7 +94,7 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Bottom: Configuración */}
+      {/* Bottom */}
       <div className="px-2 py-3 border-t border-white/10">
         <NavItem icon={Settings} label="Configuración" />
       </div>

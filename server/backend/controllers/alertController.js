@@ -1,6 +1,21 @@
 const { Alert, Employee, Person } = require('../connection/sequelize');
 const { Op } = require('sequelize');
 
+// Alert types visible per role
+const HR_ALERT_TYPES       = ['NEGATIVE_PULSE_SIGNAL', 'FEEDBACK_CYCLE_COMPLETED', 'ONBOARDING_COMPLETED', 'ONBOARDING_TASK_SUBMITTED', 'ONBOARDING_TASK_OVERDUE'];
+const EMPLOYEE_ALERT_TYPES = ['PULSE_SURVEY_DUE', 'FEEDBACK_EVALUATION_READY', 'ONBOARDING_TASKS_ASSIGNED', 'ONBOARDING_TASK_SUBMITTED', 'TEAM_PULSE_ALERT', 'TEAM_TASK_OVERDUE'];
+
+function alertTypeFilter(user) {
+	if (!user) return {};
+	if (user.role === 'Talento') {
+		return { type: { [Op.in]: HR_ALERT_TYPES } };
+	}
+	// Líder and Colaborador see their own employee-facing alerts
+	const filter = { type: { [Op.in]: EMPLOYEE_ALERT_TYPES } };
+	if (user.employeeId) filter.employee_id = user.employeeId;
+	return filter;
+}
+
 const EMPLOYEE_INCLUDE = [
 	{
 		model:      Employee,
@@ -32,9 +47,8 @@ function formatAlert(a) {
 
 const getAlerts = async (req, res, next) => {
 	try {
-		const { status } = req.query;
-		const where = {};
-		if (status) where.status = status;
+		const where = { ...alertTypeFilter(req.user) };
+		if (req.query.status) where.status = req.query.status;
 
 		const alerts = await Alert.findAll({
 			where,
@@ -48,9 +62,10 @@ const getAlerts = async (req, res, next) => {
 	}
 };
 
-const getUnreadCount = async (_req, res, next) => {
+const getUnreadCount = async (req, res, next) => {
 	try {
-		const count = await Alert.count({ where: { status: 'UNREAD' } });
+		const where = { ...alertTypeFilter(req.user), status: 'UNREAD' };
+		const count = await Alert.count({ where });
 		res.json({ count });
 	} catch (err) {
 		next(err);
