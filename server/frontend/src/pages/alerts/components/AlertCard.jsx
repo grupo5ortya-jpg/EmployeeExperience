@@ -1,5 +1,6 @@
 import { CheckCheck, User, BarChart2 } from 'lucide-react'
 import { Link }                        from 'react-router-dom'
+import { useSelector }                 from 'react-redux'
 import { useMarkAlertAsRead }          from '../../../hooks/useAlerts'
 
 const RISK_STYLE = {
@@ -33,29 +34,46 @@ const REPORT_TYPES = {
     link:  (alert) => `/hrfeedbackreport?cycleId=${alert.topics?.[0]}&evaluatedId=${alert.employee?.id}`,
     label: 'Ver resultados',
   },
+  FEEDBACK_GAP_ANALYSIS_SENT: {
+    link:  (alert) => `/employeefeedbackreport?cycleId=${alert.topics?.[0]}&evaluatedId=${alert.employee?.id}`,
+    label: 'Ver mi análisis',
+  },
   ONBOARDING_TASKS_ASSIGNED: {
     link:  () => `/mytasks`,
     label: 'Ver mis tareas',
   },
+  ONBOARDING_TEMPLATE_APPROVED: {
+    link:  () => `/mytasks`,
+    label: 'Ver mis tareas',
+  },
   ONBOARDING_TASK_SUBMITTED: {
-    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
-    label: 'Revisar tarea',
+    link:    (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label:   'Revisar tarea',
+    hrOnly:  true,
+  },
+  ONBOARDING_TEMPLATE_SUBMITTED: {
+    link:    (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label:   'Revisar template',
+    hrOnly:  true,
   },
   ONBOARDING_TASK_OVERDUE: {
-    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
-    label: 'Ver tarea vencida',
+    link:   (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label:  'Ver tarea vencida',
+    hrOnly: true,
   },
   TEAM_TASK_OVERDUE: {
-    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
-    label: 'Ver tarea vencida',
+    link:   (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label:  'Ver tarea vencida',
+    hrOnly: true,
   },
   TEAM_PULSE_ALERT: {
     link:  () => `/alerts`,
     label: 'Ver detalle',
   },
   ONBOARDING_COMPLETED: {
-    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
-    label: 'Ver onboarding',
+    link:   (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label:  'Ver onboarding',
+    hrOnly: true,
   },
 }
 
@@ -69,6 +87,8 @@ function formatDate(dateStr) {
 
 export default function AlertCard({ alert }) {
   const { mutate: markRead, isPending } = useMarkAlertAsRead()
+  const { user } = useSelector((s) => s.auth)
+  const isTalento = user?.role === 'Talento'
 
   const risk     = RISK_STYLE[alert.riskLevel] ?? RISK_STYLE.low
   const isUnread = alert.status === 'UNREAD'
@@ -77,10 +97,14 @@ export default function AlertCard({ alert }) {
     : 'Empleado desconocido'
 
   const reportConfig = REPORT_TYPES[alert.type] ?? null
-  const reportLink   = reportConfig?.link(alert) ?? null
+  const reportLink   = (reportConfig && (!reportConfig.hrOnly || isTalento))
+    ? reportConfig.link(alert)
+    : null
   const reportLabel  = reportConfig?.label ?? 'Ver resultados'
+  // Normalize topics — some alerts store it as object {key:val}, others as array
+  const topicsArr = Array.isArray(alert.topics) ? alert.topics : []
   // Don't show topics that are UUIDs (used internally as references)
-  const displayTopics = (alert.topics ?? []).filter(
+  const displayTopics = topicsArr.filter(
     (t) => !reportLink || !/^[0-9a-f-]{36}$/i.test(t)
   )
 

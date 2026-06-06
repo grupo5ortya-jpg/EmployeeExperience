@@ -1,4 +1,4 @@
-const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask, Alert } = require('../connection/sequelize');
+const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask, Alert, Team } = require('../connection/sequelize');
 
 const DOC_TYPE_MAP = Person.rawAttributes.document_type.values;
 
@@ -306,6 +306,32 @@ const assignMentor = async (req, res, next) => {
 	}
 };
 
+const assignLeader = async (req, res, next) => {
+	try {
+		const { id } = req.params;
+		const { leaderId } = req.body;
+
+		const employee = await Employee.findByPk(id);
+		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
+
+		if (leaderId && leaderId === id) {
+			return res.status(400).json({ status: 'fail', message: 'Un empleado no puede ser su propio líder.' });
+		}
+
+		// Hard-delete (force:true) para evitar conflicto de PK con paranoid soft-delete
+		await Team.destroy({ where: { collaborator_id: id }, force: true });
+
+		if (leaderId) {
+			await Team.create({ leader_id: leaderId, collaborator_id: id });
+		}
+
+		const updated = await Employee.findByPk(id, { include: EMPLOYEE_INCLUDE });
+		res.json(formatEmployee(updated));
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
 	getAllEmployees,
 	getEmployeeById,
@@ -313,4 +339,5 @@ module.exports = {
 	updateEmployee,
 	deleteEmployee,
 	assignMentor,
+	assignLeader,
 };

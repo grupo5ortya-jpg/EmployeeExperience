@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Clock, Layers, UserPlus, X } from 'lucide-react'
 import { useTaskById } from '../../hooks/useTaskById'
 import { useEmployeeTasksByTask } from '../../hooks/useEmployeeTasksByTask'
 import { useEmployees } from '../../hooks/useEmployees'
+import { useTasks } from '../../hooks/useTasks'
+import { useAllEmployeeTasks } from '../../hooks/useAllEmployeeTasks'
 import { createEmployeeTask } from '../../services/employeeTaskService'
 import EmployeeAvatar from '../employeeList/components/EmployeeAvatar'
 
@@ -165,8 +167,30 @@ export default function TemplateDetailPage() {
     const { data: task,              isLoading: loadingTask,        isError: taskError }  = useTaskById(id)
     const { data: assignments = [],  isLoading: loadingAssignments }                      = useEmployeeTasksByTask(id)
     const { data: employees  = [] }                                                        = useEmployees()
+    const { data: allTasks   = [] }                                                        = useTasks()
+    const { data: allEmpTasks = [] }                                                       = useAllEmployeeTasks()
 
     const [modalOpen, setModalOpen] = useState(false)
+
+    // Employees who have ALL tasks of this template assigned (fully assigned → exclude from modal)
+    const fullyAssignedIds = useMemo(() => {
+        const taskTypeId = task?.taskType?.id
+        if (!taskTypeId) return []
+        const templateTaskIds = new Set(
+            allTasks.filter((t) => t.taskType?.id === taskTypeId).map((t) => t.id)
+        )
+        const total = templateTaskIds.size
+        if (total === 0) return []
+        const countByEmployee = {}
+        allEmpTasks.forEach((et) => {
+            if (templateTaskIds.has(et.taskId)) {
+                countByEmployee[et.employeeId] = (countByEmployee[et.employeeId] ?? 0) + 1
+            }
+        })
+        return Object.entries(countByEmployee)
+            .filter(([, count]) => count >= total)
+            .map(([empId]) => empId)
+    }, [task, allTasks, allEmpTasks])
 
     const assignedIds = assignments.map((a) => a.employeeId)
 
@@ -320,7 +344,7 @@ export default function TemplateDetailPage() {
                 <AssignModal
                     taskId={id}
                     employees={employees}
-                    assignedEmployeeIds={assignedIds}
+                    assignedEmployeeIds={fullyAssignedIds}
                     onClose={() => setModalOpen(false)}
                     onSaved={handleSaved}
                 />

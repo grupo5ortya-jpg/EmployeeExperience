@@ -50,6 +50,15 @@ module.exports = (sequelize) => {
 			allowNull:    true,
 			defaultValue: {},
 		},
+		sent_sections: {
+			type:         DataTypes.JSONB,
+			allowNull:    true,
+			defaultValue: null,
+		},
+		sent_at: {
+			type:      DataTypes.DATE,
+			allowNull: true,
+		},
 	}, {
 		sequelize,
 		modelName: 'FeedbackGapAnalysis',

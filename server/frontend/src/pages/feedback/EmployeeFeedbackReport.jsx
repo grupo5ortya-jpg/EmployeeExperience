@@ -3,8 +3,8 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { useSelector }           from 'react-redux'
 import { useQuery }              from '@tanstack/react-query'
 import {
-    ArrowLeft, MessageSquare, Lock, Sparkles,
-    TrendingUp, Lightbulb, RotateCcw,
+    ArrowLeft, Lock, Sparkles,
+    TrendingUp, Lightbulb, AlertTriangle, RotateCcw,
 } from 'lucide-react'
 
 import { useFeedbackResults }     from '../../hooks/useFeedbackResults'
@@ -35,7 +35,6 @@ function CycleReport({ cycleId, evaluatedId, cycleName }) {
     )
     if (!data) return null
 
-    const hasComments = data.competencies.some((c) => c.comments.length > 0)
     const blocked     = data.stats?.blocked ?? false
     const minRequired = data.stats?.minRequired ?? 0
     const completed   = data.stats?.completed ?? 0
@@ -72,82 +71,75 @@ function CycleReport({ cycleId, evaluatedId, cycleName }) {
                         )}
                     </Section>
 
-                    {hasComments && (
-                        <Section title="Comentarios recibidos">
-                            <div className="flex flex-col gap-5">
-                                {data.competencies.filter((c) => c.comments.length > 0).map((c) => {
-                                    const meta = COMPETENCY_MAP[c.id]
-                                    const Icon = meta?.Icon
-                                    return (
-                                        <div key={c.id}>
-                                            <div className="flex items-center gap-1.5 mb-2">
-                                                {Icon && <Icon size={12} className="text-brand shrink-0" strokeWidth={2} />}
-                                                <span className="text-xs font-bold text-brand uppercase tracking-wide">
-                                                    {meta?.label ?? c.id}
-                                                </span>
-                                            </div>
-                                            <ul className="flex flex-col gap-1.5">
-                                                {c.comments.map((text, i) => (
-                                                    <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                                                        <MessageSquare size={13} className="text-slate-300 shrink-0 mt-0.5" />
-                                                        <span className="leading-snug">{text}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </Section>
-                    )}
+                    {gapData?.sentAt && gapData?.analysis && (() => {
+                        const sent = new Set(gapData.sentSections ?? [])
+                        const CARDS = [
+                            {
+                                key:     'strengths',
+                                label:   'Tus fortalezas',
+                                items:   gapData.analysis.strengths,
+                                Icon:    TrendingUp,
+                                cardCls: 'bg-emerald-50 border-emerald-200',
+                                textCls: 'text-emerald-700',
+                                iconCls: 'text-emerald-600',
+                            },
+                            {
+                                key:     'gaps',
+                                label:   'Áreas de mejora',
+                                items:   gapData.analysis.gaps,
+                                Icon:    AlertTriangle,
+                                cardCls: 'bg-amber-50 border-amber-200',
+                                textCls: 'text-amber-700',
+                                iconCls: 'text-amber-600',
+                            },
+                            {
+                                key:     'suggestions',
+                                label:   'Acciones para crecer',
+                                items:   gapData.analysis.suggestions,
+                                Icon:    Lightbulb,
+                                cardCls: 'bg-brand-pale border-brand-light',
+                                textCls: 'text-brand',
+                                iconCls: 'text-brand',
+                            },
+                        ].filter(({ key }) => sent.has(key))
 
-                    {gapData?.analysis && (
-                        <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden shrink-0">
-                            <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40 flex items-center gap-2">
-                                <Sparkles size={13} className="text-brand" />
-                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                    Tu análisis de desarrollo
-                                </h2>
-                            </div>
-                            <div className="p-5 flex flex-col gap-4">
-                                <p className="text-sm text-slate-600 leading-snug border-l-2 border-brand pl-3">
-                                    {gapData.analysis.summary}
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4">
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                            <TrendingUp size={12} className="text-emerald-600 shrink-0" />
-                                            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
-                                                Tus fortalezas
-                                            </p>
-                                        </div>
-                                        <ul className="flex flex-col gap-1.5">
-                                            {gapData.analysis.strengths.map((s, i) => (
-                                                <li key={i} className="text-xs text-emerald-700 leading-snug flex items-start gap-1.5">
-                                                    <span className="mt-1 shrink-0">·</span>{s}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    <div className="rounded-lg bg-brand-pale border border-brand-light p-4">
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                            <Lightbulb size={12} className="text-brand shrink-0" />
-                                            <p className="text-xs font-bold text-brand uppercase tracking-wide">
-                                                Acciones para crecer
-                                            </p>
-                                        </div>
-                                        <ul className="flex flex-col gap-1.5">
-                                            {gapData.analysis.suggestions.map((s, i) => (
-                                                <li key={i} className="text-xs text-brand leading-snug flex items-start gap-1.5">
-                                                    <span className="mt-1 shrink-0">·</span>{s}
-                                                </li>
-                                            ))}
-                                        </ul>
+                        if (CARDS.length === 0) return null
+
+                        return (
+                            <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden shrink-0">
+                                <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40 flex items-center gap-2">
+                                    <Sparkles size={13} className="text-brand" />
+                                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                        Tu análisis de desarrollo
+                                    </h2>
+                                </div>
+                                <div className="p-5 flex flex-col gap-4">
+                                    <p className="text-sm text-slate-600 leading-snug border-l-2 border-brand pl-3">
+                                        {gapData.analysis.summary}
+                                    </p>
+                                    <div className={`grid grid-cols-1 gap-4 ${CARDS.length > 1 ? 'sm:grid-cols-' + CARDS.length : ''}`}>
+                                        {CARDS.map(({ key, label, items, Icon, cardCls, textCls, iconCls }) => (
+                                            <div key={key} className={`rounded-lg border p-4 ${cardCls}`}>
+                                                <div className="flex items-center gap-1.5 mb-2">
+                                                    <Icon size={12} className={`${iconCls} shrink-0`} />
+                                                    <p className={`text-xs font-bold uppercase tracking-wide ${textCls}`}>
+                                                        {label}
+                                                    </p>
+                                                </div>
+                                                <ul className="flex flex-col gap-1.5">
+                                                    {items.map((s, i) => (
+                                                        <li key={i} className={`text-xs leading-snug flex items-start gap-1.5 ${textCls}`}>
+                                                            <span className="mt-1 shrink-0">·</span>{s}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    })()}
                 </>
             )}
         </div>

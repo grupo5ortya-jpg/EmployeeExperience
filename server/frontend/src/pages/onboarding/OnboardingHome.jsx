@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Clock, ChevronRight, Users, Trash2, RotateCcw, PlusCircle } from 'lucide-react'
+import { Clock, ChevronRight, Trash2, RotateCcw, PlusCircle, AlertTriangle } from 'lucide-react'
 import { useTasks } from '../../hooks/useTasks'
-import { updateTask, createTask, deleteTask } from '../../services/taskService'
+import { updateTask, createTask, deleteTask, deleteTaskType } from '../../services/taskService'
 
 const MAX_TASKS = 10
 
@@ -34,7 +34,10 @@ export default function OnboardingHome() {
     const [lastAddedKey, setLastAddedKey] = useState(null)
 
     // Guard: discardIntent = null | 'CLOSE' | TaskType
-    const [discardIntent, setDiscardIntent] = useState(null)
+    const [discardIntent,  setDiscardIntent]  = useState(null)
+    // Borrar template: null | TaskType
+    const [deleteIntent,   setDeleteIntent]   = useState(null)
+    const [deleting,       setDeleting]       = useState(false)
 
     // ── Filtros del panel izquierdo ───────────────────────────
     const [filterName, setFilterName] = useState('')
@@ -121,6 +124,20 @@ export default function OnboardingHome() {
             setDiscardIntent(null)
         } else {
             doSelectType(discardIntent)
+        }
+    }
+
+    // ── Confirmar borrado de template ────────────────────────
+    const handleConfirmDelete = async () => {
+        if (!deleteIntent) return
+        setDeleting(true)
+        try {
+            await deleteTaskType(deleteIntent.id)
+            await queryClient.refetchQueries({ queryKey: ['tasks'] })
+            if (selectedType?.id === deleteIntent.id) setSelectedType(null)
+        } finally {
+            setDeleting(false)
+            setDeleteIntent(null)
         }
     }
 
@@ -221,29 +238,9 @@ export default function OnboardingHome() {
         <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 flex flex-col gap-5">
 
             {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-                <div className="border-l-4 border-brand pl-4">
-                    <h1 className="text-lg lg:text-xl font-bold text-slate-800">Templates de onboarding</h1>
-                    <p className="text-xs text-slate-400 mt-0.5">Gestioná los templates de tareas.</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                    <button
-                        onClick={() => navigate('/all-assignments')}
-                        className="flex items-center gap-1.5 border border-brand text-brand hover:bg-brand-pale
-                                   text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
-                    >
-                        <Users size={16} />
-                        Ver asignaciones
-                    </button>
-                    <button
-                        onClick={() => navigate('/createtemplatepage')}
-                        className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white
-                                   text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
-                    >
-                        <Plus size={16} />
-                        Nuevo template
-                    </button>
-                </div>
+            <div className="border-l-4 border-brand pl-4">
+                <h1 className="text-lg lg:text-xl font-bold text-slate-800">Templates de onboarding</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Gestioná los templates de tareas.</p>
             </div>
 
             {/* Split layout */}
@@ -314,10 +311,10 @@ export default function OnboardingHome() {
                                     key={type.id}
                                     onClick={() => handleSelectType(type)}
                                     className={`px-5 py-4 flex items-center justify-between gap-3 cursor-pointer transition-colors
-                                        hover:bg-brand-pale/60
+                                        hover:bg-brand-pale/60 group
                                         ${selectedType?.id === type.id ? 'bg-brand-pale border-l-4 border-brand' : ''}`}
                                 >
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold text-slate-700 truncate">{type.name}</p>
                                         {type.sub_type && (
                                             <p className="text-xs text-slate-400 mt-0.5">{type.sub_type}</p>
@@ -327,6 +324,15 @@ export default function OnboardingHome() {
                                         <span className="text-xs font-semibold text-brand bg-brand-pale px-2 py-0.5 rounded-full">
                                             {type.taskCount} {type.taskCount === 1 ? 'tarea' : 'tareas'}
                                         </span>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setDeleteIntent(type) }}
+                                            className="opacity-0 group-hover:opacity-100 text-slate-300
+                                                       hover:text-red-400 transition-all cursor-pointer p-0.5 rounded"
+                                            title="Eliminar template"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
                                         <ChevronRight size={15} className="text-slate-300" />
                                     </div>
                                 </li>
@@ -511,6 +517,58 @@ export default function OnboardingHome() {
                                            px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
                             >
                                 Sí, descartar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Modal: confirmar borrado de template ──────────── */}
+            {deleteIntent && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm"
+                    onClick={() => !deleting && setDeleteIntent(null)}
+                >
+                    <div
+                        className="bg-white rounded-2xl border border-brand-light shadow-xl w-full max-w-sm mx-4 p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={16} className="text-red-400" />
+                            </div>
+                            <h3 className="text-base font-bold text-slate-800">Eliminar template</h3>
+                        </div>
+                        <p className="text-sm text-slate-500 mb-1">
+                            Vas a eliminar{' '}
+                            <span className="font-semibold text-slate-700">"{deleteIntent.name}"</span>
+                            {deleteIntent.sub_type && (
+                                <span className="text-slate-400"> — {deleteIntent.sub_type}</span>
+                            )}.
+                        </p>
+                        <p className="text-xs text-slate-400 mb-5">
+                            Los empleados que ya tenían tareas de este template las conservarán en su historial.
+                        </p>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteIntent(null)}
+                                disabled={deleting}
+                                className="text-sm font-medium text-slate-500 hover:text-slate-700
+                                           px-4 py-2.5 rounded-lg hover:bg-brand-pale transition-colors
+                                           cursor-pointer disabled:opacity-40"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmDelete}
+                                disabled={deleting}
+                                className="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold
+                                           px-5 py-2.5 rounded-lg transition-colors cursor-pointer
+                                           disabled:opacity-40"
+                            >
+                                {deleting ? 'Eliminando…' : 'Sí, eliminar'}
                             </button>
                         </div>
                     </div>

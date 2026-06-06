@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { ArrowLeft, Search, ChevronDown, ChevronRight, CheckCircle2, Circle, Clock } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAllEmployeeTasks } from '../../hooks/useAllEmployeeTasks'
@@ -55,6 +56,8 @@ export default function AllAssignmentsPage() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const prefilterEmployeeId = searchParams.get('employeeId')
+    const { user } = useSelector((s) => s.auth)
+    const isTalento = user?.role === 'Talento'
 
     const { data: assignments = [], isLoading: loadingTasks, isFetching: fetchingTasks, isError: errorTasks     } = useAllEmployeeTasks()
     const { data: employees  = [], isLoading: loadingEmployees,                          isError: errorEmployees } = useEmployees()
@@ -72,6 +75,14 @@ export default function AllAssignmentsPage() {
         setExpanded((prev) => {
             const next = new Set(prev)
             next.has(empId) ? next.delete(empId) : next.add(empId)
+            return next
+        })
+
+    const [expandedTemplates, setExpandedTemplates] = useState(new Set())
+    const toggleTemplate = (key) =>
+        setExpandedTemplates((prev) => {
+            const next = new Set(prev)
+            next.has(key) ? next.delete(key) : next.add(key)
             return next
         })
 
@@ -136,15 +147,24 @@ export default function AllAssignmentsPage() {
         })
     }, [allRows, search, filterStatus, prefilterEmployeeId])
 
-    // Group filtered rows by employee
+    // Group filtered rows by employee → then by template (TaskType)
     const grouped = useMemo(() => {
         const map = {}
         filtered.forEach((row) => {
             const key = row.employeeId
-            if (!map[key]) map[key] = { employee: row.employee, tasks: [] }
-            if (!row._unassigned) map[key].tasks.push(row)
+            if (!map[key]) map[key] = { employee: row.employee, templates: {} }
+            if (row._unassigned) return
+            const ttId   = row.task?.taskType?.id   ?? 'sin-template'
+            const ttName = row.task?.taskType
+                ? `${row.task.taskType.name}${row.task.taskType.sub_type ? ` — ${row.task.taskType.sub_type}` : ''}`
+                : 'Sin template'
+            if (!map[key].templates[ttId]) map[key].templates[ttId] = { id: ttId, name: ttName, tasks: [] }
+            map[key].templates[ttId].tasks.push(row)
         })
-        return Object.values(map)
+        return Object.values(map).map(({ employee, templates }) => ({
+            employee,
+            templateGroups: Object.values(templates),
+        }))
     }, [filtered])
 
     const totalAssigned   = assignments.length
@@ -222,11 +242,12 @@ export default function AllAssignmentsPage() {
 
             {!isLoading && !isError && grouped.length > 0 && (
                 <div className="flex flex-col gap-3">
-                    {grouped.map(({ employee, tasks }) => {
+                    {grouped.map(({ employee, templateGroups }) => {
                         const empId   = employee?.id
                         const isOpen  = expanded.has(empId)
-                        const done    = tasks.filter((t) => t.status === 'COMPLETED').length
-                        const total   = tasks.length
+                        const allTasks = templateGroups.flatMap((tg) => tg.tasks)
+                        const done    = allTasks.filter((t) => t.status === 'COMPLETED').length
+                        const total   = allTasks.length
                         const allDone = total > 0 && done === total
 
                         return (
@@ -270,43 +291,81 @@ export default function AllAssignmentsPage() {
                                     )}
                                 </button>
 
-                                {/* Tasks — expanded */}
-                                {isOpen && tasks.length > 0 && (
-                                    <div className="border-t border-brand-light divide-y divide-brand-light">
-                                        {tasks.map((row) => (
-                                            <div key={row.taskId}
-                                                className="flex items-center gap-3 px-5 py-3">
-                                                {row.status === 'COMPLETED'
-                                                    ? <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
-                                                    : <Circle      size={15} className="text-slate-300 shrink-0" />
-                                                }
-                                                <span className={`flex-1 text-sm truncate
-                                                    ${row.status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-                                                    {row.task?.name ?? '—'}
-                                                </span>
-                                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0
-                                                    ${STATUS_STYLE[row.status] ?? 'bg-slate-100 text-slate-500'}`}>
-                                                    {STATUS_LABEL[row.status] ?? row.status}
-                                                </span>
-                                                {row.dueDate && (
-                                                    <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
-                                                        <Clock size={11} />
-                                                        {formatDate(row.dueDate)}
-                                                    </span>
-                                                )}
-                                                {(row.status === 'SUBMITED' || row.status === 'SUBMITTED') && (
+                                {/* Template groups — expanded */}
+                                {isOpen && templateGroups.length > 0 && (
+                                    <div className="border-t border-brand-light">
+                                        {templateGroups.map((tg) => {
+                                            const tmplKey   = `${empId}-${tg.id}`
+                                            const isTmplOpen = expandedTemplates.has(tmplKey)
+                                            const tDone     = tg.tasks.filter((t) => t.status === 'COMPLETED').length
+                                            const tTotal    = tg.tasks.length
+                                            const tAllDone  = tTotal > 0 && tDone === tTotal
+
+                                            return (
+                                                <div key={tg.id} className="border-b border-brand-light last:border-0">
+
+                                                    {/* Template header */}
                                                     <button
-                                                        onClick={() => approve({ employeeId: row.employeeId, taskId: row.taskId })}
-                                                        disabled={approving}
-                                                        className="text-xs font-semibold text-white bg-emerald-500
-                                                                   hover:bg-emerald-600 px-2.5 py-1 rounded-lg
-                                                                   transition-colors disabled:opacity-50 shrink-0"
+                                                        type="button"
+                                                        onClick={() => toggleTemplate(tmplKey)}
+                                                        className="w-full flex items-center gap-2 px-5 py-2.5 text-left
+                                                                   bg-brand-pale/20 hover:bg-brand-pale/50 transition-colors"
                                                     >
-                                                        Aprobar
+                                                        {isTmplOpen
+                                                            ? <ChevronDown  size={13} className="text-slate-400 shrink-0" />
+                                                            : <ChevronRight size={13} className="text-slate-400 shrink-0" />
+                                                        }
+                                                        <span className="flex-1 text-xs font-semibold text-slate-600 uppercase tracking-wide truncate">
+                                                            {tg.name}
+                                                        </span>
+                                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0
+                                                            ${tAllDone ? 'bg-emerald-100 text-emerald-600' : 'bg-brand-pale text-brand'}`}>
+                                                            {tDone}/{tTotal}
+                                                        </span>
                                                     </button>
-                                                )}
-                                            </div>
-                                        ))}
+
+                                                    {/* Tasks within template */}
+                                                    {isTmplOpen && (
+                                                        <div className="divide-y divide-brand-light">
+                                                            {tg.tasks.map((row) => (
+                                                                <div key={row.taskId}
+                                                                    className="flex items-center gap-3 pl-10 pr-5 py-3">
+                                                                    {row.status === 'COMPLETED'
+                                                                        ? <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
+                                                                        : <Circle       size={15} className="text-slate-300 shrink-0" />
+                                                                    }
+                                                                    <span className={`flex-1 text-sm truncate
+                                                                        ${row.status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                                                                        {row.task?.name ?? '—'}
+                                                                    </span>
+                                                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0
+                                                                        ${STATUS_STYLE[row.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                                                                        {STATUS_LABEL[row.status] ?? row.status}
+                                                                    </span>
+                                                                    {row.dueDate && (
+                                                                        <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
+                                                                            <Clock size={11} />
+                                                                            {formatDate(row.dueDate)}
+                                                                        </span>
+                                                                    )}
+                                                                    {isTalento && (row.status === 'SUBMITED' || row.status === 'SUBMITTED') && (
+                                                                        <button
+                                                                            onClick={() => approve({ employeeId: row.employeeId, taskId: row.taskId })}
+                                                                            disabled={approving}
+                                                                            className="text-xs font-semibold text-white bg-emerald-500
+                                                                                       hover:bg-emerald-600 px-2.5 py-1 rounded-lg
+                                                                                       transition-colors disabled:opacity-50 shrink-0"
+                                                                        >
+                                                                            Aprobar
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 )}
                             </div>

@@ -47,5 +47,10 @@ module.exports = (sequelize) => {
 		tableName: 'feedback_assignments',
 		timestamps: true,
 		schema:     process.env.DB_SCHEMA || 'public',
+		uniqueKeys: {
+			unique_feedback_assignment: {
+				fields: ['cycle_id', 'evaluator_id', 'evaluated_id', 'type'],
+			},
+		},
 	});
 };

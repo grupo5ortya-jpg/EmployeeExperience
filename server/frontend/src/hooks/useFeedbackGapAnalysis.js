@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getGapAnalysis, generateGapAnalysis } from '../services/feedback360Service';
+import { getGapAnalysis, generateGapAnalysis, sendGapAnalysis } from '../services/feedback360Service';
 
 export function useFeedbackGapAnalysis(cycleId, evaluatedId) {
     return useQuery({
@@ -15,6 +15,18 @@ export function useGenerateGapAnalysis(cycleId, evaluatedId) {
         mutationFn: () => generateGapAnalysis(cycleId, evaluatedId),
         onSuccess:  (data) => {
             qc.setQueryData(['feedback-gap-analysis', cycleId, evaluatedId], data);
+        },
+    });
+}
+
+export function useSendGapAnalysis(cycleId, evaluatedId) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (sections) => sendGapAnalysis(cycleId, evaluatedId, sections),
+        onSuccess:  (data) => {
+            qc.setQueryData(['feedback-gap-analysis', cycleId, evaluatedId], (prev) =>
+                prev ? { ...prev, sentSections: data.sentSections, sentAt: data.sentAt } : prev
+            );
         },
     });
 }

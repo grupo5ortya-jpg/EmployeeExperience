@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { ArrowLeft, MessageSquare, Sparkles, TrendingUp, AlertTriangle, Lightbulb, RefreshCw } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Sparkles, TrendingUp, AlertTriangle, Lightbulb, RefreshCw, Send, CheckSquare, Square, CheckCircle2 } from 'lucide-react'
 import { useFeedbackResults }      from '../../hooks/useFeedbackResults'
-import { useFeedbackGapAnalysis, useGenerateGapAnalysis } from '../../hooks/useFeedbackGapAnalysis'
+import { useFeedbackGapAnalysis, useGenerateGapAnalysis, useSendGapAnalysis } from '../../hooks/useFeedbackGapAnalysis'
 import { CompetencyChart }    from './components/CompetencyChart'
 import { COMPETENCY_MAP }     from './competencyConfig'
 
@@ -30,6 +31,16 @@ export default function HRFeedbackReport() {
     const { data, isLoading, isError } = useFeedbackResults(cycleId, evaluatedId)
     const { data: gapData, isLoading: loadingGap } = useFeedbackGapAnalysis(cycleId, evaluatedId)
     const { mutate: generate, isPending: generating, error: generateError } = useGenerateGapAnalysis(cycleId, evaluatedId)
+    const { mutate: sendSections, isPending: sending } = useSendGapAnalysis(cycleId, evaluatedId)
+
+    const ALL_SECTIONS = ['strengths', 'gaps', 'suggestions']
+    const [selected, setSelected] = useState(new Set(ALL_SECTIONS))
+
+    const toggleSection = (key) => setSelected((prev) => {
+        const next = new Set(prev)
+        next.has(key) ? next.delete(key) : next.add(key)
+        return next
+    })
 
     if (isLoading) return (
         <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6">
@@ -204,6 +215,7 @@ export default function HRFeedbackReport() {
             {/* ── AI Gap Analysis ────────────────────────── */}
             {hasData && (
                 <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden shrink-0">
+                    {/* Header */}
                     <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40
                                     flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -212,23 +224,31 @@ export default function HRFeedbackReport() {
                                 AI Gap Analysis
                             </h2>
                         </div>
-                        {!loadingGap && !gapData && (
-                            <button
-                                onClick={() => generate()}
-                                disabled={generating}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-brand
-                                           hover:text-brand-hover bg-brand-pale hover:bg-brand-light
-                                           px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                <RefreshCw size={11} className={generating ? 'animate-spin' : ''} />
-                                {generating ? 'Generando...' : 'Generar análisis'}
-                            </button>
-                        )}
-                        {gapData && (
-                            <span className="text-xs text-slate-400">
-                                Generado el {new Date(gapData.createdAt).toLocaleDateString('es-AR')}
-                            </span>
-                        )}
+                        <div className="flex items-center gap-3">
+                            {gapData?.sentAt && (
+                                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                                    <CheckCircle2 size={13} />
+                                    Enviado el {new Date(gapData.sentAt).toLocaleDateString('es-AR')}
+                                </div>
+                            )}
+                            {gapData?.createdAt && !gapData.sentAt && (
+                                <span className="text-xs text-slate-400">
+                                    Generado el {new Date(gapData.createdAt).toLocaleDateString('es-AR')}
+                                </span>
+                            )}
+                            {!loadingGap && !gapData && (
+                                <button
+                                    onClick={() => generate()}
+                                    disabled={generating}
+                                    className="flex items-center gap-1.5 text-xs font-semibold text-brand
+                                               hover:text-brand-hover bg-brand-pale hover:bg-brand-light
+                                               px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    <RefreshCw size={11} className={generating ? 'animate-spin' : ''} />
+                                    {generating ? 'Generando...' : 'Generar análisis'}
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="p-5">
@@ -253,63 +273,101 @@ export default function HRFeedbackReport() {
                         )}
 
                         {gapData?.analysis && (
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-5">
                                 {/* Summary */}
                                 <p className="text-sm text-slate-600 leading-snug border-l-2 border-brand pl-3">
                                     {gapData.analysis.summary}
                                 </p>
 
+                                {/* Instruction */}
+                                <p className="text-xs text-slate-400">
+                                    Seleccioná las secciones que querés compartir con el empleado y hacé click en <strong>Enviar al empleado</strong>.
+                                </p>
+
+                                {/* 3 selectable cards */}
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     {/* Strengths */}
-                                    <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4">
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                            <TrendingUp size={12} className="text-emerald-600 shrink-0" />
-                                            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
-                                                Fortalezas
-                                            </p>
-                                        </div>
-                                        <ul className="flex flex-col gap-1.5">
-                                            {gapData.analysis.strengths.map((s, i) => (
-                                                <li key={i} className="text-xs text-emerald-700 leading-snug flex items-start gap-1.5">
-                                                    <span className="mt-1 shrink-0">·</span>{s}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                    {[
+                                        {
+                                            key:       'strengths',
+                                            label:     'Fortalezas',
+                                            items:     gapData.analysis.strengths,
+                                            Icon:      TrendingUp,
+                                            cardCls:   'bg-emerald-50 border-emerald-200',
+                                            textCls:   'text-emerald-700',
+                                            checkCls:  'text-emerald-600',
+                                            activeCls: 'ring-2 ring-emerald-400',
+                                        },
+                                        {
+                                            key:       'gaps',
+                                            label:     'Brechas',
+                                            items:     gapData.analysis.gaps,
+                                            Icon:      AlertTriangle,
+                                            cardCls:   'bg-amber-50 border-amber-200',
+                                            textCls:   'text-amber-700',
+                                            checkCls:  'text-amber-600',
+                                            activeCls: 'ring-2 ring-amber-400',
+                                        },
+                                        {
+                                            key:       'suggestions',
+                                            label:     'Acciones sugeridas',
+                                            items:     gapData.analysis.suggestions,
+                                            Icon:      Lightbulb,
+                                            cardCls:   'bg-brand-pale border-brand-light',
+                                            textCls:   'text-brand',
+                                            checkCls:  'text-brand',
+                                            activeCls: 'ring-2 ring-brand',
+                                        },
+                                    ].map(({ key, label, items, Icon, cardCls, textCls, checkCls, activeCls }) => {
+                                        const isOn = selected.has(key)
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                onClick={() => toggleSection(key)}
+                                                className={`rounded-lg border p-4 text-left transition-all
+                                                    ${cardCls} ${isOn ? activeCls : 'opacity-60'}`}
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Icon size={12} className={`${checkCls} shrink-0`} />
+                                                        <p className={`text-xs font-bold uppercase tracking-wide ${textCls}`}>
+                                                            {label}
+                                                        </p>
+                                                    </div>
+                                                    {isOn
+                                                        ? <CheckSquare size={14} className={checkCls} />
+                                                        : <Square size={14} className="text-slate-300" />}
+                                                </div>
+                                                <ul className="flex flex-col gap-1.5">
+                                                    {items.map((s, i) => (
+                                                        <li key={i} className={`text-xs leading-snug flex items-start gap-1.5 ${textCls}`}>
+                                                            <span className="mt-1 shrink-0">·</span>{s}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
 
-                                    {/* Gaps */}
-                                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                            <AlertTriangle size={12} className="text-amber-600 shrink-0" />
-                                            <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">
-                                                Brechas
-                                            </p>
-                                        </div>
-                                        <ul className="flex flex-col gap-1.5">
-                                            {gapData.analysis.gaps.map((g, i) => (
-                                                <li key={i} className="text-xs text-amber-700 leading-snug flex items-start gap-1.5">
-                                                    <span className="mt-1 shrink-0">·</span>{g}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-
-                                    {/* Suggestions */}
-                                    <div className="rounded-lg bg-brand-pale border border-brand-light p-4">
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                            <Lightbulb size={12} className="text-brand shrink-0" />
-                                            <p className="text-xs font-bold text-brand uppercase tracking-wide">
-                                                Acciones sugeridas
-                                            </p>
-                                        </div>
-                                        <ul className="flex flex-col gap-1.5">
-                                            {gapData.analysis.suggestions.map((s, i) => (
-                                                <li key={i} className="text-xs text-brand leading-snug flex items-start gap-1.5">
-                                                    <span className="mt-1 shrink-0">·</span>{s}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                {/* Send button */}
+                                <div className="flex items-center justify-between pt-1 border-t border-brand-light">
+                                    <p className="text-xs text-slate-400">
+                                        {selected.size === 0
+                                            ? 'Seleccioná al menos una sección'
+                                            : `${selected.size} sección${selected.size > 1 ? 'es' : ''} seleccionada${selected.size > 1 ? 's' : ''}`}
+                                    </p>
+                                    <button
+                                        onClick={() => sendSections([...selected])}
+                                        disabled={sending || selected.size === 0}
+                                        className="flex items-center gap-1.5 text-xs font-semibold text-white
+                                                   bg-brand hover:bg-brand-hover px-4 py-2 rounded-lg
+                                                   transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                    >
+                                        <Send size={12} />
+                                        {sending ? 'Enviando...' : gapData.sentAt ? 'Reenviar al empleado' : 'Enviar al empleado'}
+                                    </button>
                                 </div>
                             </div>
                         )}

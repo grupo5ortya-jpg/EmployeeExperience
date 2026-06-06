@@ -1,4 +1,4 @@
-const { TaskType } = require('../connection/sequelize');
+const { TaskType, Task } = require('../connection/sequelize');
 
 function formatTaskType(t) {
 	return {
@@ -58,6 +58,10 @@ const deleteTaskType = async (req, res, next) => {
 	try {
 		const taskType = await TaskType.findByPk(req.params.id);
 		if (!taskType) return res.status(404).json({ status: 'fail', message: 'Task type not found' });
+
+		// Soft-delete all tasks so EmployeeTask history is preserved via paranoid FK
+		await Task.destroy({ where: { task_type_id: req.params.id } });
+
 		await taskType.destroy();
 		res.status(204).end();
 	} catch (err) {

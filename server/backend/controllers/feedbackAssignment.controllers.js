@@ -291,6 +291,7 @@ const getGapAnalysis = async (req, res, next) => {
 		if (!existing) return res.json(null);
 
 		res.json({
+			id:              existing.id,
 			department:      existing.department,
 			actualResults:   existing.actual_results,
 			expectedResults: existing.expected_results,
@@ -300,7 +301,9 @@ const getGapAnalysis = async (req, res, next) => {
 				suggestions: existing.suggestions,
 				summary:     existing.summary,
 			},
-			createdAt: existing.createdAt,
+			sentSections: existing.sent_sections,
+			sentAt:       existing.sent_at,
+			createdAt:    existing.createdAt,
 		});
 	} catch (err) {
 		console.error('[feedbackAssignment] getGapAnalysis:', err.message);
@@ -351,6 +354,7 @@ const generateGapAnalysis = async (req, res, next) => {
 		});
 		if (cached) {
 			return res.json({
+				id:              cached.id,
 				department:      cached.department,
 				actualResults:   cached.actual_results,
 				expectedResults: cached.expected_results,
@@ -360,8 +364,10 @@ const generateGapAnalysis = async (req, res, next) => {
 					suggestions: cached.suggestions,
 					summary:     cached.summary,
 				},
-				createdAt: cached.createdAt,
-				cached: true,
+				sentSections: cached.sent_sections,
+				sentAt:       cached.sent_at,
+				createdAt:    cached.createdAt,
+				cached:       true,
 			});
 		}
 
@@ -453,13 +459,20 @@ const generateGapAnalysis = async (req, res, next) => {
 			expected_results: filteredExpected,
 		});
 
+		const created = await FeedbackGapAnalysis.findOne({
+			where: { cycle_id: cycleId, employee_id: evaluatedId },
+		});
+
 		res.json({
+			id:              created?.id,
 			employeeName,
 			department:      departmentName,
 			actualResults,
 			expectedResults: filteredExpected,
 			analysis,
-			cached: false,
+			sentSections:    null,
+			sentAt:          null,
+			cached:          false,
 		});
 	} catch (err) {
 		console.error('[feedbackAssignment] generateGapAnalysis:', err.message);
@@ -467,4 +480,48 @@ const generateGapAnalysis = async (req, res, next) => {
 	}
 };
 
-module.exports = { getAssignments, generateAssignments, updateAssignment, getResults, getGapAnalysis, generateGapAnalysis };
+// PATCH /feedback-assignment/gap-analysis/send  { cycleId, evaluatedId, sections: ['strengths','gaps','suggestions'] }
+const sendGapAnalysis = async (req, res, next) => {
+	try {
+		const { cycleId, evaluatedId, sections } = req.body;
+		if (!cycleId || !evaluatedId || !Array.isArray(sections) || sections.length === 0)
+			return res.status(400).json({ error: 'cycleId, evaluatedId and sections[] are required' });
+
+		const record = await FeedbackGapAnalysis.findOne({
+			where: { cycle_id: cycleId, employee_id: evaluatedId },
+		});
+		if (!record)
+			return res.status(404).json({ error: 'Gap analysis not found. Generate it first.' });
+
+		await record.update({ sent_sections: sections, sent_at: new Date() });
+
+		// Alert employee — deduplicated per cycle
+		const existing = await Alert.findOne({
+			where: { employee_id: evaluatedId, type: 'FEEDBACK_GAP_ANALYSIS_SENT', topics: { [require('sequelize').Op.contains]: [cycleId] } },
+		});
+		if (!existing) {
+			const emp = await Employee.findByPk(evaluatedId, {
+				include: [{ model: Person, as: 'person', attributes: ['first_name'] }],
+			});
+			const firstName = emp?.person?.first_name ?? 'Tu';
+			await Alert.create({
+				employee_id: evaluatedId,
+				type:        'FEEDBACK_GAP_ANALYSIS_SENT',
+				message:     `${firstName}, RRHH compartió tu análisis de desarrollo del ciclo de Feedback 360°. ¡Revisá tus resultados!`,
+				status:      'UNREAD',
+				topics:      [cycleId],
+			});
+		}
+
+		res.json({
+			id:           record.id,
+			sentSections: sections,
+			sentAt:       record.sent_at,
+		});
+	} catch (err) {
+		console.error('[feedbackAssignment] sendGapAnalysis:', err.message);
+		next(err);
+	}
+};
+
+module.exports = { getAssignments, generateAssignments, updateAssignment, getResults, getGapAnalysis, generateGapAnalysis, sendGapAnalysis };

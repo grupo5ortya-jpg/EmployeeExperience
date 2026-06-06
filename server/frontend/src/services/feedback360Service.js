@@ -48,3 +48,7 @@ export const getGapAnalysis = (cycleId, evaluatedId) =>
 export const generateGapAnalysis = (cycleId, evaluatedId) =>
     apiClient.post('/feedback-assignment/gap-analysis', { cycleId, evaluatedId })
         .then((r) => r.data);
+
+export const sendGapAnalysis = (cycleId, evaluatedId, sections) =>
+    apiClient.patch('/feedback-assignment/gap-analysis/send', { cycleId, evaluatedId, sections })
+        .then((r) => r.data);

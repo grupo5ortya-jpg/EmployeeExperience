@@ -4,18 +4,27 @@ import {
   Home, UserPlus, RotateCcw, Target, BookOpen,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
+  List, PlusSquare, UserPlus2,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
 /**
  * roles: which roles can see this item.
- * Omit (or empty array) → visible to all authenticated users.
+ * children: sub-items rendered below with indented style.
+ * Omit roles (or empty array) → visible to all authenticated users.
  */
 const ALL_NAV_ITEMS = [
   { icon: Home,               label: 'Inicio',            to: '/' },
   { icon: User,               label: 'Mi perfil' },
   { icon: Users,              label: 'Equipo',             to: '/employeelist',      roles: ['Talento', 'Líder'] },
-  { icon: UserPlus,           label: 'Onboarding',         to: '/onboardinghome',    roles: ['Talento'] },
+  {
+    icon: UserPlus,           label: 'Onboarding',         to: '/onboardinghome',    roles: ['Talento'],
+    children: [
+      { icon: List,       label: 'Ver asignaciones', to: '/all-assignments' },
+      { icon: PlusSquare, label: 'Crear template',   to: '/createtemplatepage' },
+      { icon: UserPlus2,  label: 'Asignar template', to: '/assigntemplatepage' },
+    ],
+  },
   { icon: ClipboardList,      label: 'Onboarding equipo',  to: '/all-assignments',   roles: ['Líder'] },
   { icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Talento', 'Líder'] },
   { icon: Target,             label: 'Objetivos' },
@@ -23,8 +32,8 @@ const ALL_NAV_ITEMS = [
   { icon: ClipboardList,      label: 'Plan de acción' },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
   { icon: BarChart2,          label: 'Análisis de Pulso',  to: '/pulseanalysis',     roles: ['Talento'] },
-  { icon: ClipboardList,      label: 'Mis tareas',         to: '/mytasks',                  roles: ['Colaborador', 'Líder'] },
-  { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',           roles: ['Colaborador', 'Líder'] },
+  { icon: ClipboardList,      label: 'Mis tareas',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
+  { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },
   { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
   { icon: MessageSquareHeart, label: 'Feedback continuo',  to: '/continuous-feedback' },
   { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento'] },
@@ -35,7 +44,26 @@ const itemClass = (active) =>
   `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-150 cursor-pointer
   ${active ? 'bg-brand text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`
 
-function NavItem({ icon: Icon, label, active, badge, to }) {
+const subItemClass = (active) =>
+  `w-full flex items-center gap-2 pl-4 pr-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150 cursor-pointer
+  ${active ? 'text-brand bg-white/10' : 'text-slate-400 hover:text-sky-200 hover:bg-white/5'}`
+
+function SubNavItem({ icon: Icon, label, to }) {
+  return (
+    <li>
+      <NavLink to={to} className={({ isActive }) => subItemClass(isActive)}>
+        {({ isActive }) => (
+          <>
+            <Icon size={13} strokeWidth={isActive ? 2.2 : 1.8} className="shrink-0" />
+            <span className="truncate">{label}</span>
+          </>
+        )}
+      </NavLink>
+    </li>
+  )
+}
+
+function NavItem({ icon: Icon, label, active, badge, to, children }) {
   const content = (isActive) => (
     <>
       <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
@@ -55,6 +83,13 @@ function NavItem({ icon: Icon, label, active, badge, to }) {
         <NavLink to={to} end={to === '/'} className={({ isActive }) => itemClass(isActive)}>
           {({ isActive }) => content(isActive)}
         </NavLink>
+        {children?.length > 0 && (
+          <ul className="mt-0.5 ml-3 pl-3 flex flex-col gap-0.5 border-l border-white/10">
+            {children.map((child) => (
+              <SubNavItem key={child.label} {...child} />
+            ))}
+          </ul>
+        )}
       </li>
     )
   }

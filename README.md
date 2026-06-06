@@ -45,3 +45,7 @@
 ├───────────────────────────┼──────────┼──────────────────────────
 │ talento20@example.com     │ pass20   │ Talento (HR)              │
 └───────────────────────────┴──────────┴───────────────────────────┘
+
+- todo: alertas ordenadas por vistas y no vistas para mas orden.
+- todo: feedback continuo
+- todo: arreglar vacantes

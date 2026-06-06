@@ -23,3 +23,7 @@ export const createTask = async (data) => {
 export const deleteTask = async (id) => {
     await apiClient.delete(`/task/${id}`);
 };
+
+export const deleteTaskType = async (id) => {
+    await apiClient.delete(`/task-type/${id}`);
+};

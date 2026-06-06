@@ -47,6 +47,10 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 	for (const employee of employees) {
 		const leaderId = employee.leaders?.[0]?.id ?? null;
 
+		// Sin líder y sin reportes directos en el depto → no participa
+		const hasReports = byLeader[employee.id]?.size > 0;
+		if (!leaderId && !hasReports) continue;
+
 		// SELF — always
 		rows.push({
 			cycle_id:     cycleId,
@@ -57,7 +61,7 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 		});
 
 		if (leaderId) {
-			// PEER — same-leader teammates, random selection
+			// PEER — same-leader teammates, random selection (always within dept)
 			const teammates = [...(byLeader[leaderId] ?? [])].filter(id => id !== employee.id);
 			const shuffled  = [...teammates].sort(() => Math.random() - 0.5);
 			for (const peerId of shuffled.slice(0, PEERS_PER_EMPLOYEE)) {
@@ -70,14 +74,16 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 				});
 			}
 
-			// LEADER — the leader evaluates this employee
-			rows.push({
-				cycle_id:     cycleId,
-				evaluator_id: leaderId,
-				evaluated_id: employee.id,
-				type:         'LEADER',
-				status:       'PENDING',
-			});
+			// LEADER — only if the leader belongs to this department's cycle
+			if (employeeIds.has(leaderId)) {
+				rows.push({
+					cycle_id:     cycleId,
+					evaluator_id: leaderId,
+					evaluated_id: employee.id,
+					type:         'LEADER',
+					status:       'PENDING',
+				});
+			}
 		}
 
 		// DIRECT_REPORT — collaborators within the dept who report to this employee evaluate them
@@ -95,7 +101,7 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 		}
 	}
 
-	await FeedbackAssignment.bulkCreate(rows);
+	await FeedbackAssignment.bulkCreate(rows, { ignoreDuplicates: true });
 	return { created: rows.length };
 }
 

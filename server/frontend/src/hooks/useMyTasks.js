@@ -19,3 +19,14 @@ export function useUpdateTaskStatus(employeeId) {
         },
     });
 }
+
+export function useArchiveTemplate(employeeId) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (taskIds) =>
+            Promise.all(taskIds.map((id) => updateTaskStatus(employeeId, id, 'DROPPED'))),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['my-tasks', employeeId] });
+        },
+    });
+}
