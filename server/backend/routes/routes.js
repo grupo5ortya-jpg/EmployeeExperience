@@ -32,6 +32,7 @@ const routes_feedback_assignment = require('./routes.feedback_assignment.js');
 const routes_job_opening = require('./routes.jobOpening')
 const routes_skills = require('./routes.skill.js')
 const routes_continuous_feedback = require('./routes.continuousFeedback.js');
+const routes_okr = require('./routes.okr.js');
 
 
 // Auth — public, must be first
@@ -90,6 +91,9 @@ router.use('/survey-response', routes_survey_response);
 
 // Mount continuous feedback routes
 router.use('/continuous-feedback', routes_continuous_feedback);
+
+// Mount OKR routes
+router.use('/okr', routes_okr);
 
 //gemini
 router.post('/api/gemini/preguntar', preguntarAGemini);

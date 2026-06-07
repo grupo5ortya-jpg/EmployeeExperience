@@ -11,6 +11,10 @@ module.exports = (sequelize) => {
 				defaultValue: DataTypes.UUIDV4,
 				primaryKey: true,
 			},
+			title: {
+				type:      DataTypes.STRING(200),
+				allowNull: true,
+			},
 			description: {
 				type: DataTypes.TEXT,
 				allowNull: false,
@@ -30,8 +34,10 @@ module.exports = (sequelize) => {
 				type: DataTypes.ENUM(...Object.values(CONTINUOUS_FEEDBACK.TYPES)),
 				allowNull: false,
 			},
-			isAnonymous: {
-				type: DataTypes.BOOLEAN
+			is_anonymous: {
+				type:         DataTypes.BOOLEAN,
+				allowNull:    true,
+				defaultValue: false,
 			}
 		},
 		{

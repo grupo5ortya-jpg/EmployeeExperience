@@ -1,5 +1,5 @@
 
-const { ContinuousFeedback, Employee, Person } = require('../connection/sequelize');
+const { ContinuousFeedback, Employee, Person, Alert } = require('../connection/sequelize');
 
 const formatEmployeeMini = (employee) => {
     if (!employee) return null;
@@ -13,63 +13,38 @@ const formatEmployeeMini = (employee) => {
 };
 
 const formatContinuousFeedback = (feedback) => ({
-    id: feedback.id,
-
-    type: feedback.type,
-
+    id:          feedback.id,
+    type:        feedback.type,
+    title:       feedback.title ?? null,
     description: feedback.description,
-
     isAnonymous: feedback.is_anonymous,
-
-    createdAt: feedback.createdAt,
-
-    emitter: feedback.is_anonymous
-        ? null
-        : formatEmployeeMini(feedback.emitter),
-
-    receiver: formatEmployeeMini(feedback.receiver),
+    createdAt:   feedback.createdAt,
+    emitter:     feedback.is_anonymous ? null : formatEmployeeMini(feedback.emitter),
+    receiver:    formatEmployeeMini(feedback.receiver),
 });
-const EMPLOYEE_MINI_INCLUDE = {
-    model: Person,
-    as: 'person',
-    attributes: ['first_name', 'last_name'],
-};
-
 const CONTINUOUS_FEEDBACK_INCLUDE = [
     {
         model: Employee,
         as: 'emitter',
-        include: [EMPLOYEE_MINI_INCLUDE],
+        required: false,
+        include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
     },
-
     {
         model: Employee,
         as: 'receiver',
-        include: [EMPLOYEE_MINI_INCLUDE],
+        required: false,
+        include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
     },
 ];
-// const {
-//     ContinuousFeedback,
-//     Employee,
-// } = require('../connection/sequelize');
-
 /* ─────────────────────────────────────────────
    CREATE
 ───────────────────────────────────────────── */
 
 const createContinuousFeedback = async (req, res, next) => {
     try {
-        const {
-            type,
-            description,
-            emitter_id,
-            receiver_id,
-        } = req.body;
+        const { type, title, description, emitter_id, receiver_id } = req.body;
 
-        const isAnonymous =
-            type === 'SUGGESTION'
-                ? true
-                : Boolean(req.body.isAnonymous);
+        const isAnonymous = type === 'SUGGESTION' ? true : Boolean(req.body.isAnonymous);
 
         if (emitter_id === receiver_id) {
             return res.status(400).json({
@@ -80,6 +55,7 @@ const createContinuousFeedback = async (req, res, next) => {
 
         const feedback = await ContinuousFeedback.create({
             type,
+            title:        title ?? null,
             description,
             emitter_id,
             receiver_id,
@@ -89,7 +65,24 @@ const createContinuousFeedback = async (req, res, next) => {
         const full = await ContinuousFeedback.findByPk(feedback.id, {
             include: CONTINUOUS_FEEDBACK_INCLUDE,
         });
-console.log('Feedback creado:', full.toJSON());
+
+        // Notify receiver — fire and forget
+        const emitterName = isAnonymous
+            ? 'Un compañero anónimo'
+            : (() => {
+                const e = full.emitter;
+                return e ? `${e.person?.first_name ?? ''} ${e.person?.last_name ?? ''}`.trim() || 'Un compañero' : 'Un compañero';
+            })();
+        const typeLabel = type === 'RECOGNITION' ? 'reconocimiento' : 'sugerencia';
+
+        Alert.create({
+            employee_id: receiver_id,
+            type:        'CONTINUOUS_FEEDBACK_RECEIVED',
+            message:     `${emitterName} te envió un ${typeLabel}: "${(title || description).slice(0, 80)}"`,
+            status:      'UNREAD',
+            topics:      [feedback.id],
+        }).catch(console.error);
+
         res.status(201).json(formatContinuousFeedback(full));
 
     } catch (err) {
@@ -106,6 +99,7 @@ const getContinuousFeedbacks = async (req, res, next) => {
         const feedbacks = await ContinuousFeedback.findAll({
             include: CONTINUOUS_FEEDBACK_INCLUDE,
             order: [['createdAt', 'DESC']],
+            subQuery: false,
         });
 
         res.json(feedbacks.map(formatContinuousFeedback));
@@ -147,11 +141,10 @@ const getReceivedFeedbacks = async (req, res, next) => {
         const { employeeId } = req.params;
 
         const feedbacks = await ContinuousFeedback.findAll({
-            where: {
-                receiver_id: employeeId,
-            },
+            where: { receiver_id: employeeId },
             include: CONTINUOUS_FEEDBACK_INCLUDE,
             order: [['createdAt', 'DESC']],
+            subQuery: false,
         });
 
         res.json(feedbacks.map(formatContinuousFeedback));
@@ -170,11 +163,10 @@ const getSentFeedbacks = async (req, res, next) => {
         const { employeeId } = req.params;
 
         const feedbacks = await ContinuousFeedback.findAll({
-            where: {
-                emitter_id: employeeId,
-            },
+            where: { emitter_id: employeeId },
             include: CONTINUOUS_FEEDBACK_INCLUDE,
             order: [['createdAt', 'DESC']],
+            subQuery: false,
         });
 
         res.json(feedbacks.map(formatContinuousFeedback));

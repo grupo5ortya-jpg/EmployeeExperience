@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { ArrowLeft, MessageSquare, Sparkles, TrendingUp, AlertTriangle, Lightbulb, RefreshCw, Send, CheckSquare, Square, CheckCircle2 } from 'lucide-react'
 import { useFeedbackResults }      from '../../hooks/useFeedbackResults'
@@ -27,6 +27,7 @@ export default function HRFeedbackReport() {
     const [params]    = useSearchParams()
     const cycleId     = params.get('cycleId')
     const evaluatedId = params.get('evaluatedId')
+    const autoGenerate = params.get('autoGenerate') === '1'
 
     const { data, isLoading, isError } = useFeedbackResults(cycleId, evaluatedId)
     const { data: gapData, isLoading: loadingGap } = useFeedbackGapAnalysis(cycleId, evaluatedId)
@@ -35,6 +36,14 @@ export default function HRFeedbackReport() {
 
     const ALL_SECTIONS = ['strengths', 'gaps', 'suggestions']
     const [selected, setSelected] = useState(new Set(ALL_SECTIONS))
+
+    // Auto-generate gap analysis when arriving from "Ver resultados" with no pending evaluations
+    useEffect(() => {
+        if (!autoGenerate) return
+        if (loadingGap || gapData) return
+        if (!data || data.stats?.pending > 0) return
+        generate()
+    }, [autoGenerate, loadingGap, gapData, data])
 
     const toggleSection = (key) => setSelected((prev) => {
         const next = new Set(prev)
@@ -236,18 +245,30 @@ export default function HRFeedbackReport() {
                                     Generado el {new Date(gapData.createdAt).toLocaleDateString('es-AR')}
                                 </span>
                             )}
-                            {!loadingGap && !gapData && (
-                                <button
-                                    onClick={() => generate()}
-                                    disabled={generating}
-                                    className="flex items-center gap-1.5 text-xs font-semibold text-brand
-                                               hover:text-brand-hover bg-brand-pale hover:bg-brand-light
-                                               px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    <RefreshCw size={11} className={generating ? 'animate-spin' : ''} />
-                                    {generating ? 'Generando...' : 'Generar análisis'}
-                                </button>
-                            )}
+                            {!loadingGap && !gapData && (() => {
+                                const hasPending = (data?.stats?.pending ?? 0) > 0
+                                return (
+                                    <div className="flex flex-col items-end gap-0.5">
+                                        <button
+                                            onClick={() => generate()}
+                                            disabled={generating || hasPending}
+                                            title={hasPending ? 'Esperá que todos completen el formulario' : ''}
+                                            className="flex items-center gap-1.5 text-xs font-semibold text-brand
+                                                       hover:text-brand-hover bg-brand-pale hover:bg-brand-light
+                                                       px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40
+                                                       disabled:pointer-events-none"
+                                        >
+                                            <RefreshCw size={11} className={generating ? 'animate-spin' : ''} />
+                                            {generating ? 'Generando...' : 'Generar análisis'}
+                                        </button>
+                                        {hasPending && (
+                                            <span className="text-[10px] text-amber-500 font-medium">
+                                                {data.stats.pending} evaluación{data.stats.pending > 1 ? 'es' : ''} pendiente{data.stats.pending > 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                    </div>
+                                )
+                            })()}
                         </div>
                     </div>
 

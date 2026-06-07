@@ -58,6 +58,15 @@ export default function FeedbackDetailPage() {
         }, {})
     )
 
+    // Whether each evaluated employee still has pending assignments
+    const pendingPerEvaluated = assignments.reduce((acc, a) => {
+        if (a.evaluated?.id) {
+            if (!(a.evaluated.id in acc)) acc[a.evaluated.id] = false
+            if (a.status === 'PENDING') acc[a.evaluated.id] = true
+        }
+        return acc
+    }, {})
+
     if (isLoading) return <PageSkeleton />
 
     if (isError || !survey) {
@@ -322,7 +331,8 @@ export default function FeedbackDetailPage() {
                     </div>
                     <ul className="divide-y divide-brand-light">
                         {evaluatedEmployees.map((emp) => {
-                            const name = `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim()
+                            const name    = `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim()
+                            const hasPending = pendingPerEvaluated[emp.id] ?? false
                             return (
                                 <li key={emp.id}
                                     className="px-5 py-3 flex items-center justify-between gap-3">
@@ -332,15 +342,31 @@ export default function FeedbackDetailPage() {
                                             <p className="text-xs text-slate-400">{emp.position}</p>
                                         )}
                                     </div>
-                                    <Link
-                                        to={`/hrfeedbackreport?cycleId=${id}&evaluatedId=${emp.id}`}
-                                        className="flex items-center gap-1.5 text-xs font-semibold text-brand
-                                                   hover:text-brand-hover bg-brand-pale hover:bg-brand-light
-                                                   px-3 py-1.5 rounded-lg transition-colors shrink-0"
-                                    >
-                                        <BarChart2 size={12} />
-                                        Ver resultados
-                                    </Link>
+                                    {hasPending ? (
+                                        <div className="flex flex-col items-end gap-0.5 shrink-0">
+                                            <span
+                                                className="flex items-center gap-1.5 text-xs font-semibold
+                                                           text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg
+                                                           cursor-not-allowed"
+                                            >
+                                                <BarChart2 size={12} />
+                                                Ver resultados
+                                            </span>
+                                            <span className="text-[10px] text-amber-500 font-medium">
+                                                Evaluaciones pendientes
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <Link
+                                            to={`/hrfeedbackreport?cycleId=${id}&evaluatedId=${emp.id}&autoGenerate=1`}
+                                            className="flex items-center gap-1.5 text-xs font-semibold text-brand
+                                                       hover:text-brand-hover bg-brand-pale hover:bg-brand-light
+                                                       px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                                        >
+                                            <BarChart2 size={12} />
+                                            Ver resultados
+                                        </Link>
+                                    )}
                                 </li>
                             )
                         })}

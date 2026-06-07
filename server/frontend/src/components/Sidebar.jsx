@@ -4,7 +4,7 @@ import {
   Home, UserPlus, RotateCcw, Target, BookOpen,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
-  List, PlusSquare, UserPlus2,
+  List, PlusSquare, UserPlus2, SendHorizonal,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
@@ -27,7 +27,8 @@ const ALL_NAV_ITEMS = [
   },
   { icon: ClipboardList,      label: 'Onboarding equipo',  to: '/all-assignments',   roles: ['Líder'] },
   { icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Talento', 'Líder'] },
-  { icon: Target,             label: 'Objetivos' },
+  { icon: Target,             label: 'OKR Management',     to: '/okrmanagement',     roles: ['Talento'] },
+  { icon: Target,             label: 'Mis objetivos',      to: '/myobjectives',      roles: ['Colaborador', 'Líder'] },
   { icon: BookOpen,           label: 'Aprendizaje LMS' },
   { icon: ClipboardList,      label: 'Plan de acción' },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
@@ -35,7 +36,12 @@ const ALL_NAV_ITEMS = [
   { icon: ClipboardList,      label: 'Mis tareas',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
   { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },
   { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
-  { icon: MessageSquareHeart, label: 'Feedback continuo',  to: '/continuous-feedback' },
+  {
+    icon: MessageSquareHeart, label: 'Feedback continuo', to: '/continuous-feedback', roles: ['Colaborador', 'Líder'],
+    children: [
+      { icon: SendHorizonal, label: 'Enviar feedback', to: '/continuous-feedback?new=1' },
+    ],
+  },
   { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento'] },
   { icon: LifeBuoy,           label: 'Soporte' },
 ]

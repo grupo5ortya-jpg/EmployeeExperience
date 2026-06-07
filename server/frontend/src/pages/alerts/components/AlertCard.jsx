@@ -66,6 +66,20 @@ const REPORT_TYPES = {
     label:  'Ver tarea vencida',
     hrOnly: true,
   },
+  CONTINUOUS_FEEDBACK_RECEIVED: {
+    link:  () => `/continuous-feedback`,
+    label: 'Ver feedback',
+  },
+  OKR_BEHIND_SCHEDULE: {
+    link:  (alert, isTalento) => isTalento
+      ? `/okrmanagement?okrId=${alert.topics?.[0] ?? ''}`
+      : `/myobjectives?okrId=${alert.topics?.[0] ?? ''}`,
+    label: 'Ver objetivo',
+  },
+  OKR_ASSIGNED: {
+    link:  (alert) => `/myobjectives?okrId=${alert.topics?.[0] ?? ''}`,
+    label: 'Ver objetivo',
+  },
   TEAM_PULSE_ALERT: {
     link:  () => `/alerts`,
     label: 'Ver detalle',
@@ -98,7 +112,7 @@ export default function AlertCard({ alert }) {
 
   const reportConfig = REPORT_TYPES[alert.type] ?? null
   const reportLink   = (reportConfig && (!reportConfig.hrOnly || isTalento))
-    ? reportConfig.link(alert)
+    ? reportConfig.link(alert, isTalento)
     : null
   const reportLabel  = reportConfig?.label ?? 'Ver resultados'
   // Normalize topics — some alerts store it as object {key:val}, others as array

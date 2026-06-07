@@ -27,7 +27,8 @@ const core_conn_apply_associations = (sequelize) => {
 		FeedbackGapAnalysis,
 		JobOpening,
 		Skill,
-		JobOpeningSkill
+		JobOpeningSkill,
+		Okr
 	} = sequelize.models;
 
 	//! Department !//
@@ -390,6 +391,27 @@ const core_conn_apply_associations = (sequelize) => {
 	Employee.hasMany(Employee, {
 		foreignKey: 'mentor_id',
 		as: 'mentees',
+	});
+
+	//! OKR — responsible employee + parent/child hierarchy !//
+	Employee.hasMany(Okr, {
+		foreignKey: 'responsible_employee_id',
+		as: 'okrs',
+	});
+
+	Okr.belongsTo(Employee, {
+		foreignKey: 'responsible_employee_id',
+		as: 'responsible',
+	});
+
+	Okr.belongsTo(Okr, {
+		foreignKey: 'parent_id',
+		as: 'parent',
+	});
+
+	Okr.hasMany(Okr, {
+		foreignKey: 'parent_id',
+		as: 'children',
 	});
 
 	//! Team / Employee self-association !//

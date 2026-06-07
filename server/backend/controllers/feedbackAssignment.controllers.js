@@ -524,4 +524,63 @@ const sendGapAnalysis = async (req, res, next) => {
 	}
 };
 
-module.exports = { getAssignments, generateAssignments, updateAssignment, getResults, getGapAnalysis, generateGapAnalysis, sendGapAnalysis };
+// GET /feedback-assignment/cycle-summary?cycleId=xxx
+const getCycleSummary = async (req, res, next) => {
+	try {
+		const { cycleId } = req.query;
+		if (!cycleId) return res.status(400).json({ error: 'cycleId is required' });
+
+		const cycle = await Survey.findByPk(cycleId, {
+			attributes: ['id', 'name', 'competencies'],
+		});
+		if (!cycle) return res.status(404).json({ error: 'Cycle not found' });
+
+		const competencyIds = cycle.competencies ?? [];
+
+		// Build questionId → competencyId map
+		const questionTypes = await QuestionType.findAll({
+			where: { name: 'Feedback360', sub_type: competencyIds },
+			include: [{ model: Question, as: 'questions', attributes: ['id'] }],
+		});
+		const qToComp = {};
+		for (const qt of questionTypes)
+			for (const q of qt.questions ?? []) qToComp[q.id] = qt.sub_type;
+
+		// All completed assignments in this cycle
+		const completed = await FeedbackAssignment.findAll({
+			where: { cycle_id: cycleId, status: 'COMPLETED' },
+			attributes: ['id', 'scores'],
+		});
+
+		const total = await FeedbackAssignment.count({ where: { cycle_id: cycleId } });
+
+		// Aggregate scores per competency across all evaluations
+		const scoresByComp = {};
+		for (const a of completed) {
+			for (const [qId, score] of Object.entries(a.scores ?? {})) {
+				const compId = qToComp[qId];
+				if (!compId) continue;
+				(scoresByComp[compId] = scoresByComp[compId] ?? []).push(Number(score));
+			}
+		}
+
+		const avg = (arr) => arr.length
+			? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2))
+			: null;
+
+		const competencies = competencyIds.map((compId) => ({
+			id:      compId,
+			average: avg(scoresByComp[compId] ?? []),
+		}));
+
+		res.json({
+			cycle:        { id: cycle.id, name: cycle.name },
+			stats:        { total, completed: completed.length },
+			competencies,
+		});
+	} catch (err) {
+		next(err);
+	}
+};
+
+module.exports = { getAssignments, generateAssignments, updateAssignment, getResults, getGapAnalysis, generateGapAnalysis, sendGapAnalysis, getCycleSummary };

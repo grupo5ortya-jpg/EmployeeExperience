@@ -41,6 +41,10 @@ export const getFeedbackResults = (cycleId, evaluatedId) =>
     apiClient.get('/feedback-assignment/results', { params: { cycleId, evaluatedId } })
         .then((r) => r.data);
 
+export const getCycleSummary = (cycleId) =>
+    apiClient.get('/feedback-assignment/cycle-summary', { params: { cycleId } })
+        .then((r) => r.data);
+
 export const getGapAnalysis = (cycleId, evaluatedId) =>
     apiClient.get('/feedback-assignment/gap-analysis', { params: { cycleId, evaluatedId } })
         .then((r) => r.data).catch(() => null);

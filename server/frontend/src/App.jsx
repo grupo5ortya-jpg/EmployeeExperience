@@ -6,6 +6,7 @@ import { initializeAuth }               from './store/authSlice.js'
 import { srv_front_router_generate_routes } from './router/router.js'
 import AppLayout              from './components/layouts/AppLayout.jsx'
 import PrivateRoute           from './components/PrivateRoute.jsx'
+import RoleRoute              from './components/RoleRoute.jsx'
 import DetailEmployee         from './pages/detailEmployee/DetailEmployee.jsx'
 import TemplateDetailPage     from './pages/onboarding/TemplateDetailPage.jsx'
 import AllAssignmentsPage     from './pages/onboarding/AllAssignmentsPage.jsx'
@@ -17,6 +18,8 @@ import ContinuousFeedbackDetail from './pages/continuousFeedback/ContinuousFeedb
 import JobOpeningsList        from './pages/jobOpenings/JobOpeningsList.jsx'
 import MyEvaluations          from './pages/feedback/MyEvaluations.jsx'
 import MyTasks                from './pages/onboarding/MyTasks.jsx'
+import OKRManagement          from './pages/okr/OKRManagement.jsx'
+import MyObjectives           from './pages/okr/MyObjectives.jsx'
 
 // Restores session from cookie on every page load
 function AuthInit({ children }) {
@@ -44,11 +47,13 @@ function App() {
               <Route path="/feedback/:id"            element={<FeedbackDetailPage />} />
               <Route path="/hrfeedbackreport"        element={<HRFeedbackReport />} />
               <Route path="/employeefeedbackreport"  element={<EmployeeFeedbackReport />} />
-              <Route path="/continuous-feedback"     element={<ContinuousFeedback />} />
-              <Route path="/continuous-feedback/:id" element={<ContinuousFeedbackDetail />} />
+              <Route path="/continuous-feedback"     element={<RoleRoute allowed={['Colaborador', 'Líder']}><ContinuousFeedback /></RoleRoute>} />
+              <Route path="/continuous-feedback/:id" element={<RoleRoute allowed={['Colaborador', 'Líder']}><ContinuousFeedbackDetail /></RoleRoute>} />
               <Route path="/job-openings"            element={<JobOpeningsList />} />
               <Route path="/myevaluations"           element={<MyEvaluations />} />
               <Route path="/mytasks"                element={<MyTasks />} />
+              <Route path="/okrmanagement"           element={<RoleRoute allowed={['Talento']}><OKRManagement /></RoleRoute>} />
+              <Route path="/myobjectives"            element={<RoleRoute allowed={['Colaborador', 'Líder']}><MyObjectives /></RoleRoute>} />
             </Route>
 
             {/* Public pages: login, 404, etc. */}
