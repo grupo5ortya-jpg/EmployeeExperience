@@ -4,7 +4,7 @@ import { Link }            from 'react-router-dom'
 import {
   Users, Bell, RotateCcw, ClipboardList,
   CheckCircle2, Clock, Circle, AlertCircle,
-  BookOpen, Target, Sparkles,
+  BookOpen, Target, Sparkles, Briefcase,
   HeartHandshake, MessageSquareWarning, MessageSquareDashed,
 } from 'lucide-react'
 
@@ -17,6 +17,8 @@ import { useMyFeedbackAssignments }  from '../../hooks/useMyFeedbackAssignments'
 import { usePendingSurveys }         from '../../hooks/usePendingSurveys'
 import { useReceivedFeedbacks }      from '../continuousFeedback/hooks/useContinuousFeedback'
 import { useFeedbackResults }        from '../../hooks/useFeedbackResults'
+import { useOkrs }                   from '../../hooks/useOkrs'
+import { useJobOpenings }            from '../jobOpenings/hooks/useJobOpenings'
 import { CompetencyChart }           from '../feedback/components/CompetencyChart'
 
 /* ── Card de resumen ─────────────────────────────────────────── */
@@ -76,10 +78,14 @@ function TalentoDashboard() {
   const { data: unread = 0 }       = useUnreadAlerts()
   const { data: surveys = [] }     = useSurveys()
   const { data: allTasks = [] }    = useAllEmployeeTasks()
+  const { data: okrs = [] }        = useOkrs()
+  const { data: jobOpenings = [] } = useJobOpenings()
 
   const activeEmployees = employees.filter((e) => e.status === 'ACTIVE').length
   const pendingTasks    = allTasks.filter((t) =>
     t.status && !['COMPLETED', 'DROPPED'].includes(t.status)).length
+  const activeOkrs      = okrs.filter((o) => o.status === 'IN_PROGRESS').length
+  const openPositions   = jobOpenings.filter((j) => j.status === 'open').length
 
   return (
     <>
@@ -92,6 +98,10 @@ function TalentoDashboard() {
           label="Ciclos 360° activos" value={surveys.length} unit="ciclos"   to="/feedbackhome" />
         <SummaryCard icon={ClipboardList} iconBg="bg-amber-100" iconColor="text-amber-600"
           label="Tareas de onboarding" value={pendingTasks}  unit="pendientes" to="/all-assignments" />
+        <SummaryCard icon={Target}     iconBg="bg-emerald-100" iconColor="text-emerald-600"
+          label="OKR activos"       value={activeOkrs}       unit="en progreso" to="/okrmanagement" />
+        <SummaryCard icon={Briefcase}  iconBg="bg-indigo-100"  iconColor="text-indigo-600"
+          label="Vacantes abiertas" value={openPositions}    unit="abiertas"  to="/job-openings" />
       </div>
     </>
   )

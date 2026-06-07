@@ -275,6 +275,27 @@ const updateOkrProgress = async (req, res, next) => {
 
         await okr.save();
 
+        // Completion notification for HR — simple, deduped per OKR
+        if (okr.status === OKR.STATUS_COMPLETED) {
+            const alreadyNotified = await Alert.findOne({
+                where: {
+                    employee_id: okr.responsible_employee_id,
+                    type:        'OKR_COMPLETED',
+                    topics:      { [Op.contains]: [okr.id] },
+                },
+            });
+
+            if (!alreadyNotified) {
+                Alert.create({
+                    employee_id: okr.responsible_employee_id,
+                    type:        'OKR_COMPLETED',
+                    message:     `El objetivo "${okr.title}" alcanzó su meta y fue marcado como completado.`,
+                    status:      'UNREAD',
+                    topics:      [okr.id],
+                }).catch(console.error);
+            }
+        }
+
         // Behind-schedule notification — simple, deduped per OKR
         if (okr.status === OKR.STATUS_AT_RISK) {
             const alreadyAlerted = await Alert.findOne({

@@ -80,6 +80,10 @@ const REPORT_TYPES = {
     link:  (alert) => `/myobjectives?okrId=${alert.topics?.[0] ?? ''}`,
     label: 'Ver objetivo',
   },
+  OKR_COMPLETED: {
+    link:  (alert) => `/okrmanagement?okrId=${alert.topics?.[0] ?? ''}`,
+    label: 'Ver objetivo',
+  },
   TEAM_PULSE_ALERT: {
     link:  () => `/alerts`,
     label: 'Ver detalle',

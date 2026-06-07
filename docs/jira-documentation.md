@@ -193,6 +193,7 @@ Página de alertas con tres secciones en acordeón: "No leídas" (abierta por de
 | `CONTINUOUS_FEEDBACK_RECEIVED` | Colaborador, Líder |
 | `OKR_BEHIND_SCHEDULE` | Talento, Colaborador, Líder (responsable) |
 | `OKR_ASSIGNED` | Colaborador, Líder (responsable) |
+| `OKR_COMPLETED` | Talento |
 
 **Nota técnica:** El campo `topics` de Alert puede ser array `[uuid]` u objeto `{}` dependiendo del tipo. Siempre normalizar con `Array.isArray(alert.topics) ? alert.topics : []` antes de llamar `.filter()`.
 
@@ -281,6 +282,18 @@ Al crear un OKR (o al reasignar su responsable desde la edición), el sistema cr
 - [ ] Se crea una alerta `OKR_ASSIGNED` (fire-and-forget) al crear el OKR, con `employee_id = responsibleEmployeeId`
 - [ ] Se crea una alerta equivalente cuando HR reasigna el responsable de un OKR existente (`PATCH /okr/:id`)
 - [ ] La alerta es visible solo para el responsable (no para HR) en `/myobjectives`, con link directo al objetivo
+
+---
+
+### EXP-805 · Notificación de objetivo completado
+**Tipo:** Story | **Rol:** Talento
+
+**Descripción:**
+Cuando el responsable actualiza el progreso de un OKR y el valor actual alcanza o supera la meta (`currentValue >= targetValue`), el objetivo pasa a `COMPLETED` y el sistema crea una alerta `OKR_COMPLETED` para que HR tenga visibilidad del logro.
+
+**Acceptance Criteria:**
+- [ ] Al marcar el OKR como `COMPLETED` se crea una alerta `OKR_COMPLETED` (fire-and-forget, deduplicada por OKR igual que `OKR_BEHIND_SCHEDULE`)
+- [ ] La alerta es visible solo para Talento, con link directo a `/okrmanagement`
 
 ---
 
