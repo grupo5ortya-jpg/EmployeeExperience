@@ -2,7 +2,7 @@
 
 **Proyecto:** EmployeeExperience HR Platform  
 **Branch activo:** `fullstack-changes`  
-**Última actualización:** 2026-06-06  
+**Última actualización:** 2026-06-08  
 **Stack:** React 19 + Vite + Tailwind v4 / Express 5 + Sequelize 6 + PostgreSQL + Gemini AI
 
 ---
@@ -194,6 +194,9 @@ Página de alertas con tres secciones en acordeón: "No leídas" (abierta por de
 | `OKR_BEHIND_SCHEDULE` | Talento, Colaborador, Líder (responsable) |
 | `OKR_ASSIGNED` | Colaborador, Líder (responsable) |
 | `OKR_COMPLETED` | Talento |
+| `COURSE_COMPLETION_REQUESTED` | Talento |
+| `COURSE_COMPLETION_APPROVED` | Colaborador, Líder |
+| `COURSE_COMPLETION_REJECTED` | Colaborador, Líder |
 
 **Nota técnica:** El campo `topics` de Alert puede ser array `[uuid]` u objeto `{}` dependiendo del tipo. Siempre normalizar con `Array.isArray(alert.topics) ? alert.topics : []` antes de llamar `.filter()`.
 
@@ -270,6 +273,8 @@ Al actualizar el progreso de un OKR, si la fecha límite ya pasó y el valor act
 
 **Jerarquía:** self-join `Okr.belongsTo(Okr, { as: 'parent' })` / `Okr.hasMany(Okr, { as: 'children' })` — igual patrón que `Employee.mentor`/`mentees`.
 
+**Bug resuelto (EXP-803-BUG-01):** las cards de OKR (`OkrTreeNode.jsx`, `MyOkrCard.jsx`) mostraban "Vencido hace X días" en rojo aunque el objetivo ya estuviera `COMPLETED`, porque el badge se basaba solo en `daysRemaining < 0` (cálculo aritmético `dueDate - hoy`, sin mirar el estado). Fix: condicionar el badge con `node.isOverdue` (el campo que el backend ya calcula excluyendo `status === 'COMPLETED'` en `okr.controllers.js`), ocultando la línea de "vencido" cuando el objetivo se completó después de su fecha límite.
+
 ---
 
 ### EXP-804 · Notificación de objetivo asignado
@@ -294,6 +299,85 @@ Cuando el responsable actualiza el progreso de un OKR y el valor actual alcanza 
 **Acceptance Criteria:**
 - [ ] Al marcar el OKR como `COMPLETED` se crea una alerta `OKR_COMPLETED` (fire-and-forget, deduplicada por OKR igual que `OKR_BEHIND_SCHEDULE`)
 - [ ] La alerta es visible solo para Talento, con link directo a `/okrmanagement`
+
+---
+
+## ÉPICA 9 — Aprendizaje (Learning / LXP)
+
+### EXP-901 · Catálogo de cursos e inscripción
+**Tipo:** Story | **Rol:** Colaborador, Líder
+
+**Descripción:**
+El empleado navega un catálogo de cursos (búsqueda por título/skill, filtra por modalidad) y se inscribe con un click. Cada curso muestra título, descripción, duración, modalidad, link externo y la skill asociada (si tiene).
+
+**Acceptance Criteria:**
+- [ ] El catálogo muestra todos los cursos activos con buscador
+- [ ] Botón "Inscribirme" crea un `CourseEnrollment` (`status: IN_PROGRESS`, `progress: 0`)
+- [ ] Si el empleado ya está inscripto, el botón se reemplaza por un badge "Inscripto"
+- [ ] No se permite doble inscripción al mismo curso (índice único `employee_id + course_id`, error amigable si ya existe)
+
+**Ruta:** `/coursecatalog` (`RoleRoute allowed={['Colaborador','Líder']}`)
+**Endpoints:** `GET /learning-courses`, `GET /course-enrollments?employeeId=`, `POST /course-enrollments`
+
+---
+
+### EXP-902 · Seguimiento de progreso y solicitud de finalización
+**Tipo:** Story | **Rol:** Colaborador, Líder
+
+**Descripción:**
+El empleado actualiza manualmente su progreso (0/25/50/75/100%) en cada curso en el que está inscripto. Al llegar al 100%, puede solicitar la revisión de finalización; HR recibe una alerta para aprobar o rechazar.
+
+**Flujo:**
+1. Empleado actualiza progreso → `PATCH /course-enrollments/:id/progress`
+2. Al estar en 100% e `IN_PROGRESS`, aparece el botón "Solicitar finalización" → `PATCH /:id/request-completion` (status → `PENDING_APPROVAL`, alerta HR `COURSE_COMPLETION_REQUESTED`)
+3. HR aprueba (`PATCH /:id/review { decision: 'approve', certificateLink }`) → `COMPLETED` + `certificate_link` + alerta empleado `COURSE_COMPLETION_APPROVED`
+4. HR rechaza (`decision: 'reject'`) → vuelve a `IN_PROGRESS` + alerta empleado `COURSE_COMPLETION_REJECTED`
+
+**Acceptance Criteria:**
+- [ ] El selector de progreso solo permite los pasos `0/25/50/75/100`
+- [ ] El botón "Solicitar finalización" solo aparece con `progress === 100 && status === 'IN_PROGRESS'`
+- [ ] El backend valida `progress === 100 && status === IN_PROGRESS` antes de pasar a `PENDING_APPROVAL` (`learningService.requestCompletion`)
+- [ ] Estado `PENDING_APPROVAL` no permite nuevas solicitudes hasta que HR resuelva
+
+**Ruta:** `/mylearning` (`RoleRoute allowed={['Colaborador','Líder']}`)
+**Endpoints:** `PATCH /course-enrollments/:id/progress`, `PATCH /:id/request-completion`
+**Servicio:** `connection/learningService.js`
+
+---
+
+### EXP-903 · Panel HR — gestión de cursos y aprobación de finalizaciones
+**Tipo:** Story | **Rol:** Talento (HR)
+
+**Descripción:**
+HR crea, edita y elimina cursos del catálogo, y revisa en una tabla global todas las inscripciones (empleado, curso, progreso, estado), con acciones para aprobar (adjuntando link de certificado opcional) o rechazar las solicitudes `PENDING_APPROVAL`.
+
+**Acceptance Criteria:**
+- [ ] HR puede crear un curso (título, descripción, duración, modalidad, link, skill asociada vía `useSkills`)
+- [ ] HR puede editar un curso existente desde el mismo modal (click en la card)
+- [ ] HR puede **eliminar** un curso desde un botón dedicado en la card (ícono papelera, con confirmación `window.confirm`); el borrado es soft-delete (`paranoid: true`, `DELETE /learning-courses/:id`)
+- [ ] La tabla de inscripciones se ordena con `PENDING_APPROVAL` primero
+- [ ] Las acciones aprobar/rechazar solo se muestran en filas `PENDING_APPROVAL`
+- [ ] El input de link de certificado es opcional al aprobar
+
+**Ruta:** `/learningdashboard` (`RoleRoute allowed={['Talento']}`)
+**Endpoints:** `GET /learning-courses`, `POST /learning-courses`, `PATCH /learning-courses/:id`, `DELETE /learning-courses/:id`, `GET /course-enrollments`, `PATCH /course-enrollments/:id/review`
+
+**Bug resuelto (EXP-903-BUG-01):** Al agregar el endpoint `DELETE /learning-courses/:id`, el frontend devolvía 404 (`"Route ... not found"`). Causa: el proceso del backend corría con `node` plano (sin `nodemon`), por lo que no recargaba las rutas nuevas — fue necesario reiniciar el proceso manualmente. Ver nota técnica en CLAUDE.md.
+
+---
+
+### EXP-904 · Internal CV — Learning & Certifications
+**Tipo:** Story | **Rol:** Colaborador, Líder, Talento (HR)
+
+**Descripción:**
+Los cursos completados y sus certificados (cuando HR los adjunta al aprobar) se muestran en una sección "Learning & Certifications" tanto en el perfil propio del empleado (`/mylearning`) como en el detalle de cualquier empleado visto por HR (`/detailemployee/:id`) — funciona como "CV interno".
+
+**Acceptance Criteria:**
+- [ ] Componente compartido `LearningCertifications` recibe `employeeId` y consulta `useEnrollments({ employeeId, status: 'COMPLETED' })`
+- [ ] Muestra título del curso, fecha de finalización y link al certificado (si existe)
+- [ ] Visible en `MyLearning` (vista propia) y en `DetailEmployee` (vista HR)
+
+**Endpoint:** `GET /course-enrollments?employeeId=&status=COMPLETED`
 
 ---
 

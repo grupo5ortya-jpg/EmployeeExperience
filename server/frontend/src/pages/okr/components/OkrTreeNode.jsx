@@ -71,7 +71,7 @@ export default function OkrTreeNode({ node, depth = 0, onEdit }) {
                     {node.expectedProgressPercent != null && (
                         <span>Progreso esperado: <span className="font-semibold text-slate-500">{node.expectedProgressPercent}%</span></span>
                     )}
-                    {node.daysRemaining != null && (
+                    {node.daysRemaining != null && (node.daysRemaining >= 0 || node.isOverdue) && (
                         <span>
                             {node.daysRemaining >= 0
                                 ? <>Días restantes: <span className="font-semibold text-slate-500">{node.daysRemaining}</span></>

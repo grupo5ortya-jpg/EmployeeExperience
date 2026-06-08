@@ -1,10 +1,9 @@
-import { useMemo }         from 'react'
 import { useSelector }     from 'react-redux'
 import { Link }            from 'react-router-dom'
 import {
   Users, Bell, RotateCcw, ClipboardList,
   CheckCircle2, Clock, Circle, AlertCircle,
-  BookOpen, Target, Sparkles, Briefcase,
+  BookOpen, Target, Sparkles, Briefcase, GraduationCap,
   HeartHandshake, MessageSquareWarning, MessageSquareDashed,
 } from 'lucide-react'
 
@@ -19,6 +18,7 @@ import { useReceivedFeedbacks }      from '../continuousFeedback/hooks/useContin
 import { useFeedbackResults }        from '../../hooks/useFeedbackResults'
 import { useOkrs, useMyOkrs }        from '../../hooks/useOkrs'
 import { useJobOpenings }            from '../jobOpenings/hooks/useJobOpenings'
+import { useEnrollments }            from '../../hooks/useLearning'
 import { CompetencyChart }           from '../feedback/components/CompetencyChart'
 
 /* ── Card de resumen ─────────────────────────────────────────── */
@@ -95,6 +95,31 @@ function ObjectivesCard({ employeeId }) {
           ? 'Objetivos completados'
           : `Tenés ${count} objetivo${count !== 1 ? 's' : ''} asignado${count !== 1 ? 's' : ''}`}
       </span>
+    </Link>
+  )
+}
+
+/* ── Card "Learning" — resumen de aprendizaje según rol ──────── */
+function LearningSummaryCard({ role, employeeId }) {
+  const isHR = role === 'Talento'
+  const { data: enrollments = [] } = useEnrollments(
+    isHR ? { status: 'PENDING_APPROVAL' } : { employeeId }
+  )
+  const count = enrollments.length
+  const to    = isHR ? '/learningdashboard' : '/mylearning'
+  const text  = isHR
+    ? `${count} solicitud${count !== 1 ? 'es' : ''} pendiente${count !== 1 ? 's' : ''} de aprobación`
+    : `Tenés ${count} curso${count !== 1 ? 's' : ''} en tu aprendizaje`
+
+  return (
+    <Link
+      to={to}
+      className="bg-white rounded-xl border border-brand-light shadow-sm p-4 flex flex-col
+                 items-center justify-center gap-2 py-10 text-center hover:border-brand transition-colors"
+    >
+      <GraduationCap size={24} className="text-brand" />
+      <p className="text-xs font-medium text-slate-400">Learning</p>
+      <span className="text-sm font-semibold text-slate-700">{text}</span>
     </Link>
   )
 }
@@ -419,10 +444,10 @@ export default function Home() {
       {role === 'Líder'       && <LiderDashboard employeeId={employeeId} />}
       {role === 'Colaborador' && <ColaboradorDashboard employeeId={employeeId} />}
 
-      {/* Placeholders — próximamente */}
+      {/* Resumen secundario */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <ObjectivesCard employeeId={employeeId} />
-        <ComingSoon icon={BookOpen} label="Aprendizaje LMS" />
+        <LearningSummaryCard role={role} employeeId={employeeId} />
       </div>
 
     </main>

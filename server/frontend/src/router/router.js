@@ -39,6 +39,9 @@ export function srv_front_router_generate_routes() {
     // Role-restricted — registered manually in App.jsx with RoleRoute
     if (pageName === 'OKRManagement') continue
     if (pageName === 'MyObjectives') continue
+    if (pageName === 'CourseCatalog') continue
+    if (pageName === 'MyLearning') continue
+    if (pageName === 'LearningDashboard') continue
 
     layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
   }

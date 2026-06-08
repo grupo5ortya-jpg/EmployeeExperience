@@ -51,7 +51,7 @@ export default function MyOkrCard({ okr, onUpdateProgress, saving }) {
                 {okr.expectedProgressPercent != null && (
                     <span>Progreso esperado: <span className="font-semibold text-slate-500">{okr.expectedProgressPercent}%</span></span>
                 )}
-                {okr.daysRemaining != null && (
+                {okr.daysRemaining != null && (okr.daysRemaining >= 0 || okr.isOverdue) && (
                     <span>
                         {okr.daysRemaining >= 0
                             ? <>Días restantes: <span className="font-semibold text-slate-500">{okr.daysRemaining}</span></>

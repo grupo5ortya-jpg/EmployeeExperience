@@ -9,6 +9,7 @@ import { useEmployeeById }  from '../../hooks/useEmployeeById'
 import { useDepartments }   from '../../hooks/useDepartments'
 import { useEmployees }     from '../../hooks/useEmployees'
 import { updateEmployee, assignLeader } from '../../services/employeeService'
+import LearningCertifications from '../learning/components/LearningCertifications'
 
 /* ── Constantes ──────────────────────────────────────────── */
 const STATUS_OPTIONS = [
@@ -428,6 +429,8 @@ export default function DetailEmployee() {
                 </Section>
 
             </div>
+
+            <LearningCertifications employeeId={employee.id} />
         </main>
     )
 }

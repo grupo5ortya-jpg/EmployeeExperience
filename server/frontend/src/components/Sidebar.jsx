@@ -1,7 +1,7 @@
 import { NavLink }              from 'react-router-dom'
 import { useSelector }           from 'react-redux'
 import {
-  Home, UserPlus, RotateCcw, Target, BookOpen,
+  Home, UserPlus, RotateCcw, Target, BookOpen, GraduationCap,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
   List, PlusSquare, UserPlus2, SendHorizonal,
@@ -29,7 +29,9 @@ const ALL_NAV_ITEMS = [
   { icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Talento', 'Líder'] },
   { icon: Target,             label: 'OKR Management',     to: '/okrmanagement',     roles: ['Talento'] },
   { icon: Target,             label: 'Mis objetivos',      to: '/myobjectives',      roles: ['Colaborador', 'Líder'] },
-  { icon: BookOpen,           label: 'Aprendizaje LMS' },
+  { icon: BookOpen,           label: 'Cursos disponibles', to: '/coursecatalog',     roles: ['Colaborador', 'Líder'] },
+  { icon: GraduationCap,      label: 'Mi aprendizaje',     to: '/mylearning',        roles: ['Colaborador', 'Líder'] },
+  { icon: GraduationCap,      label: 'Aprendizaje',        to: '/learningdashboard', roles: ['Talento'] },
   { icon: ClipboardList,      label: 'Plan de acción' },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
   { icon: BarChart2,          label: 'Análisis de Pulso',  to: '/pulseanalysis',     roles: ['Talento'] },

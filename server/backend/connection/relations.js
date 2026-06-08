@@ -28,7 +28,9 @@ const core_conn_apply_associations = (sequelize) => {
 		JobOpening,
 		Skill,
 		JobOpeningSkill,
-		Okr
+		Okr,
+		LearningCourse,
+		CourseEnrollment
 	} = sequelize.models;
 
 	//! Department !//
@@ -80,6 +82,34 @@ const core_conn_apply_associations = (sequelize) => {
 	Skill.hasMany(JobOpeningSkill, {
 		foreignKey: 'skill_id',
 		as: 'jobOpeningSkills',
+	});
+
+	//! Learning (LXP) !//
+	LearningCourse.belongsTo(Skill, {
+		foreignKey: 'skill_id',
+		as: 'skill',
+	});
+	Skill.hasMany(LearningCourse, {
+		foreignKey: 'skill_id',
+		as: 'courses',
+	});
+
+	LearningCourse.hasMany(CourseEnrollment, {
+		foreignKey: 'course_id',
+		as: 'enrollments',
+	});
+	CourseEnrollment.belongsTo(LearningCourse, {
+		foreignKey: 'course_id',
+		as: 'course',
+	});
+
+	Employee.hasMany(CourseEnrollment, {
+		foreignKey: 'employee_id',
+		as: 'courseEnrollments',
+	});
+	CourseEnrollment.belongsTo(Employee, {
+		foreignKey: 'employee_id',
+		as: 'employee',
 	});
 
 		Employee.hasMany(EmployeeHistory, {

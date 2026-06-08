@@ -20,6 +20,9 @@ import MyEvaluations          from './pages/feedback/MyEvaluations.jsx'
 import MyTasks                from './pages/onboarding/MyTasks.jsx'
 import OKRManagement          from './pages/okr/OKRManagement.jsx'
 import MyObjectives           from './pages/okr/MyObjectives.jsx'
+import CourseCatalog          from './pages/learning/CourseCatalog.jsx'
+import MyLearning             from './pages/learning/MyLearning.jsx'
+import LearningDashboard      from './pages/learning/LearningDashboard.jsx'
 
 // Restores session from cookie on every page load
 function AuthInit({ children }) {
@@ -54,6 +57,9 @@ function App() {
               <Route path="/mytasks"                element={<MyTasks />} />
               <Route path="/okrmanagement"           element={<RoleRoute allowed={['Talento']}><OKRManagement /></RoleRoute>} />
               <Route path="/myobjectives"            element={<RoleRoute allowed={['Colaborador', 'Líder']}><MyObjectives /></RoleRoute>} />
+              <Route path="/coursecatalog"           element={<RoleRoute allowed={['Colaborador', 'Líder']}><CourseCatalog /></RoleRoute>} />
+              <Route path="/mylearning"              element={<RoleRoute allowed={['Colaborador', 'Líder']}><MyLearning /></RoleRoute>} />
+              <Route path="/learningdashboard"       element={<RoleRoute allowed={['Talento']}><LearningDashboard /></RoleRoute>} />
             </Route>
 
             {/* Public pages: login, 404, etc. */}
