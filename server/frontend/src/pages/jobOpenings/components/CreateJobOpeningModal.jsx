@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { X, Save, Trash2 } from 'lucide-react'
+import { X, Save, Trash2, Plus } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { useSkills } from '../hooks/useSkills'
+import { useSkills, useCreateSkill } from '../hooks/useSkills'
 import { useDepartments } from '../../../hooks/useDepartments'
 import { useUpdateJobOpening } from '../hooks/useUpdateJobOpening'
 import { useCreateJobOpening } from '../hooks/useCreateJobOpening'
@@ -17,15 +17,29 @@ const INITIAL = {
     departmentId: '',
 }
 
+const NEW_SKILL_INITIAL = { name: '', type: 'hard' }
+
+const DEFAULT_SKILL_LEVELS = [
+    { order: 1, name: 'Beginner' },
+    { order: 2, name: 'Junior' },
+    { order: 3, name: 'Semi Senior' },
+    { order: 4, name: 'Senior' },
+    { order: 5, name: 'Expert' },
+]
+
 export default function CreateJobOpeningModal({ isOpen, onClose }) {
     const { data: departments = [] } = useDepartments()
     const { data: skills = [] } = useSkills()
     const { mutateAsync: createJobOpening } = useCreateJobOpening()
+    const { mutateAsync: createSkill, isPending: creatingSkill } = useCreateSkill()
 
     const [form, setForm] = useState(INITIAL)
     const [selectedSkills, setSelectedSkills] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+
+    const [newSkill, setNewSkill] = useState(NEW_SKILL_INITIAL)
+    const [newSkillError, setNewSkillError] = useState('')
 
     const availableSkills = useMemo(() => {
         return skills.filter(
@@ -61,6 +75,8 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
             setForm(INITIAL)
             setSelectedSkills([])
             setError('')
+            setNewSkill(NEW_SKILL_INITIAL)
+            setNewSkillError('')
         }
     }, [isOpen])
 
@@ -90,6 +106,29 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
 
     const removeSkill = (skill_id) => {
         setSelectedSkills((prev) => prev.filter((s) => s.skill_id !== skill_id))
+    }
+
+    const handleNewSkillChange = (e) => {
+        setNewSkill((p) => ({ ...p, [e.target.name]: e.target.value }))
+    }
+
+    const handleCreateSkill = async () => {
+        const name = newSkill.name.trim()
+        if (!name) return
+
+        if (skills.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
+            setNewSkillError('Ya existe una skill con ese nombre')
+            return
+        }
+
+        setNewSkillError('')
+        try {
+            await createSkill({ name, type: newSkill.type, levels: DEFAULT_SKILL_LEVELS })
+            setNewSkill(NEW_SKILL_INITIAL)
+        } catch (err) {
+            setNewSkillError('No se pudo crear la skill')
+            console.error(err)
+        }
     }
 
     const handleSubmit = async (e) => {
@@ -166,6 +205,39 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
                     {/* SKILLS SELECTOR */}
                     <div className="border rounded p-3">
                         <p className="text-sm font-semibold mb-2">Skills requeridas</p>
+
+                        {/* Crear nueva skill */}
+                        <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b">
+                            <input
+                                name="name"
+                                placeholder="Nueva skill"
+                                value={newSkill.name}
+                                onChange={handleNewSkillChange}
+                                className="border rounded px-2 py-1 text-xs flex-1 min-w-35"
+                            />
+                            <select
+                                name="type"
+                                value={newSkill.type}
+                                onChange={handleNewSkillChange}
+                                className="border rounded px-2 py-1 text-xs"
+                            >
+                                <option value="hard">Hard</option>
+                                <option value="soft">Soft</option>
+                            </select>
+                            <button
+                                type="button"
+                                onClick={handleCreateSkill}
+                                disabled={creatingSkill || !newSkill.name.trim()}
+                                className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-brand text-white
+                                           hover:bg-brand-hover disabled:opacity-50"
+                            >
+                                <Plus size={12} />
+                                {creatingSkill ? 'Creando...' : 'Crear skill'}
+                            </button>
+                            {newSkillError && (
+                                <span className="text-xs text-red-500 w-full">{newSkillError}</span>
+                            )}
+                        </div>
 
                         <div className="flex flex-wrap gap-2 mb-3">
                             {availableSkills.map((s) => (

@@ -17,7 +17,7 @@ import { useMyFeedbackAssignments }  from '../../hooks/useMyFeedbackAssignments'
 import { usePendingSurveys }         from '../../hooks/usePendingSurveys'
 import { useReceivedFeedbacks }      from '../continuousFeedback/hooks/useContinuousFeedback'
 import { useFeedbackResults }        from '../../hooks/useFeedbackResults'
-import { useOkrs }                   from '../../hooks/useOkrs'
+import { useOkrs, useMyOkrs }        from '../../hooks/useOkrs'
 import { useJobOpenings }            from '../jobOpenings/hooks/useJobOpenings'
 import { CompetencyChart }           from '../feedback/components/CompetencyChart'
 
@@ -72,6 +72,33 @@ function ComingSoon({ icon: Icon, label }) {
   )
 }
 
+/* ── Card "Objetivos y plan de carrera" — muestra los OKR asignados ── */
+function ObjectivesCard({ employeeId }) {
+  const { data: okrs = [] } = useMyOkrs(employeeId)
+  const count = okrs.length
+  const allCompleted = count > 0 && okrs.every((o) => o.status === 'COMPLETED')
+
+  if (count === 0) {
+    return <ComingSoon icon={Target} label="Objetivos y plan de carrera" />
+  }
+
+  return (
+    <Link
+      to="/myobjectives"
+      className="bg-white rounded-xl border border-brand-light shadow-sm p-4 flex flex-col
+                 items-center justify-center gap-2 py-10 text-center hover:border-brand transition-colors"
+    >
+      <Target size={24} className="text-brand" />
+      <p className="text-xs font-medium text-slate-400">Objetivos y plan de carrera</p>
+      <span className="text-sm font-semibold text-slate-700">
+        {allCompleted
+          ? 'Objetivos completados'
+          : `Tenés ${count} objetivo${count !== 1 ? 's' : ''} asignado${count !== 1 ? 's' : ''}`}
+      </span>
+    </Link>
+  )
+}
+
 /* ── Vista Talento ───────────────────────────────────────────── */
 function TalentoDashboard() {
   const { data: employees = [] }   = useEmployees()
@@ -84,7 +111,7 @@ function TalentoDashboard() {
   const activeEmployees = employees.filter((e) => e.status === 'ACTIVE').length
   const pendingTasks    = allTasks.filter((t) =>
     t.status && !['COMPLETED', 'DROPPED'].includes(t.status)).length
-  const activeOkrs      = okrs.filter((o) => o.status === 'IN_PROGRESS').length
+  const activeOkrs      = okrs.filter((o) => o.status !== 'COMPLETED').length
   const openPositions   = jobOpenings.filter((j) => j.status === 'open').length
 
   return (
@@ -99,7 +126,7 @@ function TalentoDashboard() {
         <SummaryCard icon={ClipboardList} iconBg="bg-amber-100" iconColor="text-amber-600"
           label="Tareas de onboarding" value={pendingTasks}  unit="pendientes" to="/all-assignments" />
         <SummaryCard icon={Target}     iconBg="bg-emerald-100" iconColor="text-emerald-600"
-          label="OKR activos"       value={activeOkrs}       unit="en progreso" to="/okrmanagement" />
+          label="OKR activos"       value={activeOkrs}       unit="activos"     to="/okrmanagement" />
         <SummaryCard icon={Briefcase}  iconBg="bg-indigo-100"  iconColor="text-indigo-600"
           label="Vacantes abiertas" value={openPositions}    unit="abiertas"  to="/job-openings" />
       </div>
@@ -394,7 +421,7 @@ export default function Home() {
 
       {/* Placeholders — próximamente */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ComingSoon icon={Target}  label="Objetivos y plan de carrera" />
+        <ObjectivesCard employeeId={employeeId} />
         <ComingSoon icon={BookOpen} label="Aprendizaje LMS" />
       </div>
 

@@ -1,7 +1,7 @@
 import { ChevronRight, Pencil, User, Calendar } from 'lucide-react'
 import { useState } from 'react'
 import { OkrStatusBadge, OkrProgressBar } from './OkrProgress'
-import { formatMetricValue } from '../okrUtils'
+import { formatMetricValue, okrStatusMeta } from '../okrUtils'
 
 function formatDate(dateStr) {
     if (!dateStr) return null
@@ -17,8 +17,7 @@ export default function OkrTreeNode({ node, depth = 0, onEdit }) {
 
     return (
         <div className="flex flex-col gap-2" style={{ marginLeft: depth > 0 ? 24 : 0 }}>
-            <div className={`rounded-xl border p-4 flex flex-col gap-3 transition-colors
-                             ${node.isOverdue ? 'border-red-200 bg-red-50/40' : 'border-brand-light bg-white'}`}>
+            <div className={`rounded-xl border p-4 flex flex-col gap-3 transition-colors ${okrStatusMeta(node.status).card}`}>
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2 min-w-0">
                         {hasChildren && (
@@ -66,6 +65,19 @@ export default function OkrTreeNode({ node, depth = 0, onEdit }) {
                     <span className="text-xs text-slate-400 shrink-0">
                         {formatMetricValue(node.currentValue, node.metricType)} / {formatMetricValue(node.targetValue, node.metricType)}
                     </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                    {node.expectedProgressPercent != null && (
+                        <span>Progreso esperado: <span className="font-semibold text-slate-500">{node.expectedProgressPercent}%</span></span>
+                    )}
+                    {node.daysRemaining != null && (
+                        <span>
+                            {node.daysRemaining >= 0
+                                ? <>Días restantes: <span className="font-semibold text-slate-500">{node.daysRemaining}</span></>
+                                : <span className="font-semibold text-red-500">Vencido hace {Math.abs(node.daysRemaining)} días</span>}
+                        </span>
+                    )}
                 </div>
             </div>
 

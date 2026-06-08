@@ -127,9 +127,9 @@ export default function OKRManagement() {
                                transition-colors sm:w-56"
                 >
                     <option value="Todos">Todos los estados</option>
-                    <option value="NOT_STARTED">No iniciado</option>
-                    <option value="IN_PROGRESS">En progreso</option>
+                    <option value="ON_TRACK">En curso</option>
                     <option value="AT_RISK">En riesgo</option>
+                    <option value="STAGNANT">Estancado</option>
                     <option value="COMPLETED">Completado</option>
                     <option value="OVERDUE">Vencidos</option>
                 </select>

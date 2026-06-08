@@ -49,3 +49,69 @@
 - todo: alertas ordenadas por vistas y no vistas para mas orden.
 - todo: feedback continuo
 - todo: arreglar vacantes
+
+-Estados OKR
+
+COMPLETED
+- currentValue >= targetValue
+
+STAGNANT
+- Sin actualizaciones de progreso durante 30 días
+- Genera alerta automática
+
+AT_RISK
+- El progreso actual está por debajo del esperado según el tiempo transcurrido
+- Fórmula:
+  expectedProgress = (daysElapsed / totalDays) * 100
+
+- Regla:
+  actualProgress < expectedProgress - 15%
+
+- Genera alerta automática
+
+ON_TRACK
+- No cumple ninguna condición anterior
+
+-----------------------------------
+
+Ejemplo
+
+Objetivo:
+100%
+
+Tiempo total:
+100 días
+
+Días transcurridos:
+50
+
+expectedProgress = 50%
+
+actualProgress = 25%
+
+→ Estado: AT_RISK
+
+-----------------------------------
+
+Visibilidad
+
+RRHH/Talentos:
+- Ve todos los OKR
+- Ve alertas
+- Ve estados
+
+Responsable:
+- Ve únicamente sus OKR
+- Actualiza progreso
+
+-----------------------------------
+
+Alertas
+
+STAGNANT:
+- Sin avances durante 30 días
+
+AT_RISK:
+- Progreso significativamente por debajo del esperado
+
+No generar alertas duplicadas para el mismo objetivo.

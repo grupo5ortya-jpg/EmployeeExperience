@@ -1,5 +1,6 @@
 
 const { JobOpening, Skill, JobOpeningSkill, Department } = require('../connection/sequelize');
+const { JOB_OPENING } = require('../utils/constants/models.constants.js');
 
 
 const core_ctrl_get_job_openings = async (req, res, next) => {
@@ -92,7 +93,7 @@ const core_ctrl_create_job_opening = async (req, res, next) => {
 const core_ctrl_update_job_opening = async (req, res, next) => {
 	try {
 		const { id } = req.params;
-		const { title, description, departmentId, skills } = req.body;
+		const { title, description, departmentId, skills, status } = req.body;
 		const job = await JobOpening.findByPk(id);
 
 		if (!job) {
@@ -101,29 +102,38 @@ const core_ctrl_update_job_opening = async (req, res, next) => {
 			});
 		}
 
-		const normalizedDepartmentId =
-			typeof departmentId === 'string' && departmentId.trim() !== ''
-				? departmentId.trim()
-				: null;
+		let normalizedDepartmentId;
+		if (departmentId !== undefined) {
+			normalizedDepartmentId =
+				typeof departmentId === 'string' && departmentId.trim() !== ''
+					? departmentId.trim()
+					: null;
 
-		if (normalizedDepartmentId) {
-			const department = await Department.findByPk(normalizedDepartmentId);
-			if (!department) {
-				return res.status(400).json({ message: 'Invalid departmentId' });
+			if (normalizedDepartmentId) {
+				const department = await Department.findByPk(normalizedDepartmentId);
+				if (!department) {
+					return res.status(400).json({ message: 'Invalid departmentId' });
+				}
 			}
+		}
+
+		if (status !== undefined && !JOB_OPENING.STATUS.includes(status)) {
+			return res.status(400).json({ message: 'Invalid status' });
 		}
 
 		await job.update({
 			title,
 			description: description?.trim() ?? '',
-			department_id: normalizedDepartmentId,
+			...(normalizedDepartmentId !== undefined ? { department_id: normalizedDepartmentId } : {}),
+			...(status !== undefined ? { status } : {}),
 		});
 
-		if (skills) {
+		if (Array.isArray(skills) && skills.length > 0) {
 			await JobOpeningSkill.destroy({
 				where: {
 					job_opening_id: id,
 				},
+				force: true,
 			});
 
 			const records = skills.map((s) => ({

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import { okrStatusMeta } from '../okrUtils'
 
 const inputCls = `w-full rounded-lg border border-brand-light px-3.5 py-2.5 text-sm
 text-slate-700 placeholder:text-slate-400 outline-none bg-white
@@ -9,7 +10,7 @@ const labelCls = 'text-xs font-semibold text-slate-600'
 
 const EMPTY_FORM = {
     title: '', description: '', responsibleEmployeeId: '', period: 'QUARTERLY',
-    metricType: 'NUMBER', targetValue: '', currentValue: '0', dueDate: '', parentId: '', status: 'NOT_STARTED',
+    metricType: 'NUMBER', targetValue: '', currentValue: '0', dueDate: '', parentId: '',
 }
 
 const formFromOkr = (okr) => ({
@@ -22,7 +23,6 @@ const formFromOkr = (okr) => ({
     currentValue:          okr.currentValue ?? 0,
     dueDate:               okr.dueDate ?? '',
     parentId:              okr.parentId ?? '',
-    status:                okr.status ?? 'NOT_STARTED',
 })
 
 // `key={editing?.id ?? 'new'}` on the parent forces a remount when switching
@@ -53,14 +53,15 @@ export default function OkrFormModal({ isOpen, onClose, employees, okrs, editing
             parentId:              form.parentId || null,
         }
 
-        if (editing) payload.status = form.status
-
         await onSubmit(payload)
         onClose()
     }
 
-    // Avoid letting an objective become its own parent / a child of its own descendant
-    const parentOptions = okrs.filter((o) => o.id !== editing?.id)
+    // Only suggest active objectives as parent: not itself, not completed, not overdue/at-risk.
+    // Keep the currently-assigned parent visible even if it later became inactive, so editing doesn't silently clear it.
+    const parentOptions = okrs.filter((o) =>
+        o.id !== editing?.id
+        && (o.id === editing?.parentId || (o.status !== 'COMPLETED' && !o.isOverdue)))
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm p-4">
@@ -167,15 +168,10 @@ export default function OkrFormModal({ isOpen, onClose, employees, okrs, editing
                     </div>
 
                     {editing && (
-                        <div className="flex flex-col gap-1.5">
-                            <label className={labelCls}>Estado</label>
-                            <select name="status" value={form.status} onChange={handleChange} className={inputCls}>
-                                <option value="NOT_STARTED">No iniciado</option>
-                                <option value="IN_PROGRESS">En progreso</option>
-                                <option value="AT_RISK">En riesgo</option>
-                                <option value="COMPLETED">Completado</option>
-                            </select>
-                        </div>
+                        <p className="text-xs text-slate-400">
+                            El estado (<span className="font-semibold text-slate-500">{okrStatusMeta(editing.status).label}</span>)
+                            se calcula automáticamente según el progreso y el tiempo transcurrido.
+                        </p>
                     )}
 
                     <div className="flex justify-end gap-3 pt-3 border-t border-brand-light">

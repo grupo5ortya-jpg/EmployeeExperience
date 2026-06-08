@@ -8,13 +8,19 @@ function Select({ value, onChange, options = [] }) {
             className="text-xs border border-brand-light rounded-lg px-3 py-2 bg-brand-light text-brand-hover"
         >
             {options.map(opt => (
-                <option key={opt} value={opt}>
-                    {opt}
+                <option key={opt.value} value={opt.value}>
+                    {opt.label}
                 </option>
             ))}
         </select>
     )
 }
+
+const STATUS_OPTIONS = [
+    { value: 'Todos',  label: 'Todos' },
+    { value: 'open',   label: 'Abierta' },
+    { value: 'closed', label: 'Cerrada' },
+]
 
 export default function JobOpeningFilters({
     search,
@@ -24,15 +30,11 @@ export default function JobOpeningFilters({
     departmentOptions = [],
     status,
     setStatus,
-    skill,
-    setSkill,
-    skills = [],
 }) {
     const hasFilters =
         search !== '' ||
         department !== 'Todos' ||
-        status !== 'Todos' ||
-        skill !== 'Todos'
+        status !== 'Todos'
 
     return (
         <>
@@ -54,7 +56,6 @@ export default function JobOpeningFilters({
                             setSearch('')
                             setDepartment('Todos')
                             setStatus('Todos')
-                            setSkill('Todos')
                         }}
                         className="text-xs text-brand-hover flex items-center gap-1"
                     >
@@ -69,22 +70,13 @@ export default function JobOpeningFilters({
                 <Select
                     value={department}
                     onChange={setDepartment}
-                    options={departmentOptions}
+                    options={departmentOptions.map((name) => ({ value: name, label: name }))}
                 />
 
                 <Select
                     value={status}
                     onChange={setStatus}
-                    options={['Todos', 'open', 'closed']}
-                />
-
-                <Select
-                    value={skill}
-                    onChange={setSkill}
-                    options={[
-                        'Todos',
-                        ...(skills ?? []).map(s => s.name),
-                    ]}
+                    options={STATUS_OPTIONS}
                 />
 
             </div>

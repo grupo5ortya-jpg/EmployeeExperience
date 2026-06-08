@@ -30,21 +30,54 @@ module.exports = async (sequelize) => {
 		return sorted[Math.floor(sorted.length / 2)];
 	};
 
-	const rows = [
-		{ openingIndex: 0, skillIndex: 0, preferredLevel: 4 },
-		{ openingIndex: 0, skillIndex: 1, preferredLevel: 3 },
-		{ openingIndex: 0, skillIndex: 2, preferredLevel: 5 },
-		{ openingIndex: 1, skillIndex: 3, preferredLevel: 2 },
-		{ openingIndex: 1, skillIndex: 4, preferredLevel: 4 },
-		{ openingIndex: 2, skillIndex: 5, preferredLevel: 5 },
+	const mappings = [
+		// Contabilidad
+		{ openingTitle: 'Analista Contable', skillName: 'Time Management', preferredLevel: 3 },
+		{ openingTitle: 'Analista Contable', skillName: 'Results oriented', preferredLevel: 3 },
+		{ openingTitle: 'Analista SAP FI/CO', skillName: 'SAP FI/CO', preferredLevel: 4 },
+		{ openingTitle: 'Analista SAP FI/CO', skillName: 'SAP ERP', preferredLevel: 3 },
+		{ openingTitle: 'Tesorero', skillName: 'Time Management', preferredLevel: 3 },
+		{ openingTitle: 'Tesorero', skillName: 'Problem Solving', preferredLevel: 3 },
+		{ openingTitle: 'Auditor Interno', skillName: 'Problem Solving', preferredLevel: 4 },
+		{ openingTitle: 'Auditor Interno', skillName: 'Communication', preferredLevel: 3 },
+
+		// Ventas
+		{ openingTitle: 'Ejecutivo de Ventas', skillName: 'Communication', preferredLevel: 4 },
+		{ openingTitle: 'Ejecutivo de Ventas', skillName: 'Results oriented', preferredLevel: 3 },
+		{ openingTitle: 'Analista SAP SD', skillName: 'SAP SD', preferredLevel: 4 },
+		{ openingTitle: 'Analista SAP SD', skillName: 'Communication', preferredLevel: 3 },
+		{ openingTitle: 'Account Manager', skillName: 'Communication', preferredLevel: 4 },
+		{ openingTitle: 'Account Manager', skillName: 'Leadership', preferredLevel: 3 },
+		{ openingTitle: 'Representante Comercial', skillName: 'Communication', preferredLevel: 3 },
+		{ openingTitle: 'Representante Comercial', skillName: 'Proactivity', preferredLevel: 3 },
+
+		// Marketing
+		{ openingTitle: 'Analista de Marketing Digital', skillName: 'Communication', preferredLevel: 3 },
+		{ openingTitle: 'Analista de Marketing Digital', skillName: 'Adaptability', preferredLevel: 3 },
+		{ openingTitle: 'Diseñador Gráfico', skillName: 'Adaptability', preferredLevel: 3 },
+		{ openingTitle: 'Diseñador Gráfico', skillName: 'Proactivity', preferredLevel: 3 },
+		{ openingTitle: 'Community Manager', skillName: 'Communication', preferredLevel: 4 },
+		{ openingTitle: 'Community Manager', skillName: 'Adaptability', preferredLevel: 3 },
+		{ openingTitle: 'Consultor SAP CRM', skillName: 'SAP CRM', preferredLevel: 4 },
+		{ openingTitle: 'Consultor SAP CRM', skillName: 'Communication', preferredLevel: 3 },
+
+		// Desarrollo
+		{ openingTitle: 'Backend Developer', skillName: 'Node.js', preferredLevel: 4 },
+		{ openingTitle: 'Backend Developer', skillName: 'PostgreSQL', preferredLevel: 3 },
+		{ openingTitle: 'Frontend Developer', skillName: 'React', preferredLevel: 4 },
+		{ openingTitle: 'Frontend Developer', skillName: 'Adaptability', preferredLevel: 3 },
+		{ openingTitle: 'DevOps Engineer', skillName: 'Docker', preferredLevel: 4 },
+		{ openingTitle: 'DevOps Engineer', skillName: 'Problem Solving', preferredLevel: 3 },
+		{ openingTitle: 'Consultor SAP ABAP', skillName: 'SAP ABAP', preferredLevel: 4 },
+		{ openingTitle: 'Consultor SAP ABAP', skillName: 'SAP ERP', preferredLevel: 3 },
 	];
 
-	const payload = rows.map(({ openingIndex, skillIndex, preferredLevel }) => {
-		const skill = skills[skillIndex];
-		const opening = openings[openingIndex];
+	const payload = mappings.map(({ openingTitle, skillName, preferredLevel }) => {
+		const opening = openings.find((o) => o.title === openingTitle);
+		const skill = skills.find((s) => s.name === skillName);
 
-		if (!skill || !opening) {
-			throw new Error('No se pudo encontrar apertura o skill para el seed de JobOpeningSkill');
+		if (!opening || !skill) {
+			throw new Error(`No se pudo encontrar apertura "${openingTitle}" o skill "${skillName}" para el seed de JobOpeningSkill`);
 		}
 
 		return {

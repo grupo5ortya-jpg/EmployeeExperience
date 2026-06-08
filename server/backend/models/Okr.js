@@ -53,7 +53,11 @@ module.exports = (sequelize) => {
 		status: {
 			type:         DataTypes.ENUM(...Object.values(OKR.STATUS)),
 			allowNull:    false,
-			defaultValue: OKR.STATUS_NOT_STARTED,
+			defaultValue: OKR.STATUS_ON_TRACK,
+		},
+		last_progress_update_at: {
+			type:      DataTypes.DATE,
+			allowNull: true,
 		},
 	}, {
 		sequelize,

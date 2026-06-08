@@ -9,6 +9,13 @@ const RISK_STYLE = {
   low:    { bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-100 text-green-600', dot: 'bg-green-500', label: 'Bajo' },
 }
 
+// Alert types without a pulse-style riskLevel that still warrant a tinted card —
+// mirrors the OKR status colors (AT_RISK = yellow, STAGNANT = red).
+const ALERT_TYPE_TONE = {
+  OKR_BEHIND_SCHEDULE: 'medium',
+  OKR_STAGNANT:        'high',
+}
+
 const SENTIMENT_STYLE = {
   negative: 'bg-red-100 text-red-600',
   neutral:  'bg-slate-100 text-slate-500',
@@ -76,6 +83,12 @@ const REPORT_TYPES = {
       : `/myobjectives?okrId=${alert.topics?.[0] ?? ''}`,
     label: 'Ver objetivo',
   },
+  OKR_STAGNANT: {
+    link:  (alert, isTalento) => isTalento
+      ? `/okrmanagement?okrId=${alert.topics?.[0] ?? ''}`
+      : `/myobjectives?okrId=${alert.topics?.[0] ?? ''}`,
+    label: 'Ver objetivo',
+  },
   OKR_ASSIGNED: {
     link:  (alert) => `/myobjectives?okrId=${alert.topics?.[0] ?? ''}`,
     label: 'Ver objetivo',
@@ -108,7 +121,8 @@ export default function AlertCard({ alert }) {
   const { user } = useSelector((s) => s.auth)
   const isTalento = user?.role === 'Talento'
 
-  const risk     = RISK_STYLE[alert.riskLevel] ?? RISK_STYLE.low
+  const riskKey  = alert.riskLevel ?? ALERT_TYPE_TONE[alert.type]
+  const risk     = RISK_STYLE[riskKey] ?? RISK_STYLE.low
   const isUnread = alert.status === 'UNREAD'
   const name     = alert.employee
     ? `${alert.employee.firstName ?? ''} ${alert.employee.lastName ?? ''}`.trim()

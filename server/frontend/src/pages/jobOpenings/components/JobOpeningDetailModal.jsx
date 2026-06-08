@@ -25,7 +25,8 @@ export default function JobOpeningDetailModal({
             setForm({
                 title: job.title,
                 description: job.description,
-                departmentId: job.departmentId,
+                departmentId: job.department?.id,
+                status: job.status,
                 skills: job.skills?.map((s) => ({
                     skill_id: s.id,
                     name: s.name,
@@ -56,6 +57,7 @@ export default function JobOpeningDetailModal({
                 title: form.title,
                 description: form.description,
                 departmentId: form.departmentId,
+                status: form.status,
                 skills: form.skills,
             },
         })
@@ -69,7 +71,7 @@ export default function JobOpeningDetailModal({
             <div className="bg-white w-full max-w-2xl rounded-xl border">
 
                 {/* HEADER */}
-                <div className="flex justify-between px-5 py-4 border-b">
+                <div className="flex justify-between items-center px-5 py-4 border-b">
                     <h2 className="font-semibold">Detalle vacante</h2>
                     <button onClick={onClose}>
                         <X size={18} />
@@ -78,6 +80,34 @@ export default function JobOpeningDetailModal({
 
                 {/* BODY */}
                 <div className="p-5 flex flex-col gap-4">
+
+                    {/* STATUS */}
+                    <div className="flex items-center justify-between border rounded p-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">Estado:</span>
+                            <span
+                                className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                    form.status === 'open'
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-slate-200 text-slate-600'
+                                }`}
+                            >
+                                {form.status === 'open' ? 'Abierta' : 'Cerrada'}
+                            </span>
+                        </div>
+
+                        <button
+                            onClick={() =>
+                                setForm((p) => ({
+                                    ...p,
+                                    status: p.status === 'open' ? 'closed' : 'open',
+                                }))
+                            }
+                            className="text-xs px-3 py-1.5 border rounded-lg text-brand-hover border-brand-light hover:bg-brand-pale"
+                        >
+                            {form.status === 'open' ? 'Cerrar vacante' : 'Reabrir vacante'}
+                        </button>
+                    </div>
 
                     <input
                         value={form.title}

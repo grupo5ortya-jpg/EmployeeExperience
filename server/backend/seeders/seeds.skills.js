@@ -13,6 +13,14 @@ module.exports = async function (sequelize) {
 		{ name: 'Docker', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
 		{ name: 'Sequelize ORM', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
 
+		// SAP
+		{ name: 'SAP ERP', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
+		{ name: 'SAP FI/CO', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
+		{ name: 'SAP MM', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
+		{ name: 'SAP SD', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
+		{ name: 'SAP ABAP', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
+		{ name: 'SAP CRM', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
+
 		// SOFT
 		{ name: 'Communication', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
 		{ name: 'Teamwork', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
