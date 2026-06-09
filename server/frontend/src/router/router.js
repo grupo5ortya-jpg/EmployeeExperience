@@ -42,6 +42,7 @@ export function srv_front_router_generate_routes() {
     if (pageName === 'CourseCatalog') continue
     if (pageName === 'MyLearning') continue
     if (pageName === 'LearningDashboard') continue
+    if (pageName === 'QuestionManagement') continue
 
     layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
   }

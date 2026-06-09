@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Clock, ChevronRight, Trash2, RotateCcw, PlusCircle, AlertTriangle } from 'lucide-react'
+import { Clock, ChevronRight, Trash2, RotateCcw, PlusCircle, AlertTriangle, CalendarClock } from 'lucide-react'
 import { useTasks } from '../../hooks/useTasks'
 import { updateTask, createTask, deleteTask, deleteTaskType } from '../../services/taskService'
+import { updateTaskType } from '../../services/taskTypeService'
 
 const MAX_TASKS = 10
 
@@ -25,10 +26,11 @@ export default function OnboardingHome() {
     const { data: tasks = [], isLoading, isError } = useTasks()
 
     // ── Estado del panel derecho ──────────────────────────────
-    const [selectedType,  setSelectedType]  = useState(null)
-    const [localSiblings, setLocalSiblings] = useState([])
-    const [saving,        setSaving]        = useState(false)
-    const [saveError,     setSaveError]     = useState('')
+    const [selectedType,      setSelectedType]      = useState(null)
+    const [localSiblings,     setLocalSiblings]     = useState([])
+    const [localDefaultDays,  setLocalDefaultDays]  = useState('')
+    const [saving,            setSaving]            = useState(false)
+    const [saveError,         setSaveError]         = useState('')
 
     // Clave de la última tarea nueva agregada (para autoFocus preciso)
     const [lastAddedKey, setLastAddedKey] = useState(null)
@@ -86,6 +88,7 @@ export default function OnboardingHome() {
     const doSelectType = (type) => {
         const siblings = tasks.filter((t) => t.taskType?.id === type.id)
         setSelectedType(type)
+        setLocalDefaultDays(type.default_due_days != null ? String(type.default_due_days) : '')
         setLocalSiblings(siblings.map((t) => ({
             id:                t.id,
             name:              t.name,
@@ -183,6 +186,13 @@ export default function OnboardingHome() {
         setSaving(true)
         setSaveError('')
         try {
+            // PATCH del TaskType si cambió defaultDueDays
+            const parsedDays = localDefaultDays !== '' ? Number(localDefaultDays) : null
+            const originalDays = selectedType.default_due_days ?? null
+            if (parsedDays !== originalDays) {
+                await updateTaskType(selectedType.id, { defaultDueDays: parsedDays })
+            }
+
             // PATCH modificadas
             const toUpdate = localSiblings.filter((t) => !t._isNew && t._modified && !t._deleted)
             await Promise.all(toUpdate.map((t) =>
@@ -230,7 +240,10 @@ export default function OnboardingHome() {
     const activeCount  = localSiblings.filter((t) => !t._deleted).length
     const deletedCount = localSiblings.filter((t) => t._deleted).length
     const canAddMore   = activeCount < MAX_TASKS
-    const hasChanges   =
+    const parsedDefaultDays = localDefaultDays !== '' ? Number(localDefaultDays) : null
+    const daysChanged   = parsedDefaultDays !== (selectedType?.default_due_days ?? null)
+    const hasChanges    =
+        daysChanged ||
         localSiblings.some((t) => t._modified || t._deleted || (t._isNew && t.name.trim() !== ''))
 
     /* ── JSX ─────────────────────────────────────────────────── */
@@ -354,12 +367,27 @@ export default function OnboardingHome() {
                         <form onSubmit={handleSave} className="flex flex-col">
 
                             {/* Header del panel */}
-                            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-brand-light">
-                                <div>
+                            <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-brand-light">
+                                <div className="min-w-0">
                                     <h2 className="text-sm font-bold text-slate-800">{selectedType.name}</h2>
                                     {selectedType.sub_type && (
                                         <p className="text-xs text-slate-400 mt-0.5">{selectedType.sub_type}</p>
                                     )}
+                                    <div className="flex items-center gap-1.5 mt-2">
+                                        <CalendarClock size={12} className="text-slate-400 shrink-0" />
+                                        <span className="text-xs text-slate-400">Vence en</span>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={localDefaultDays}
+                                            onChange={(e) => setLocalDefaultDays(e.target.value)}
+                                            placeholder="—"
+                                            className="w-14 text-center rounded border border-brand-light px-1.5 py-0.5
+                                                       text-xs text-slate-700 outline-none bg-white
+                                                       focus:border-brand focus:ring-1 focus:ring-brand/20"
+                                        />
+                                        <span className="text-xs text-slate-400">días desde contratación</span>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
@@ -367,7 +395,7 @@ export default function OnboardingHome() {
                                         const first = tasks.find((t) => t.taskType?.id === selectedType.id)
                                         if (first) navigate(`/onboarding-template/${first.id}`)
                                     }}
-                                    className="text-xs text-brand hover:text-brand-hover font-medium transition-colors cursor-pointer"
+                                    className="text-xs text-brand hover:text-brand-hover font-medium transition-colors cursor-pointer shrink-0"
                                 >
                                     Ver asignaciones →
                                 </button>

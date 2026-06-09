@@ -8,7 +8,7 @@ import {
 import { useEmployeeById }  from '../../hooks/useEmployeeById'
 import { useDepartments }   from '../../hooks/useDepartments'
 import { useEmployees }     from '../../hooks/useEmployees'
-import { updateEmployee, assignLeader } from '../../services/employeeService'
+import { updateEmployee, assignLeader, assignMentor } from '../../services/employeeService'
 import LearningCertifications from '../learning/components/LearningCertifications'
 
 /* ── Constantes ──────────────────────────────────────────── */
@@ -109,6 +109,7 @@ export default function DetailEmployee() {
             departmentId:          employee.department?.id        ?? '',
             hireDate:              employee.hireDate?.slice(0, 10) ?? '',
             leaderId:              employee.manager?.id           ?? '',
+            mentorId:              employee.mentor?.id            ?? '',
             emergencyContactName:  employee.emergencyContactName  ?? '',
             emergencyContactPhone: employee.emergencyContactPhone ?? '',
         })
@@ -124,7 +125,9 @@ export default function DetailEmployee() {
         const hasAddr = form.addrStreet || form.addrNumber || form.addrNeighborhood ||
                         form.addrCity   || form.addrCountry
         const originalLeaderId = employee.manager?.id ?? ''
+        const originalMentorId = employee.mentor?.id  ?? ''
         const leaderChanged    = form.leaderId !== originalLeaderId
+        const mentorChanged    = form.mentorId !== originalMentorId
 
         try {
             const calls = [
@@ -148,6 +151,7 @@ export default function DetailEmployee() {
                 }),
             ]
             if (leaderChanged) calls.push(assignLeader(id, form.leaderId || null))
+            if (mentorChanged) calls.push(assignMentor(id, form.mentorId || null))
             await Promise.all(calls)
             await qc.invalidateQueries({ queryKey: ['employee', id] })
             await qc.invalidateQueries({ queryKey: ['employees'] })
@@ -183,6 +187,7 @@ export default function DetailEmployee() {
                 departmentId:          employee.department?.id        ?? '',
                 hireDate:              employee.hireDate?.slice(0, 10) ?? '',
                 leaderId:              employee.manager?.id           ?? '',
+                mentorId:              employee.mentor?.id            ?? '',
                 emergencyContactName:  employee.emergencyContactName  ?? '',
                 emergencyContactPhone: employee.emergencyContactPhone ?? '',
             })
@@ -385,8 +390,20 @@ export default function DetailEmployee() {
                     <FieldRow
                         icon={User} label="Mentor"
                         value={mentor ? `${mentor.firstName} ${mentor.lastName}${mentor.position ? ` — ${mentor.position}` : ''}` : null}
-                        editing={false}
-                    />
+                        editing={isEditing}
+                    >
+                        <select value={form.mentorId} onChange={set('mentorId')} className={inputCls}>
+                            <option value="">Sin mentor asignado</option>
+                            {allEmployees
+                                .filter((e) => e.id !== id && e.status === 'ACTIVE')
+                                .map((e) => (
+                                    <option key={e.id} value={e.id}>
+                                        {e.firstName} {e.lastName}{e.position ? ` — ${e.position}` : ''}
+                                    </option>
+                                ))
+                            }
+                        </select>
+                    </FieldRow>
                     <FieldRow icon={Calendar} label="Fecha de ingreso" value={formatDate(employee.hireDate)} editing={isEditing}>
                         <input type="date" value={form.hireDate} onChange={set('hireDate')} className={inputCls} />
                     </FieldRow>

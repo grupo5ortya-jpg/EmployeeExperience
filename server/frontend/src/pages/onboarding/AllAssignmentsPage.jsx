@@ -16,6 +16,7 @@ const STATUS_LABEL = {
     SUBMITTED:   'Entregado',
     COMPLETED:   'Completado',
     DROPPED:     'Abandonado',
+    OVERDUE:     'Vencido',
 }
 const STATUS_STYLE = {
     ENROLLED:    'bg-sky-100 text-sky-600',
@@ -24,6 +25,7 @@ const STATUS_STYLE = {
     SUBMITTED:   'bg-violet-100 text-violet-600',
     COMPLETED:   'bg-green-100 text-green-600',
     DROPPED:     'bg-slate-100 text-slate-500',
+    OVERDUE:     'bg-red-100 text-red-600',
 }
 
 const COLUMNS = ['Empleado', 'Posición', 'Tarea / Template', 'Estado', 'Vencimiento']
@@ -92,7 +94,8 @@ export default function AllAssignmentsPage() {
         onSuccess:  () => qc.invalidateQueries({ queryKey: ['employee-tasks', 'all'] }),
     })
 
-    const statusOptions = ['Todos', ...Object.keys(STATUS_LABEL)]
+    // Dedup: SUBMITED is a DB typo variant of SUBMITTED — show only once. OVERDUE is a computed pseudo-status.
+    const statusOptions = ['Todos', 'ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED', 'DROPPED', 'OVERDUE']
 
     // ── Helpers ───────────────────────────────────────────────
     // Comprueba si un empleado ya tiene al menos una asignación.
@@ -128,6 +131,9 @@ export default function AllAssignmentsPage() {
     // ── Filtrar ───────────────────────────────────────────────
     const filtered = useMemo(() => {
         const q = search.toLowerCase()
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const NON_OVERDUE_STATUSES = ['COMPLETED', 'DROPPED']
 
         return allRows.filter((row) => {
             // If navigated from an alert, pre-filter to that employee only
@@ -139,9 +145,20 @@ export default function AllAssignmentsPage() {
                 row.task?.name?.toLowerCase().includes(q) ||
                 row.employee?.position?.toLowerCase().includes(q)
 
-            const matchStatus =
-                filterStatus === 'Todos' ||
-                (!row._unassigned && row.status === filterStatus)
+            let matchStatus
+            if (filterStatus === 'Todos') {
+                matchStatus = true
+            } else if (filterStatus === 'OVERDUE') {
+                matchStatus = !row._unassigned &&
+                    row.dueDate &&
+                    new Date(row.dueDate) < today &&
+                    !NON_OVERDUE_STATUSES.includes(row.status)
+            } else if (filterStatus === 'SUBMITTED') {
+                // Match both the correct spelling and the legacy typo
+                matchStatus = !row._unassigned && (row.status === 'SUBMITTED' || row.status === 'SUBMITED')
+            } else {
+                matchStatus = !row._unassigned && row.status === filterStatus
+            }
 
             return matchSearch && matchStatus
         })

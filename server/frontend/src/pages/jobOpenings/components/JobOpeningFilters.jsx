@@ -30,11 +30,12 @@ export default function JobOpeningFilters({
     departmentOptions = [],
     status,
     setStatus,
+    hideStatus = false,
 }) {
     const hasFilters =
         search !== '' ||
         department !== 'Todos' ||
-        status !== 'Todos'
+        (!hideStatus && status !== 'Todos')
 
     return (
         <>
@@ -73,11 +74,13 @@ export default function JobOpeningFilters({
                     options={departmentOptions.map((name) => ({ value: name, label: name }))}
                 />
 
-                <Select
-                    value={status}
-                    onChange={setStatus}
-                    options={STATUS_OPTIONS}
-                />
+                {!hideStatus && (
+                    <Select
+                        value={status}
+                        onChange={setStatus}
+                        options={STATUS_OPTIONS}
+                    />
+                )}
 
             </div>
         </>

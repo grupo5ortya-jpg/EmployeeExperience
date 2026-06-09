@@ -18,20 +18,22 @@ const STATUS_STYLE = {
 
 function ReviewActions({ enrollment, onReview, isReviewing }) {
     const [certificateLink, setCertificateLink] = useState('')
+    const canApprove = certificateLink.trim().length > 0
 
     return (
         <div className="flex items-center gap-2">
             <input
                 value={certificateLink}
                 onChange={(e) => setCertificateLink(e.target.value)}
-                placeholder="Link del certificado (opcional)"
-                className="text-xs px-2 py-1.5 rounded border border-brand-light outline-none w-44"
+                placeholder="Link del diploma (requerido)"
+                className={`text-xs px-2 py-1.5 rounded border outline-none w-44 transition-colors
+                    ${canApprove ? 'border-brand-light' : 'border-amber-300 bg-amber-50'}`}
             />
             <button
                 onClick={() => onReview(enrollment.id, 'approve', certificateLink)}
-                disabled={isReviewing}
-                title="Aprobar"
-                className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer disabled:opacity-50"
+                disabled={isReviewing || !canApprove}
+                title={canApprove ? 'Aprobar' : 'Ingresá el link del diploma para aprobar'}
+                className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <Check size={14} />
             </button>
