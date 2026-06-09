@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Briefcase, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { useSelector } from 'react-redux'
 
 import { useJobOpenings } from './hooks/useJobOpenings'
 import { useDepartments } from '../../hooks/useDepartments'
@@ -10,6 +11,9 @@ import JobOpeningDetailModal from './components/JobOpeningDetailModal'
 import CreateJobOpeningModal from './components/CreateJobOpeningModal'
 
 export default function JobOpeningsList() {
+    const role     = useSelector((s) => s.auth.user?.role ?? '')
+    const isTalento = role === 'Talento'
+
     const { data: jobs = [], isLoading, isError } = useJobOpenings()
     const { data: departments = [] } = useDepartments()
 
@@ -39,9 +43,9 @@ export default function JobOpeningsList() {
                 department === 'Todos' ||
                 j.department?.name === department
 
-            const matchStatus =
-                status === 'Todos' ||
-                j.status === status
+            const matchStatus = isTalento
+                ? (status === 'Todos' || j.status === status)
+                : j.status === 'open'
 
             return matchSearch && matchDept && matchStatus
         })
@@ -67,18 +71,20 @@ export default function JobOpeningsList() {
                         Vacantes
                     </h1>
                     <p className="text-sm text-slate-400">
-                        Gestión de puestos abiertos
+                        {isTalento ? 'Gestión de puestos abiertos' : 'Explorá los puestos disponibles'}
                     </p>
                 </div>
 
-                <button
-                    onClick={() => setIsCreateOpen(true)}
-                    className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white
-                     text-sm font-semibold px-4 py-2.5 rounded-lg"
-                >
-                    <Plus size={16} />
-                    Nueva vacante
-                </button>
+                {isTalento && (
+                    <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white
+                         text-sm font-semibold px-4 py-2.5 rounded-lg"
+                    >
+                        <Plus size={16} />
+                        Nueva vacante
+                    </button>
+                )}
             </div>
 
             {/* TABLE */}
@@ -91,6 +97,7 @@ export default function JobOpeningsList() {
                     departmentOptions={departmentOptions}
                     status={status}
                     setStatus={setStatus}
+                    hideStatus={!isTalento}
                 />
                 <JobOpeningTable
                     data={filteredJobs}

@@ -4,7 +4,7 @@ import {
   Home, UserPlus, RotateCcw, Target, BookOpen, GraduationCap,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
-  List, PlusSquare, UserPlus2, SendHorizonal,
+  List, PlusSquare, UserPlus2, SendHorizonal, FileQuestion,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
@@ -26,7 +26,14 @@ const ALL_NAV_ITEMS = [
     ],
   },
   { icon: ClipboardList,      label: 'Onboarding equipo',  to: '/all-assignments',   roles: ['Líder'] },
-  { icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Talento', 'Líder'] },
+  {
+    icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Talento'],
+    children: [
+      { icon: BarChart2,     label: 'Análisis de Pulso',   to: '/pulseanalysis' },
+      { icon: FileQuestion,  label: 'Edición de preguntas', to: '/questionmanagement' },
+    ],
+  },
+  { icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Líder'] },
   { icon: Target,             label: 'OKR Management',     to: '/okrmanagement',     roles: ['Talento'] },
   { icon: Target,             label: 'Mis objetivos',      to: '/myobjectives',      roles: ['Colaborador', 'Líder'] },
   { icon: BookOpen,           label: 'Cursos disponibles', to: '/coursecatalog',     roles: ['Colaborador', 'Líder'] },
@@ -34,7 +41,6 @@ const ALL_NAV_ITEMS = [
   { icon: GraduationCap,      label: 'Aprendizaje',        to: '/learningdashboard', roles: ['Talento'] },
   { icon: ClipboardList,      label: 'Plan de acción' },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
-  { icon: BarChart2,          label: 'Análisis de Pulso',  to: '/pulseanalysis',     roles: ['Talento'] },
   { icon: ClipboardList,      label: 'Mis tareas',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
   { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },
   { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
@@ -44,7 +50,7 @@ const ALL_NAV_ITEMS = [
       { icon: SendHorizonal, label: 'Enviar feedback', to: '/continuous-feedback?new=1' },
     ],
   },
-  { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento'] },
+  { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento', 'Colaborador', 'Líder'] },
   { icon: LifeBuoy,           label: 'Soporte' },
 ]
 

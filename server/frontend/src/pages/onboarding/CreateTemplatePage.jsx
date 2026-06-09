@@ -11,7 +11,7 @@ import TasksSection     from './components/TasksSection';
 import TemplatePreview  from './components/TemplatePreview';
 import AddTaskModal     from './components/AddTaskModal';
 
-const initialTemplateForm = { name: '', sub_type: '' };
+const initialTemplateForm = { name: '', sub_type: '', defaultDueDays: '' };
 const initialTaskForm     = { name: '', estimatedDuration: '' };
 
 let localIdCounter = 0;
@@ -68,8 +68,11 @@ const CreateTemplatePage = () => {
         try {
             // 1. Crear la plantilla (TaskType) — si esto falla, no continuamos
             const createdType = await createTaskType({
-                name:     templateForm.name.trim(),
-                sub_type: templateForm.sub_type.trim() || null,
+                name:          templateForm.name.trim(),
+                sub_type:      templateForm.sub_type.trim() || null,
+                defaultDueDays: templateForm.defaultDueDays !== ''
+                    ? Number(templateForm.defaultDueDays)
+                    : null,
             });
 
             // 2. Crear todas las tareas en paralelo; usamos allSettled para no abortar

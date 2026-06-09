@@ -191,7 +191,10 @@ const createEmployeeTask = async (req, res, next) => {
 		const { employeeId, taskId, status, dueDate } = req.body;
 
 		// Find all tasks in the same template
-		const primaryTask = await Task.findByPk(taskId, { attributes: ['id', 'task_type_id', 'estimated_duration'] });
+		const primaryTask = await Task.findByPk(taskId, {
+			attributes: ['id', 'task_type_id', 'estimated_duration'],
+			include: [{ model: TaskType, as: 'taskType', attributes: ['id', 'default_due_days'] }],
+		});
 		if (!primaryTask) return res.status(404).json({ status: 'fail', message: 'Task not found' });
 
 		const templateTasks = await Task.findAll({
@@ -207,11 +210,15 @@ const createEmployeeTask = async (req, res, next) => {
 		const existingIds = new Set(existing.map((e) => e.task_id));
 
 		const baseDate = dueDate ? new Date(dueDate) : new Date();
+		// If the template has a default_due_days, all tasks share that same deadline.
+		// Otherwise fall back to per-task estimated_duration as the offset.
+		const templateDueDays = primaryTask.taskType?.default_due_days;
 		const toCreate = templateTasks
 			.filter((t) => !existingIds.has(t.id))
 			.map((t) => {
 				const d = new Date(baseDate);
-				d.setDate(d.getDate() + (t.estimated_duration ?? 0));
+				const offset = templateDueDays != null ? templateDueDays : (t.estimated_duration ?? 0);
+				d.setDate(d.getDate() + offset);
 				return { employee_id: employeeId, task_id: t.id, status: status || 'ENROLLED', due_date: d };
 			});
 

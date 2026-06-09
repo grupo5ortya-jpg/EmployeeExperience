@@ -1,7 +1,7 @@
 import { useState }        from 'react'
 import { useNavigate }      from 'react-router-dom'
 import { useQueryClient }   from '@tanstack/react-query'
-import { ArrowLeft, Lock, HelpCircle } from 'lucide-react'
+import { ArrowLeft, Lock, HelpCircle, Pencil } from 'lucide-react'
 
 import { useDepartments }   from '../../hooks/useDepartments'
 import { createSurvey }     from '../../services/surveyService'
@@ -262,14 +262,25 @@ export default function CreateFeedback() {
 
                         {/* 3. Preguntas */}
                         <section className="bg-white rounded-xl border border-brand-light shadow-sm p-5 flex flex-col gap-3">
-                            <div className="pb-3 border-b border-brand-light">
-                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                    3. Preguntas de evaluación
-                                </h2>
-                                <p className="text-xs text-slate-400 mt-1">
-                                    Vista previa de las preguntas que recibirán los evaluadores. Todas incluyen
-                                    escala 1–5 y un campo de comentario opcional.
-                                </p>
+                            <div className="pb-3 border-b border-brand-light flex items-start justify-between gap-3">
+                                <div>
+                                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                        3. Preguntas de evaluación
+                                    </h2>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        Vista previa de las preguntas que recibirán los evaluadores. Todas incluyen
+                                        escala 1–5 y un campo de comentario opcional.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/questionmanagement')}
+                                    className="flex items-center gap-1.5 text-xs font-semibold text-brand
+                                               hover:text-brand-hover transition-colors cursor-pointer shrink-0"
+                                >
+                                    <Pencil size={12} />
+                                    Edición de preguntas
+                                </button>
                             </div>
 
                             {selectedCompetencies.length === 0 ? (

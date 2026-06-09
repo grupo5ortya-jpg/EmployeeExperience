@@ -5,6 +5,7 @@ function formatTaskType(t) {
 		id: t.id,
 		name: t.name,
 		subType: t.sub_type ?? null,
+		defaultDueDays: t.default_due_days ?? null,
 	};
 }
 
@@ -29,8 +30,12 @@ const getTaskTypeById = async (req, res, next) => {
 
 const createTaskType = async (req, res, next) => {
 	try {
-		const { name, subType } = req.body;
-		const taskType = await TaskType.create({ name, sub_type: subType || null });
+		const { name, subType, defaultDueDays } = req.body;
+		const taskType = await TaskType.create({
+			name,
+			sub_type:         subType || null,
+			default_due_days: defaultDueDays != null ? Number(defaultDueDays) : null,
+		});
 		res.status(201).json(formatTaskType(taskType));
 	} catch (err) {
 		next(err);
@@ -42,10 +47,11 @@ const updateTaskType = async (req, res, next) => {
 		const taskType = await TaskType.findByPk(req.params.id);
 		if (!taskType) return res.status(404).json({ status: 'fail', message: 'Task type not found' });
 
-		const { name, subType } = req.body;
+		const { name, subType, defaultDueDays } = req.body;
 		const updates = {};
-		if (name !== undefined) updates.name = name;
-		if (subType !== undefined) updates.sub_type = subType || null;
+		if (name          !== undefined) updates.name             = name;
+		if (subType       !== undefined) updates.sub_type         = subType || null;
+		if (defaultDueDays !== undefined) updates.default_due_days = defaultDueDays != null ? Number(defaultDueDays) : null;
 
 		await taskType.update(updates);
 		res.json(formatTaskType(taskType));

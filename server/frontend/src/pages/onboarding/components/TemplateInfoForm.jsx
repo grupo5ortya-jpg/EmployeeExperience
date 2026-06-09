@@ -31,6 +31,21 @@ export default function TemplateInfoForm({ form, onChange }) {
                         placeholder="Ej. Checklist, Documentación, Integración"
                     />
                 </div>
+
+                <div>
+                    <FieldLabel>Días para completar (opcional)</FieldLabel>
+                    <TextInput
+                        type="number"
+                        name="defaultDueDays"
+                        value={form.defaultDueDays}
+                        onChange={onChange}
+                        placeholder="Ej. 30"
+                        min={1}
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                        Días desde la fecha de contratación antes de que venzan las tareas.
+                    </p>
+                </div>
             </div>
         </div>
     );

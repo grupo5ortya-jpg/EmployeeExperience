@@ -17,6 +17,11 @@ module.exports = (sequelize) => {
 			sub_type: {
 				type: DataTypes.STRING(100),
 				allowNull: true,
+			},
+			default_due_days: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+				defaultValue: null,
 			}
 		},
 		{
