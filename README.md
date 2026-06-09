@@ -115,3 +115,9 @@ AT_RISK:
 - Progreso significativamente por debajo del esperado
 
 No generar alertas duplicadas para el mismo objetivo.
+
+
+- Martin preguntas:
+- ¿Quien da el certificado entre empleado y rrhh sobre un curso?
+
+
