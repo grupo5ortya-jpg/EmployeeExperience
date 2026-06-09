@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { getAssignments, generateAssignments, updateAssignment, getResults, getGapAnalysis, generateGapAnalysis, sendGapAnalysis, getCycleSummary } = require('../controllers/feedbackAssignment.controllers');
-const { authorize } = require('../middleware/authorize');
+const { authorize } = require('../middlewares/authorize');
 
 const router = Router();
 

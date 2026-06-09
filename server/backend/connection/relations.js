@@ -28,7 +28,8 @@ const core_conn_apply_associations = (sequelize) => {
 		JobOpening,
 		Skill,
 		JobOpeningSkill,
-		Okr
+		Okr,
+		EmployeeSkill
 	} = sequelize.models;
 
 	//! Department !//
@@ -439,6 +440,28 @@ const core_conn_apply_associations = (sequelize) => {
 		foreignKey: 'collaborator_id',
 		otherKey: 'leader_id',
 	});
+
+	//! EmployeeTask relations !//
+	EmployeeSkill.belongsTo(Employee, {
+		foreignKey: 'employee_id',
+		as: 'employee',
+	});
+
+	Employee.hasMany(EmployeeSkill, {
+		foreignKey: 'employee_id',
+		as: 'employeeSkills',
+	});
+
+	EmployeeSkill.belongsTo(Skill, {
+		foreignKey: 'skill_id',
+		as: 'skill',
+	});
+
+	Skill.hasMany(EmployeeSkill, {
+		foreignKey: 'skill_id',
+		as: 'employeeSkills',
+	});
+
 };
 
 module.exports = {

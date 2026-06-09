@@ -2,7 +2,7 @@
 const { Router }            = require('express');
 const router                = Router();
 const routes_auth           = require('./routes.auth.js');
-const { authenticateToken } = require('../middleware/authenticateToken');
+const { authenticateToken } = require('../middlewares/authenticateToken');
 // TODO: eliminar este import cuando se quite el endpoint de admin/cron (solo para pruebas)
 const { assignDuePulseSurveys } = require('../connection/pulseCronJob.js');
 // TODO: eliminar — solo para pruebas de desarrollo

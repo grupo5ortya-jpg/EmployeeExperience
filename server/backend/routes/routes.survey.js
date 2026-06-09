@@ -2,7 +2,7 @@
 const { Router }   = require('express');
 const router       = Router();
 const surveys      = require('../controllers/survey.controllers');
-const { authorize } = require('../middleware/authorize');
+const { authorize } = require('../middlewares/authorize');
 
 router.get('/',       surveys.getAllSurveys);
 router.get('/:id',    surveys.getSurveyById);

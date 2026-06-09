@@ -7,7 +7,7 @@ const {
     updateOkr,
     updateOkrProgress,
 } = require('../controllers/okr.controllers');
-const { authorize } = require('../middleware/authorize');
+const { authorize } = require('../middlewares/authorize');
 
 const router = Router();
 

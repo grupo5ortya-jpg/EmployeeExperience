@@ -2,7 +2,7 @@
 const { Router }    = require('express');
 const router        = Router();
 const employees     = require('../controllers/employee.controllers');
-const { authorize } = require('../middleware/authorize');
+const { authorize } = require('../middlewares/authorize');
 
 router.get('/',              employees.getAllEmployees);
 router.get('/:id',           employees.getEmployeeById);
