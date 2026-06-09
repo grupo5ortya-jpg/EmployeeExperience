@@ -33,8 +33,6 @@ const routes_job_opening = require('./routes.jobOpening')
 const routes_skills = require('./routes.skill.js')
 const routes_continuous_feedback = require('./routes.continuousFeedback.js');
 const routes_okr = require('./routes.okr.js');
-const routes_learning_course = require('./routes.learningCourse.js');
-const routes_course_enrollment = require('./routes.courseEnrollment.js');
 
 
 // Auth — public, must be first
@@ -116,9 +114,7 @@ router.post('/ai/mentor-matching', getMentorSuggestions);
 router.use('/job-openings', routes_job_opening)
 // Skills
 router.use('/skills', routes_skills)
-// Learning (LXP)
-router.use('/learning-courses', routes_learning_course)
-router.use('/course-enrollments', routes_course_enrollment)
+
 
 // TODO: eliminar estos endpoints — solo para pruebas de desarrollo
 router.post('/admin/cron/onboarding-run', async (_req, res, next) => {

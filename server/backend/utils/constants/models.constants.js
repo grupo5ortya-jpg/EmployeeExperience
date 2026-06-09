@@ -74,6 +74,21 @@ module.exports = {
 	},
 	SKILL: {
 		TYPES: ['hard', 'soft'],
+		TYPES_HARD: 'hard',
+		TYPES_SOFT: 'soft',
+		DEFAULT_HARD_LEVELS: [
+			{ name: 'Trainee', order: 1 },
+			{ name: 'Junior', order: 2 },
+			{ name: 'Semi-Senior', order: 3 },
+			{ name: 'Senior', order: 4 },
+			{ name: 'Expert', order: 5 },
+		],
+		DEFAULT_SOFT_LEVELS: [
+			{ name: 'Basic', order: 1 },
+			{ name: 'Intermediate', order: 2 },
+			{ name: 'Advanced', order: 3 },
+			{ name: 'Expert', order: 4 },
+		],
 	},
 	SURVEY_ASSIGNMENT: {
 		STATUS: ['PENDING', 'COMPLETED'],
@@ -85,5 +100,11 @@ module.exports = {
 			MIN: 0,
 			COMMENT: 'Estimated duration in days',
 		}
+	},
+	TASK_TYPE: {
+		TASK_TYPE_SUB_TYPE_CAPACITATION_HARD: 'Certificación - Hard Skill',
+		TASK_TYPE_SUB_TYPE_CAPACITATION_SOFT: 'Certificación - Soft Skill',
+		TASK_TYPE_SUB_TYPE_COURSE: 'Curso',
+		TASK_TYPE_SUB_TYPE_CHECKLIST: 'Checklist',
 	},
 };

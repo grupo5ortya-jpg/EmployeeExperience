@@ -16,7 +16,6 @@ const core_seed_create_pulse_demo = require('./seeds.pulse_demo.js');
 const core_seed_create_job_openings = require('./seeds.job_openings.js')
 const core_seed_create_job_openings_skils = require('./seeds.job_openings_skills.js')
 const core_seed_create_skills = require('./seeds.skills.js')
-const core_seed_create_learning_courses = require('./seeds.learning_courses.js')
 
 
 module.exports = async function (sequelize) {
@@ -26,6 +25,7 @@ module.exports = async function (sequelize) {
 		await core_seed_create_question_types(sequelize);
 		await core_seed_create_questions(sequelize);
 		await core_seed_create_persons(sequelize);
+		await core_seed_create_skills(sequelize);
 		await core_seed_create_task_types(sequelize);
 		await core_seed_create_tasks(sequelize);
 
@@ -40,10 +40,9 @@ module.exports = async function (sequelize) {
 		await core_seed_create_employee_assets(sequelize);
 
 		await core_seed_create_pulse_demo(sequelize);
-		await core_seed_create_skills(sequelize);
 		await core_seed_create_job_openings(sequelize);
 		await core_seed_create_job_openings_skils(sequelize);
-		await core_seed_create_learning_courses(sequelize);
+
 		console.log('Database seeded successfully');
 	} catch (error) {
 		console.error('Error seeding database:', error);

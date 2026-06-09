@@ -1,37 +1,30 @@
 
 module.exports = async function (sequelize) {
-	const Skill = sequelize.models.Skill;
+	const { Skill } = sequelize.models;
 
+	const { SKILL } = require('../utils/constants/models.constants.js');
 	const count = await Skill.count();
 	if (count > 0) return;
 
 	await Skill.bulkCreate([
 		// HARD
-		{ name: 'Node.js', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'React', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'PostgreSQL', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'Docker', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'Sequelize ORM', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-
-		// SAP
-		{ name: 'SAP ERP', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'SAP FI/CO', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'SAP MM', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'SAP SD', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'SAP ABAP', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
-		{ name: 'SAP CRM', type: 'hard', levels: [ { "name": "Intern", "order": 1 }, { "name": "Junior", "order": 2 }, { "name": "SemiSenior", "order": 3 }, { "name": "Senior", "order": 4 }, { "name": "Expert", "order": 5 } ] },
+		{ name: 'Node.js', type: SKILL.TYPES_HARD, levels: SKILL.DEFAULT_HARD_LEVELS },
+		{ name: 'React', type: SKILL.TYPES_HARD, levels: SKILL.DEFAULT_HARD_LEVELS },
+		{ name: 'PostgreSQL', type: SKILL.TYPES_HARD, levels: SKILL.DEFAULT_HARD_LEVELS },
+		{ name: 'Docker', type: SKILL.TYPES_HARD, levels: SKILL.DEFAULT_HARD_LEVELS },
+		{ name: 'Sequelize ORM', type: SKILL.TYPES_HARD, levels: SKILL.DEFAULT_HARD_LEVELS },
 
 		// SOFT
-		{ name: 'Communication', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Teamwork', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Problem Solving', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Time Management', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Adaptability', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Leadership', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Problem solving', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Proactivity', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'Results oriented', type: 'soft', levels: [ { "name": "Basic", "order": 1 }, { "name": "Intermediate", "order": 2 }, { "name": "Advanced", "order": 3 }, { "name": "Expert", "order": 4 } ] },
-		{ name: 'English', type: 'soft', levels: [ { "name": "A1", "order": 1 }, { "name": "A2", "order": 2 }, { "name": "B1", "order": 3 }, { "name": "B2", "order": 4 }, { "name": "C1", "order": 5 }, { "name": "C2", "order": 6 } ] },
+		{ name: 'Communication', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Teamwork', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Problem Solving', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Time Management', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Adaptability', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Leadership', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Problem solving', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Proactivity', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'Results oriented', type: SKILL.TYPES_SOFT, levels: SKILL.DEFAULT_SOFT_LEVELS },
+		{ name: 'English', type: SKILL.TYPES_SOFT, levels: [ { "name": "A1", "order": 1 }, { "name": "A2", "order": 2 }, { "name": "B1", "order": 3 }, { "name": "B2", "order": 4 }, { "name": "C1", "order": 5 }, { "name": "C2", "order": 6 } ] },
 
 	]);
 };

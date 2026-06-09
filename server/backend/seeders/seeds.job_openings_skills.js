@@ -34,8 +34,8 @@ module.exports = async (sequelize) => {
 		// Contabilidad
 		{ openingTitle: 'Analista Contable', skillName: 'Time Management', preferredLevel: 3 },
 		{ openingTitle: 'Analista Contable', skillName: 'Results oriented', preferredLevel: 3 },
-		{ openingTitle: 'Analista SAP FI/CO', skillName: 'SAP FI/CO', preferredLevel: 4 },
-		{ openingTitle: 'Analista SAP FI/CO', skillName: 'SAP ERP', preferredLevel: 3 },
+		{ openingTitle: 'Analista SAP FI/CO', skillName: 'SAP FI (Financial Accounting - Finanzas)', preferredLevel: 4 },
+		{ openingTitle: 'Analista SAP FI/CO', skillName: 'SAP Enterprise Portal', preferredLevel: 3 },
 		{ openingTitle: 'Tesorero', skillName: 'Time Management', preferredLevel: 3 },
 		{ openingTitle: 'Tesorero', skillName: 'Problem Solving', preferredLevel: 3 },
 		{ openingTitle: 'Auditor Interno', skillName: 'Problem Solving', preferredLevel: 4 },
@@ -44,7 +44,7 @@ module.exports = async (sequelize) => {
 		// Ventas
 		{ openingTitle: 'Ejecutivo de Ventas', skillName: 'Communication', preferredLevel: 4 },
 		{ openingTitle: 'Ejecutivo de Ventas', skillName: 'Results oriented', preferredLevel: 3 },
-		{ openingTitle: 'Analista SAP SD', skillName: 'SAP SD', preferredLevel: 4 },
+		{ openingTitle: 'Analista SAP SD', skillName: 'SAP SD (Sales and Distribution - Ventas y Distribución)', preferredLevel: 4 },
 		{ openingTitle: 'Analista SAP SD', skillName: 'Communication', preferredLevel: 3 },
 		{ openingTitle: 'Account Manager', skillName: 'Communication', preferredLevel: 4 },
 		{ openingTitle: 'Account Manager', skillName: 'Leadership', preferredLevel: 3 },
@@ -58,7 +58,7 @@ module.exports = async (sequelize) => {
 		{ openingTitle: 'Diseñador Gráfico', skillName: 'Proactivity', preferredLevel: 3 },
 		{ openingTitle: 'Community Manager', skillName: 'Communication', preferredLevel: 4 },
 		{ openingTitle: 'Community Manager', skillName: 'Adaptability', preferredLevel: 3 },
-		{ openingTitle: 'Consultor SAP CRM', skillName: 'SAP CRM', preferredLevel: 4 },
+		{ openingTitle: 'Consultor SAP CRM', skillName: 'SAP CRM (Customer Relationship Management)', preferredLevel: 4 },
 		{ openingTitle: 'Consultor SAP CRM', skillName: 'Communication', preferredLevel: 3 },
 
 		// Desarrollo
@@ -69,7 +69,7 @@ module.exports = async (sequelize) => {
 		{ openingTitle: 'DevOps Engineer', skillName: 'Docker', preferredLevel: 4 },
 		{ openingTitle: 'DevOps Engineer', skillName: 'Problem Solving', preferredLevel: 3 },
 		{ openingTitle: 'Consultor SAP ABAP', skillName: 'SAP ABAP', preferredLevel: 4 },
-		{ openingTitle: 'Consultor SAP ABAP', skillName: 'SAP ERP', preferredLevel: 3 },
+		{ openingTitle: 'Consultor SAP ABAP', skillName: 'SAP Enterprise Portal', preferredLevel: 3 },
 	];
 
 	const payload = mappings.map(({ openingTitle, skillName, preferredLevel }) => {

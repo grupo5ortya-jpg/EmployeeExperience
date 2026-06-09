@@ -28,9 +28,7 @@ const core_conn_apply_associations = (sequelize) => {
 		JobOpening,
 		Skill,
 		JobOpeningSkill,
-		Okr,
-		LearningCourse,
-		CourseEnrollment
+		Okr
 	} = sequelize.models;
 
 	//! Department !//
@@ -84,74 +82,47 @@ const core_conn_apply_associations = (sequelize) => {
 		as: 'jobOpeningSkills',
 	});
 
-	//! Learning (LXP) !//
-	LearningCourse.belongsTo(Skill, {
-		foreignKey: 'skill_id',
-		as: 'skill',
-	});
-	Skill.hasMany(LearningCourse, {
-		foreignKey: 'skill_id',
-		as: 'courses',
-	});
-
-	LearningCourse.hasMany(CourseEnrollment, {
-		foreignKey: 'course_id',
-		as: 'enrollments',
-	});
-	CourseEnrollment.belongsTo(LearningCourse, {
-		foreignKey: 'course_id',
-		as: 'course',
-	});
-
-	Employee.hasMany(CourseEnrollment, {
+	//! EmployeeHistory !//
+	Employee.hasMany(EmployeeHistory, {
 		foreignKey: 'employee_id',
-		as: 'courseEnrollments',
+		as: 'departmentHistories',
 	});
-	CourseEnrollment.belongsTo(Employee, {
+
+	EmployeeHistory.belongsTo(Employee, {
 		foreignKey: 'employee_id',
 		as: 'employee',
 	});
 
-		Employee.hasMany(EmployeeHistory, {
-			foreignKey: 'employee_id',
-			as: 'departmentHistories',
-		});
+	Department.hasMany(EmployeeHistory, {
+		foreignKey: 'department_id',
+		as: 'employeeHistories',
+	});
 
-		EmployeeHistory.belongsTo(Employee, {
-			foreignKey: 'employee_id',
-			as: 'employee',
-		});
-
-		Department.hasMany(EmployeeHistory, {
-			foreignKey: 'department_id',
-			as: 'employeeHistories',
-		});
-
-		EmployeeHistory.belongsTo(Department, {
-			foreignKey: 'department_id',
-			as: 'department',
-		});
+	EmployeeHistory.belongsTo(Department, {
+		foreignKey: 'department_id',
+		as: 'department',
+	});
 
 	//! Asset / Employee !//
-		Asset.hasMany(EmployeeAsset, {
-			foreignKey: 'asset_id',
-			as: 'assignments',
-		});
+	Asset.hasMany(EmployeeAsset, {
+		foreignKey: 'asset_id',
+		as: 'assignments',
+	});
 
-		EmployeeAsset.belongsTo(Asset, {
-			foreignKey: 'asset_id',
-			as: 'asset',
-		});
+	EmployeeAsset.belongsTo(Asset, {
+		foreignKey: 'asset_id',
+		as: 'asset',
+	});
 
-		Employee.hasMany(EmployeeAsset, {
-			foreignKey: 'employee_id',
-			as: 'assets',
-		});
+	Employee.hasMany(EmployeeAsset, {
+		foreignKey: 'employee_id',
+		as: 'assets',
+	});
 
-		EmployeeAsset.belongsTo(Employee, {
-			foreignKey: 'employee_id',
-			as: 'employee',
-		});
+	EmployeeAsset.belongsTo(Employee, {
+		foreignKey: 'employee_id',
+		as: 'employee',
+	});
 
 	//! Person / Employee !//
 	Person.hasOne(Employee, {
