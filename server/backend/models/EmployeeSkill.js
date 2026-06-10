@@ -19,6 +19,10 @@ module.exports = (sequelize) => {
 			level: {
 				type: DataTypes.INTEGER,
 				allowNull: false,
+			},
+			skill_evidence_url: {
+				type: DataTypes.TEXT,
+				allowNull: true
 			}
 		}, {
 			sequelize,
