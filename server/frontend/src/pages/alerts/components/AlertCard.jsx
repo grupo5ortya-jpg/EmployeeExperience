@@ -106,6 +106,24 @@ const REPORT_TYPES = {
     label:  'Ver onboarding',
     hrOnly: true,
   },
+  COURSE_COMPLETION_REQUESTED: {
+    link:   () => `/learningdashboard`,
+    label:  'Revisar finalización',
+    hrOnly: true,
+  },
+  COURSE_COMPLETION_APPROVED: {
+    link:  () => `/mylearning`,
+    label: 'Ver mi aprendizaje',
+  },
+  COURSE_COMPLETION_REJECTED: {
+    link:  () => `/mylearning`,
+    label: 'Ver mi aprendizaje',
+  },
+  JOB_OPENING_APPLICATION: {
+    link:   () => `/job-openings`,
+    label:  'Ver vacantes',
+    hrOnly: true,
+  },
 }
 
 function formatDate(dateStr) {

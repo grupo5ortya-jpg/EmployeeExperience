@@ -80,7 +80,7 @@ export default function CourseCatalog() {
     const [search, setSearch] = useState('')
 
     const enrolledCourseIds = useMemo(
-        () => new Set(enrollments.map((e) => e.course_id)),
+        () => new Set(enrollments.map((e) => e.courseId)),
         [enrollments],
     )
 

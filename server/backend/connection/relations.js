@@ -462,6 +462,17 @@ const core_conn_apply_associations = (sequelize) => {
 		as: 'employeeSkills',
 	});
 
+	//! Task / Skill (curso de Learning -> skill asociado) !//
+	Task.belongsTo(Skill, {
+		foreignKey: 'skill_id',
+		as: 'skill',
+	});
+
+	Skill.hasMany(Task, {
+		foreignKey: 'skill_id',
+		as: 'courses',
+	});
+
 };
 
 module.exports = {

@@ -28,7 +28,7 @@ export default function LearningCertifications({ employeeId }) {
                 </ul>
             </div>
 
-            {completed.some((e) => e.certificate_link) && (
+            {completed.some((e) => e.certificateLink) && (
                 <div className="flex flex-col gap-2">
                     <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                         <Award size={14} className="text-brand" />
@@ -36,11 +36,11 @@ export default function LearningCertifications({ employeeId }) {
                     </p>
                     <ul className="flex flex-col gap-1">
                         {completed
-                            .filter((e) => e.certificate_link)
+                            .filter((e) => e.certificateLink)
                             .map((e) => (
                                 <li key={e.id} className="pl-5">
                                     <a
-                                        href={e.certificate_link}
+                                        href={e.certificateLink}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="text-sm text-brand hover:text-brand-hover font-medium inline-flex items-center gap-1"

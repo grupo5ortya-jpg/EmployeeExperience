@@ -2,7 +2,7 @@
 
 **Proyecto:** EmployeeExperience HR Platform  
 **Branch activo:** `fullstack-changes`  
-**Última actualización:** 2026-06-08  
+**Última actualización:** 2026-06-11  
 **Stack:** React 19 + Vite + Tailwind v4 / Express 5 + Sequelize 6 + PostgreSQL + Gemini AI
 
 ---
@@ -197,8 +197,11 @@ Página de alertas con tres secciones en acordeón: "No leídas" (abierta por de
 | `COURSE_COMPLETION_REQUESTED` | Talento |
 | `COURSE_COMPLETION_APPROVED` | Colaborador, Líder |
 | `COURSE_COMPLETION_REJECTED` | Colaborador, Líder |
+| `JOB_OPENING_APPLICATION` | Talento |
 
 **Nota técnica:** El campo `topics` de Alert puede ser array `[uuid]` u objeto `{}` dependiendo del tipo. Siempre normalizar con `Array.isArray(alert.topics) ? alert.topics : []` antes de llamar `.filter()`.
+
+**Nota técnica — CTAs directos (2026-06-11):** `AlertCard.jsx` (`REPORT_TYPES`) define un link/label de acción directa por tipo de alerta. Agregados en esta fecha: `COURSE_COMPLETION_REQUESTED` → "Revisar finalización" (`/learningdashboard`, solo Talento), `COURSE_COMPLETION_APPROVED`/`COURSE_COMPLETION_REJECTED` → "Ver mi aprendizaje" (`/mylearning`), `JOB_OPENING_APPLICATION` → "Ver vacantes" (`/job-openings`, solo Talento).
 
 **Ruta:** `/alerts`  
 **Endpoints:** `GET /alerts`, `GET /alerts/unread-count`, `PATCH /alerts/:id/read`
@@ -215,6 +218,26 @@ HR gestiona vacantes abiertas con título, departamento, descripción y skills r
 
 **Ruta:** `/job-openings`  
 **Endpoints:** `GET /job-openings`, `POST /job-openings`, `PATCH /job-openings/:id`, `DELETE /job-openings/:id`
+
+---
+
+### EXP-602 · Postulación a vacantes (Colaborador / Líder)
+**Tipo:** Story | **Rol:** Colaborador, Líder
+
+**Descripción:**
+Los empleados ven las vacantes en estado `open` y pueden postularse con un click. A diferencia de la vista de Talento (que abre un modal de edición), Colaborador/Líder ven un modal de solo lectura (`JobOpeningApplyModal`) con el detalle de la vacante y las skills requeridas, con un botón "Inscribirme". Al postularse, Talento recibe una alerta.
+
+**Acceptance Criteria:**
+- [ ] Click en una vacante abre `JobOpeningApplyModal` (solo lectura) para Colaborador/Líder, en vez del modal de edición de Talento
+- [ ] El modal muestra título, descripción, departamento, estado y skills requeridas (con nivel)
+- [ ] Botón "Inscribirme" solo visible si la vacante está `open`
+- [ ] `POST /job-openings/:id/apply` valida que la vacante esté `open` y crea un `Alert` (`type: 'JOB_OPENING_APPLICATION'`, `employee_id` = postulante) visible para Talento
+- [ ] No se permite postularse dos veces a la misma vacante (chequeo de `Alert` existente por `employee_id` + `topics` conteniendo el `jobOpeningId`, devuelve 409)
+- [ ] La alerta de Talento muestra CTA "Ver vacantes" → `/job-openings`
+
+**Ruta:** `/job-openings` (`RoleRoute` no aplica — misma ruta que Talento, vista condicionada por rol)
+**Endpoint:** `POST /job-openings/:id/apply` `{ employeeId }`
+**Nota técnica:** Sin tabla de "postulaciones" — se reutiliza `Alert.topics` (JSONB) como referencia al `jobOpeningId`, siguiendo el patrón de deduplicación de `OKR_BEHIND_SCHEDULE`/`OKR_COMPLETED`.
 
 ---
 

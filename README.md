@@ -121,10 +121,7 @@ No generar alertas duplicadas para el mismo objetivo.
 - ¿Quien da el certificado entre empleado y rrhh sobre un curso?
 - ¿Qué sucede con las vacantes, solo se ven?
 
-- martin mostrar:
-- Sección editar preguntas
-- feedback continuo  /empleado
-- vacantes
-- aprendizaje  /empelado/talentos
-
+- martin agregar:
+TODO: mail personal de colaborador (Perfil)
+TODO: diplomas anteriores del empleado. (no prioritario)
 

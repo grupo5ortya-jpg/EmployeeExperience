@@ -66,8 +66,8 @@ export default function LearningDashboard() {
     }, [enrollments])
 
     const employeeName = (enrollment) => {
-        const person = enrollment.employee?.person
-        return person ? `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim() : '—'
+        const employee = enrollment.employee
+        return employee ? `${employee.firstName ?? ''} ${employee.lastName ?? ''}`.trim() : '—'
     }
 
     const openCreateModal = () => {

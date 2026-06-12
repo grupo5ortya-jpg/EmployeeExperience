@@ -24,3 +24,8 @@ export const updateJobOpening = async (id, payload) => {
     const { data } = await apiClient.patch(`${API}/${id}`, payload)
     return data
 }
+
+export const applyToJobOpening = async (id, employeeId) => {
+    const { data } = await apiClient.post(`${API}/${id}/apply`, { employeeId })
+    return data
+}

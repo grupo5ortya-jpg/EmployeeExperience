@@ -24,6 +24,17 @@ module.exports = (sequelize) => {
 			due_date: {
 				type: DataTypes.DATE,
 				allowNull: false,
+			},
+			// Usados por Learning (TaskType sub_type 'Curso'): progreso 0-100 del catálogo
+			// COURSE_ENROLLMENT.PROGRESS_STEPS y link al certificado al aprobar la finalización
+			progress: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			certificate_link: {
+				type: DataTypes.TEXT,
+				allowNull: true,
 			}
 		},
 		{
