@@ -1,10 +1,11 @@
+import { useState }        from 'react'
 import { useSelector }     from 'react-redux'
 import { Link }            from 'react-router-dom'
 import {
   Users, Bell, RotateCcw, ClipboardList,
   CheckCircle2, Clock, Circle, AlertCircle,
   BookOpen, Target, Sparkles, Briefcase, GraduationCap,
-  HeartHandshake, MessageSquareWarning, MessageSquareDashed,
+  HeartHandshake, MessageSquareWarning, MessageSquareDashed, User,
 } from 'lucide-react'
 
 import { useEmployees }              from '../../hooks/useEmployees'
@@ -14,12 +15,15 @@ import { useAllEmployeeTasks }       from '../../hooks/useAllEmployeeTasks'
 import { useMyTasks }                from '../../hooks/useMyTasks'
 import { useMyFeedbackAssignments }  from '../../hooks/useMyFeedbackAssignments'
 import { usePendingSurveys }         from '../../hooks/usePendingSurveys'
+import { usePendingExitInterviews }  from '../../hooks/useExitInterviews'
 import { useReceivedFeedbacks }      from '../continuousFeedback/hooks/useContinuousFeedback'
 import { useFeedbackResults }        from '../../hooks/useFeedbackResults'
 import { useOkrs, useMyOkrs }        from '../../hooks/useOkrs'
 import { useJobOpenings }            from '../jobOpenings/hooks/useJobOpenings'
 import { useEnrollments }            from '../../hooks/useLearning'
 import { CompetencyChart }           from '../feedback/components/CompetencyChart'
+import ExitInterviewCard             from '../pulse/components/ExitInterviewCard'
+import ExitInterviewForm             from '../pulse/components/ExitInterviewForm'
 
 /* ── Card de resumen ─────────────────────────────────────────── */
 function SummaryCard({ icon: Icon, iconBg, iconColor, label, value, unit, to }) {
@@ -401,6 +405,53 @@ function ColaboradorDashboard({ employeeId }) {
   )
 }
 
+/* ── Vista Alumni ────────────────────────────────────────────── */
+function AlumniDashboard({ employeeId }) {
+  const { data: exitInterviews = [] } = usePendingExitInterviews(employeeId)
+  const [activeExitInterview, setActiveExitInterview] = useState(null)
+
+  return (
+    <>
+      <Link
+        to={`/detailemployee/${employeeId}`}
+        className="bg-white rounded-xl border border-brand-light shadow-sm p-4 flex flex-col
+                   items-center justify-center gap-2 py-10 text-center hover:border-brand transition-colors"
+      >
+        <User size={24} className="text-brand" />
+        <p className="text-sm font-semibold text-slate-700">Ver mi perfil</p>
+        <p className="text-xs text-slate-400">Consultá tu información, certificaciones y skills</p>
+      </Link>
+
+      {/* Entrevista de salida pendiente */}
+      {exitInterviews.length > 0 && (
+        <>
+          <div className="border-l-4 border-brand pl-4">
+            <h2 className="text-base font-bold text-slate-800">Entrevista de salida</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Tu opinión nos ayuda a mejorar</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {exitInterviews.map((assignment) => (
+              <ExitInterviewCard
+                key={assignment.surveyId}
+                assignment={assignment}
+                onStart={() => setActiveExitInterview(assignment)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeExitInterview && (
+        <ExitInterviewForm
+          assignment={activeExitInterview}
+          onClose={() => setActiveExitInterview(null)}
+          onCompleted={() => setActiveExitInterview(null)}
+        />
+      )}
+    </>
+  )
+}
+
 /* ── Sección de pendientes con header ────────────────────────── */
 function PendingSection({ title, to, children }) {
   return (
@@ -436,6 +487,7 @@ export default function Home() {
           {role === 'Talento' && 'Panel de recursos humanos'}
           {role === 'Líder'   && 'Panel de líder de equipo'}
           {role === 'Colaborador' && 'Tu espacio de trabajo'}
+          {role === 'Alumni'  && 'Tu espacio de ex empleado'}
         </p>
       </div>
 
@@ -443,12 +495,15 @@ export default function Home() {
       {role === 'Talento'     && <TalentoDashboard />}
       {role === 'Líder'       && <LiderDashboard employeeId={employeeId} />}
       {role === 'Colaborador' && <ColaboradorDashboard employeeId={employeeId} />}
+      {role === 'Alumni'      && <AlumniDashboard employeeId={employeeId} />}
 
       {/* Resumen secundario */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ObjectivesCard employeeId={employeeId} />
-        <LearningSummaryCard role={role} employeeId={employeeId} />
-      </div>
+      {role !== 'Alumni' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ObjectivesCard employeeId={employeeId} />
+          <LearningSummaryCard role={role} employeeId={employeeId} />
+        </div>
+      )}
 
     </main>
   )

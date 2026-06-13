@@ -35,6 +35,7 @@ function formatEmployee(e) {
 		documentNumber: e.person?.document_number ?? null,
 		birthDate: e.person?.birth_date ?? null,
 		email: e.user?.email ?? null,
+		personalEmail: e.person?.personal_email ?? null,
 		phone: e.person?.phone ?? null,
 		address: e.person?.address ?? null,
 		emergencyContactName: e.person?.emergency_contact_name ?? null,
@@ -99,6 +100,7 @@ const createEmployee = async (req, res, next) => {
 		hireDate,
 		managerId,
 		email,
+		personalEmail,
 		roleId,
 		taskType
 	} = req.body;
@@ -121,6 +123,7 @@ const createEmployee = async (req, res, next) => {
 			address: address || null,
 			emergency_contact_name: emergencyContactName || null,
 			emergency_contact_phone: emergencyContactPhone || null,
+			personal_email: personalEmail || null,
 		}, { transaction: t });
 
 		// =========================================
@@ -241,7 +244,7 @@ const updateEmployee = async (req, res, next) => {
 		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
 
 		const {
-			firstName, lastName, email, documentType, documentNumber, birthDate,
+			firstName, lastName, email, personalEmail, documentType, documentNumber, birthDate,
 			phone, address, emergencyContactName, emergencyContactPhone,
 			position, status, departmentId, hireDate,
 		} = req.body;
@@ -250,6 +253,7 @@ const updateEmployee = async (req, res, next) => {
 		if (firstName !== undefined) personUpdates.first_name = firstName;
 		if (lastName !== undefined) personUpdates.last_name = lastName;
 		if (email !== undefined) personUpdates.email = email;
+		if (personalEmail !== undefined) personUpdates.personal_email = personalEmail || null;
 		if (documentType !== undefined) personUpdates.document_type = DOC_TYPE_MAP[documentType] ?? documentType;
 		if (documentNumber !== undefined) personUpdates.document_number = documentNumber;
 		if (birthDate !== undefined) personUpdates.birth_date = birthDate || null;

@@ -1,5 +1,6 @@
 import { useState, useEffect }              from 'react'
 import { useParams, useNavigate }           from 'react-router-dom'
+import { useSelector }                      from 'react-redux'
 import { useQueryClient }                   from '@tanstack/react-query'
 import {
     ArrowLeft, Mail, Phone, MapPin, Briefcase, Building2,
@@ -18,6 +19,8 @@ const STATUS_OPTIONS = [
     { value: 'ON_LEAVE',   label: 'En licencia' },
     { value: 'ONBOARDING', label: 'Onboarding' },
 ]
+// "Onboarding" es un estado automático del sistema; no debe poder asignarse manualmente desde la edición.
+const EDITABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter((s) => s.value !== 'ONBOARDING')
 const STATUS_STYLE = {
     ACTIVE:     'bg-green-100 text-green-600',
     INACTIVE:   'bg-slate-100 text-slate-500',
@@ -79,6 +82,8 @@ export default function DetailEmployee() {
     const { id }      = useParams()
     const navigate    = useNavigate()
     const qc          = useQueryClient()
+    const { user: authUser } = useSelector((s) => s.auth)
+    const canEdit     = authUser?.role !== 'Alumni'
     const { data: departments = [] }  = useDepartments()
     const { data: allEmployees = [] } = useEmployees()
     const { data: employee, isLoading, isError } = useEmployeeById(id)
@@ -99,6 +104,7 @@ export default function DetailEmployee() {
             documentNumber:        employee.documentNumber        ?? '',
             birthDate:             employee.birthDate?.slice(0, 10) ?? '',
             phone:                 employee.phone                 ?? '',
+            personalEmail:         employee.personalEmail         ?? '',
             addrStreet:            addr.street       ?? '',
             addrNumber:            addr.number       ?? '',
             addrNeighborhood:      addr.neighborhood ?? '',
@@ -138,6 +144,7 @@ export default function DetailEmployee() {
                     documentNumber:        form.documentNumber        || undefined,
                     birthDate:             form.birthDate             || null,
                     phone:                 form.phone                 || null,
+                    personalEmail:         form.personalEmail         || null,
                     address:               hasAddr
                         ? { street: form.addrStreet, number: form.addrNumber,
                             neighborhood: form.addrNeighborhood, city: form.addrCity, country: form.addrCountry }
@@ -177,6 +184,7 @@ export default function DetailEmployee() {
                 documentNumber:        employee.documentNumber        ?? '',
                 birthDate:             employee.birthDate?.slice(0, 10) ?? '',
                 phone:                 employee.phone                 ?? '',
+                personalEmail:         employee.personalEmail         ?? '',
                 addrStreet:            addr.street       ?? '',
                 addrNumber:            addr.number       ?? '',
                 addrNeighborhood:      addr.neighborhood ?? '',
@@ -237,46 +245,48 @@ export default function DetailEmployee() {
                     Volver
                 </button>
 
-                <div className="flex items-center gap-2">
-                    {isEditing ? (
-                        <>
+                {canEdit && (
+                    <div className="flex items-center gap-2">
+                        {isEditing ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleCancel}
+                                    disabled={saving}
+                                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-500
+                                               hover:text-slate-700 px-3 py-1.5 rounded-lg
+                                               hover:bg-slate-100 transition-colors cursor-pointer
+                                               disabled:opacity-40"
+                                >
+                                    <X size={13} />
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="flex items-center gap-1.5 text-xs font-semibold text-white
+                                               bg-brand hover:bg-brand-hover px-3 py-1.5 rounded-lg
+                                               transition-colors cursor-pointer disabled:opacity-40"
+                                >
+                                    <Check size={13} />
+                                    {saving ? 'Guardando…' : 'Guardar'}
+                                </button>
+                            </>
+                        ) : (
                             <button
                                 type="button"
-                                onClick={handleCancel}
-                                disabled={saving}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-slate-500
-                                           hover:text-slate-700 px-3 py-1.5 rounded-lg
-                                           hover:bg-slate-100 transition-colors cursor-pointer
-                                           disabled:opacity-40"
-                            >
-                                <X size={13} />
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSave}
-                                disabled={saving}
+                                onClick={() => setIsEditing(true)}
                                 className="flex items-center gap-1.5 text-xs font-semibold text-white
-                                           bg-brand hover:bg-brand-hover px-3 py-1.5 rounded-lg
-                                           transition-colors cursor-pointer disabled:opacity-40"
+                                           bg-brand hover:bg-brand-hover
+                                           px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                             >
-                                <Check size={13} />
-                                {saving ? 'Guardando…' : 'Guardar'}
+                                <Pencil size={12} />
+                                Editar
                             </button>
-                        </>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={() => setIsEditing(true)}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-white
-                                       bg-brand hover:bg-brand-hover
-                                       px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                        >
-                            <Pencil size={12} />
-                            Editar
-                        </button>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Error de guardado */}
@@ -305,7 +315,7 @@ export default function DetailEmployee() {
                                 <input value={form.position} onChange={set('position')}
                                     placeholder="Posición / Cargo" className={inputCls} />
                                 <select value={form.status} onChange={set('status')} className={inputCls}>
-                                    {STATUS_OPTIONS.map((s) => (
+                                    {EDITABLE_STATUS_OPTIONS.map((s) => (
                                         <option key={s.value} value={s.value}>{s.label}</option>
                                     ))}
                                 </select>
@@ -332,6 +342,10 @@ export default function DetailEmployee() {
                 {/* Contacto */}
                 <Section title="Contacto">
                     <FieldRow icon={Mail} label="Email" value={user?.email} editing={false} />
+                    <FieldRow icon={Mail} label="Email personal" value={employee.personalEmail} editing={isEditing}>
+                        <input type="email" value={form.personalEmail} onChange={set('personalEmail')}
+                            placeholder="Ej: maria.gonzalez@gmail.com" className={inputCls} />
+                    </FieldRow>
                     <FieldRow icon={Phone} label="Teléfono" value={employee.phone} editing={isEditing}>
                         <input value={form.phone} onChange={set('phone')}
                             placeholder="Ej: +54 11 1234-5678" className={inputCls} />

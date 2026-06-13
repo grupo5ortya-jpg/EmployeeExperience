@@ -43,6 +43,10 @@ export function srv_front_router_generate_routes() {
     if (pageName === 'MyLearning') continue
     if (pageName === 'LearningDashboard') continue
     if (pageName === 'QuestionManagement') continue
+    if (pageName === 'OffboardingHome') continue
+    if (pageName === 'OffboardingDetailPage') continue
+    if (pageName === 'AlumniHome') continue
+    if (pageName === 'AlumniDetailPage') continue
 
     layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
   }

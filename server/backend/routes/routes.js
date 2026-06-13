@@ -35,6 +35,9 @@ const routes_continuous_feedback = require('./routes.continuousFeedback.js');
 const routes_okr = require('./routes.okr.js');
 const routes_learning_course = require('./routes.learningCourse.js');
 const routes_course_enrollment = require('./routes.courseEnrollment.js');
+const routes_offboarding = require('./routes.offboarding.js');
+const routes_exit_interview = require('./routes.exitInterview.js');
+const routes_alumni = require('./routes.alumni.js');
 
 
 // Auth — public, must be first
@@ -119,6 +122,12 @@ router.use('/skills', routes_skills)
 // Learning (LXP) — cursos e inscripciones
 router.use('/learning-courses', routes_learning_course)
 router.use('/course-enrollments', routes_course_enrollment)
+// Offboarding — proceso de desvinculación (checklist + entrevista de salida)
+router.use('/offboarding', routes_offboarding)
+// Exit interviews — entrevista de salida del empleado (pending/submit)
+router.use('/exit-interviews', routes_exit_interview)
+// Alumni — perfil de ex-empleados (Talento)
+router.use('/alumni', routes_alumni)
 
 
 // TODO: eliminar estos endpoints — solo para pruebas de desarrollo

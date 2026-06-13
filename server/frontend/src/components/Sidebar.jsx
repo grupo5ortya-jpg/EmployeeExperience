@@ -4,7 +4,7 @@ import {
   Home, UserPlus, RotateCcw, Target, BookOpen, GraduationCap,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
-  List, PlusSquare, UserPlus2, SendHorizonal, FileQuestion,
+  List, PlusSquare, UserPlus2, SendHorizonal, FileQuestion, LogOut, UserCheck,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
@@ -51,6 +51,8 @@ const ALL_NAV_ITEMS = [
     ],
   },
   { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento', 'Colaborador', 'Líder'] },
+  { icon: LogOut,             label: 'Offboarding',        to: '/offboardinghome',  roles: ['Talento'] },
+  { icon: UserCheck,          label: 'Alumni',             to: '/alumnihome',       roles: ['Talento'] },
   { icon: LifeBuoy,           label: 'Soporte' },
 ]
 
@@ -122,7 +124,13 @@ export default function Sidebar() {
 
   const navItems = ALL_NAV_ITEMS
     .filter((item) => !item.roles?.length || item.roles.includes(role))
-    .map((item)   => item.dynamicBadge ? { ...item, badge: unreadCount } : item)
+    .map((item) => {
+      if (item.dynamicBadge) return { ...item, badge: unreadCount }
+      if (item.label === 'Mi perfil' && role === 'Alumni' && user?.employeeId) {
+        return { ...item, to: `/detailemployee/${user.employeeId}` }
+      }
+      return item
+    })
 
   return (
     <aside className="hidden lg:flex w-56 shrink-0 h-screen bg-navy flex-col">

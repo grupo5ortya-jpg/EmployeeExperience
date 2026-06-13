@@ -24,6 +24,10 @@ import CourseCatalog          from './pages/learning/CourseCatalog.jsx'
 import MyLearning             from './pages/learning/MyLearning.jsx'
 import LearningDashboard      from './pages/learning/LearningDashboard.jsx'
 import QuestionManagement     from './pages/questions/QuestionManagement.jsx'
+import OffboardingHome        from './pages/offboarding/OffboardingHome.jsx'
+import OffboardingDetailPage  from './pages/offboarding/OffboardingDetailPage.jsx'
+import AlumniHome             from './pages/alumni/AlumniHome.jsx'
+import AlumniDetailPage       from './pages/alumni/AlumniDetailPage.jsx'
 
 // Restores session from cookie on every page load
 function AuthInit({ children }) {
@@ -62,6 +66,10 @@ function App() {
               <Route path="/mylearning"              element={<RoleRoute allowed={['Colaborador', 'Líder']}><MyLearning /></RoleRoute>} />
               <Route path="/learningdashboard"       element={<RoleRoute allowed={['Talento']}><LearningDashboard /></RoleRoute>} />
               <Route path="/questionmanagement"      element={<RoleRoute allowed={['Talento']}><QuestionManagement /></RoleRoute>} />
+              <Route path="/offboardinghome"         element={<RoleRoute allowed={['Talento']}><OffboardingHome /></RoleRoute>} />
+              <Route path="/offboarding/:employeeId" element={<RoleRoute allowed={['Talento']}><OffboardingDetailPage /></RoleRoute>} />
+              <Route path="/alumnihome"              element={<RoleRoute allowed={['Talento']}><AlumniHome /></RoleRoute>} />
+              <Route path="/alumni/:employeeId"      element={<RoleRoute allowed={['Talento']}><AlumniDetailPage /></RoleRoute>} />
             </Route>
 
             {/* Public pages: login, 404, etc. */}

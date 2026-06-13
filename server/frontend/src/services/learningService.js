@@ -27,11 +27,14 @@ export const getEnrollments = ({ employeeId, courseId, status } = {}) =>
 export const enrollInCourse = ({ employeeId, courseId }) =>
     apiClient.post('/course-enrollments', { employeeId, courseId }).then((r) => r.data);
 
+export const createExternalCertification = (payload) =>
+    apiClient.post('/course-enrollments/external', payload).then((r) => r.data);
+
 export const updateEnrollmentProgress = (id, progress) =>
     apiClient.patch(`/course-enrollments/${id}/progress`, { progress }).then((r) => r.data);
 
-export const requestCompletion = (id) =>
-    apiClient.patch(`/course-enrollments/${id}/request-completion`).then((r) => r.data);
+export const requestCompletion = (id, certificateLink) =>
+    apiClient.patch(`/course-enrollments/${id}/request-completion`, { certificateLink }).then((r) => r.data);
 
-export const reviewCompletion = (id, { decision, certificateLink }) =>
-    apiClient.patch(`/course-enrollments/${id}/review`, { decision, certificateLink }).then((r) => r.data);
+export const reviewCompletion = (id, decision) =>
+    apiClient.patch(`/course-enrollments/${id}/review`, { decision }).then((r) => r.data);

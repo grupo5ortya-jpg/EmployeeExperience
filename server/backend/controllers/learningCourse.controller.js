@@ -1,5 +1,6 @@
 const { Task, TaskType, Skill } = require('../connection/sequelize');
 const { TASK_TYPE } = require('../utils/constants/models.constants.js');
+const { getCourseTaskType } = require('../utils/learning.js');
 
 const COURSE_INCLUDE = [
 	{ model: TaskType, as: 'taskType', attributes: ['id', 'name', 'sub_type'] },
@@ -15,22 +16,18 @@ function formatCourse(t) {
 		modality: t.modality ?? null,
 		link: t.link ?? null,
 		skill: t.skill ?? null,
+		isExternal: t.is_external ?? false,
+		institution: t.institution ?? null,
 	};
-}
-
-// "Curso" es la TaskType usada como catálogo de Learning; se reusa siempre la misma
-async function getCourseTaskType() {
-	const [taskType] = await TaskType.findOrCreate({
-		where: { sub_type: TASK_TYPE.TASK_TYPE_SUB_TYPE_COURSE },
-		defaults: { name: 'Aprendizaje - curso', sub_type: TASK_TYPE.TASK_TYPE_SUB_TYPE_COURSE },
-	});
-	return taskType;
 }
 
 const getAllCourses = async (req, res, next) => {
 	try {
 		const courses = await Task.findAll({
-			where:   { '$taskType.sub_type$': TASK_TYPE.TASK_TYPE_SUB_TYPE_COURSE },
+			where: {
+				'$taskType.sub_type$': TASK_TYPE.TASK_TYPE_SUB_TYPE_COURSE,
+				is_external: false,
+			},
 			include: COURSE_INCLUDE,
 			subQuery: false,
 		});

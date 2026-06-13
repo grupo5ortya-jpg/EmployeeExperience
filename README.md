@@ -122,6 +122,10 @@ No generar alertas duplicadas para el mismo objetivo.
 - ¿Qué sucede con las vacantes, solo se ven?
 
 - martin agregar:
-TODO: mail personal de colaborador (Perfil)
-TODO: diplomas anteriores del empleado. (no prioritario)
+TODO: diplomas anteriores del empleado. (no prioritario)✅
+TODO: mails
+TODO: último módulo offboarding:✅
+* iniciar proceso en offboardingHome rh agregar cambiar estado a recontratable o no en el modal.
+- Si cambia rol que cambie la vista.
+* Tiene 30 dias para completar cuestionario
 

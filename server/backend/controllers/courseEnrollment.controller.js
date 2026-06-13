@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { EmployeeTask, Task, TaskType, Skill, Employee, Person, EmployeeSkill, Alert } = require('../connection/sequelize');
 const { EMPLOYEE_TASK, COURSE_ENROLLMENT, TASK_TYPE } = require('../utils/constants/models.constants.js');
+const { getCourseTaskType } = require('../utils/learning.js');
 
 // EmployeeTask.status (onboarding) <-> CourseEnrollment.status (Learning) que ve el frontend
 const STATUS_TO_API = {
@@ -9,6 +10,7 @@ const STATUS_TO_API = {
 	[EMPLOYEE_TASK.STATUS_SUBMITTED]:   COURSE_ENROLLMENT.STATUS_PENDING_APPROVAL,
 	[EMPLOYEE_TASK.STATUS_COMPLETED]:   COURSE_ENROLLMENT.STATUS_COMPLETED,
 	[EMPLOYEE_TASK.STATUS_DROPPED]:     COURSE_ENROLLMENT.STATUS_IN_PROGRESS,
+	[EMPLOYEE_TASK.STATUS_REJECTED]:    COURSE_ENROLLMENT.STATUS_REJECTED,
 };
 
 const COURSE_INCLUDE = {
@@ -45,6 +47,8 @@ function formatEnrollment(et) {
 				modality:    et.task.modality ?? null,
 				link:        et.task.link ?? null,
 				skill:       et.task.skill ?? null,
+				isExternal:  et.task.is_external ?? false,
+				institution: et.task.institution ?? null,
 			}
 			: null,
 		employee: et.employee
@@ -150,6 +154,7 @@ const updateProgress = async (req, res, next) => {
 const requestCompletion = async (req, res, next) => {
 	try {
 		const { employeeId, taskId } = parseEnrollmentId(req.params.id);
+		const { certificateLink } = req.body;
 
 		const enrollment = await EmployeeTask.findOne({
 			where:   { employee_id: employeeId, task_id: taskId },
@@ -159,8 +164,11 @@ const requestCompletion = async (req, res, next) => {
 		if (enrollment.status !== EMPLOYEE_TASK.STATUS_IN_PROGRESS || enrollment.progress !== 100) {
 			return res.status(400).json({ status: 'fail', message: 'El curso debe estar al 100% para solicitar la finalización' });
 		}
+		if (!certificateLink || !certificateLink.trim()) {
+			return res.status(400).json({ status: 'fail', message: 'Subí el link del diploma para enviarlo a revisión' });
+		}
 
-		await enrollment.update({ status: EMPLOYEE_TASK.STATUS_SUBMITTED });
+		await enrollment.update({ status: EMPLOYEE_TASK.STATUS_SUBMITTED, certificate_link: certificateLink.trim() });
 
 		Alert.create({
 			employee_id: employeeId,
@@ -179,10 +187,65 @@ const requestCompletion = async (req, res, next) => {
 	}
 };
 
+// Certificación/curso externo registrado por el empleado: crea un Task (is_external) +
+// EmployeeTask al 100% en estado SUBMITTED, listo para revisión de Talento (mismo flujo que requestCompletion)
+const createExternalCertification = async (req, res, next) => {
+	try {
+		const { employeeId, title, description, duration, modality, skillId, institution, certificateLink } = req.body;
+
+		if (!title || !title.trim()) {
+			return res.status(400).json({ status: 'fail', message: 'El título es obligatorio' });
+		}
+		if (!certificateLink || !certificateLink.trim()) {
+			return res.status(400).json({ status: 'fail', message: 'Subí el link del diploma para enviarlo a revisión' });
+		}
+
+		const taskType = await getCourseTaskType();
+
+		const course = await Task.create({
+			name:         title.trim(),
+			task_type_id: taskType.id,
+			description:  description?.trim() || null,
+			duration:     duration?.trim() || null,
+			modality:     modality || null,
+			skill_id:     skillId || null,
+			is_external:  true,
+			institution:  institution?.trim() || null,
+		});
+
+		const dueDate = new Date();
+		dueDate.setFullYear(dueDate.getFullYear() + 1);
+
+		await EmployeeTask.create({
+			employee_id:     employeeId,
+			task_id:         course.id,
+			status:          EMPLOYEE_TASK.STATUS_SUBMITTED,
+			progress:        100,
+			certificate_link: certificateLink.trim(),
+			due_date:        dueDate,
+		});
+
+		Alert.create({
+			employee_id: employeeId,
+			type:        'COURSE_COMPLETION_REQUESTED',
+			message:     `Se solicitó la aprobación de una certificación externa: "${course.name}".`,
+			status:      'UNREAD',
+		}).catch(console.error);
+
+		const full = await EmployeeTask.findOne({
+			where:   { employee_id: employeeId, task_id: course.id },
+			include: [COURSE_INCLUDE, EMPLOYEE_INCLUDE],
+		});
+		res.status(201).json(formatEnrollment(full));
+	} catch (err) {
+		next(err);
+	}
+};
+
 const reviewCompletion = async (req, res, next) => {
 	try {
 		const { employeeId, taskId } = parseEnrollmentId(req.params.id);
-		const { decision, certificateLink } = req.body;
+		const { decision } = req.body;
 
 		const enrollment = await EmployeeTask.findOne({
 			where:   { employee_id: employeeId, task_id: taskId },
@@ -194,13 +257,10 @@ const reviewCompletion = async (req, res, next) => {
 		}
 
 		if (decision === 'approve') {
-			if (!certificateLink) {
-				return res.status(400).json({ status: 'fail', message: 'El link del certificado es requerido para aprobar' });
-			}
-
-			await enrollment.update({ status: EMPLOYEE_TASK.STATUS_COMPLETED, certificate_link: certificateLink });
+			await enrollment.update({ status: EMPLOYEE_TASK.STATUS_COMPLETED });
 
 			// Si el curso tiene una skill asociada, registrar/actualizar la evidencia en EmployeeSkill
+			// usando el diploma subido por el empleado
 			const skillId = enrollment.task?.skill_id;
 			if (skillId) {
 				const skill = await Skill.findByPk(skillId);
@@ -208,10 +268,10 @@ const reviewCompletion = async (req, res, next) => {
 
 				const [employeeSkill, created] = await EmployeeSkill.findOrCreate({
 					where:    { employee_id: employeeId, skill_id: skillId },
-					defaults: { level: firstLevel, skill_evidence_url: certificateLink },
+					defaults: { level: firstLevel, skill_evidence_url: enrollment.certificate_link },
 				});
 				if (!created) {
-					await employeeSkill.update({ skill_evidence_url: certificateLink });
+					await employeeSkill.update({ skill_evidence_url: enrollment.certificate_link });
 				}
 			}
 
@@ -222,14 +282,27 @@ const reviewCompletion = async (req, res, next) => {
 				status:      'UNREAD',
 			}).catch(console.error);
 		} else if (decision === 'reject') {
-			await enrollment.update({ status: EMPLOYEE_TASK.STATUS_IN_PROGRESS });
+			if (enrollment.task?.is_external) {
+				// Certificación externa: el rechazo es definitivo, se conserva el diploma como referencia
+				await enrollment.update({ status: EMPLOYEE_TASK.STATUS_REJECTED });
 
-			Alert.create({
-				employee_id: employeeId,
-				type:        'COURSE_COMPLETION_REJECTED',
-				message:     `Tu solicitud de finalización del curso "${enrollment.task?.name}" fue rechazada. Podés volver a intentarlo.`,
-				status:      'UNREAD',
-			}).catch(console.error);
+				Alert.create({
+					employee_id: employeeId,
+					type:        'COURSE_COMPLETION_REJECTED',
+					message:     `Tu certificación externa "${enrollment.task?.name}" fue rechazada.`,
+					status:      'UNREAD',
+				}).catch(console.error);
+			} else {
+				// Se limpia el diploma para que el empleado vuelva a subirlo al reintentar
+				await enrollment.update({ status: EMPLOYEE_TASK.STATUS_IN_PROGRESS, certificate_link: null });
+
+				Alert.create({
+					employee_id: employeeId,
+					type:        'COURSE_COMPLETION_REJECTED',
+					message:     `Tu solicitud de finalización del curso "${enrollment.task?.name}" fue rechazada. Podés volver a intentarlo.`,
+					status:      'UNREAD',
+				}).catch(console.error);
+			}
 		} else {
 			return res.status(400).json({ status: 'fail', message: 'Decisión inválida' });
 		}
@@ -249,5 +322,6 @@ module.exports = {
 	createEnrollment,
 	updateProgress,
 	requestCompletion,
+	createExternalCertification,
 	reviewCompletion,
 };

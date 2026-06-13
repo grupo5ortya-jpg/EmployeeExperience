@@ -2,15 +2,20 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Activity } from 'lucide-react'
 import { usePendingSurveys } from '../../hooks/usePendingSurveys'
+import { usePendingExitInterviews } from '../../hooks/useExitInterviews'
 import PulseSurveyCard from './components/PulseSurveyCard'
 import PulseSurveyForm from './components/PulseSurveyForm'
+import ExitInterviewCard from './components/ExitInterviewCard'
+import ExitInterviewForm from './components/ExitInterviewForm'
 
 export default function PulseSurveys() {
   const [searchParams] = useSearchParams()
   const employeeId = searchParams.get('employeeId')
 
   const { data: assignments = [], isLoading, isError } = usePendingSurveys(employeeId)
+  const { data: exitInterviews = [] } = usePendingExitInterviews(employeeId)
   const [activeAssignment, setActiveAssignment] = useState(null)
+  const [activeExitInterview, setActiveExitInterview] = useState(null)
 
   return (
     <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 flex flex-col gap-5">
@@ -51,7 +56,7 @@ export default function PulseSurveys() {
       )}
 
       {/* Empty state */}
-      {employeeId && !isLoading && !isError && assignments.length === 0 && (
+      {employeeId && !isLoading && !isError && assignments.length === 0 && exitInterviews.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <div className="w-14 h-14 rounded-full bg-brand-pale flex items-center justify-center">
             <Activity size={24} className="text-brand" />
@@ -76,12 +81,40 @@ export default function PulseSurveys() {
         </div>
       )}
 
+      {/* Exit interview */}
+      {exitInterviews.length > 0 && (
+        <>
+          <div className="border-l-4 border-brand pl-4 mt-1">
+            <h2 className="text-base font-bold text-slate-800">Entrevista de salida</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Tu opinión nos ayuda a mejorar</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {exitInterviews.map((assignment) => (
+              <ExitInterviewCard
+                key={assignment.surveyId}
+                assignment={assignment}
+                onStart={() => setActiveExitInterview(assignment)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Survey form modal */}
       {activeAssignment && (
         <PulseSurveyForm
           assignment={activeAssignment}
           onClose={() => setActiveAssignment(null)}
           onCompleted={() => setActiveAssignment(null)}
+        />
+      )}
+
+      {/* Exit interview form modal */}
+      {activeExitInterview && (
+        <ExitInterviewForm
+          assignment={activeExitInterview}
+          onClose={() => setActiveExitInterview(null)}
+          onCompleted={() => setActiveExitInterview(null)}
         />
       )}
 

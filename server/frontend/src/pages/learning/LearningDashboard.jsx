@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Check, Plus, Trash2, X } from 'lucide-react'
+import { Check, ExternalLink, Plus, Trash2, X } from 'lucide-react'
 
 import { useCourses, useDeleteCourse, useEnrollments, useReviewCompletion } from '../../hooks/useLearning'
 import CourseFormModal from './components/CourseFormModal'
@@ -8,37 +8,40 @@ const STATUS_LABEL = {
     IN_PROGRESS: 'En progreso',
     PENDING_APPROVAL: 'Pendiente de aprobación',
     COMPLETED: 'Completado',
+    REJECTED: 'Rechazada',
 }
 
 const STATUS_STYLE = {
     IN_PROGRESS: 'bg-brand-light text-brand-hover',
     PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
     COMPLETED: 'bg-green-100 text-green-700',
+    REJECTED: 'bg-red-100 text-red-600',
 }
 
 function ReviewActions({ enrollment, onReview, isReviewing }) {
-    const [certificateLink, setCertificateLink] = useState('')
-    const canApprove = certificateLink.trim().length > 0
-
     return (
         <div className="flex items-center gap-2">
-            <input
-                value={certificateLink}
-                onChange={(e) => setCertificateLink(e.target.value)}
-                placeholder="Link del diploma (requerido)"
-                className={`text-xs px-2 py-1.5 rounded border outline-none w-44 transition-colors
-                    ${canApprove ? 'border-brand-light' : 'border-amber-300 bg-amber-50'}`}
-            />
+            {enrollment.certificateLink && (
+                <a
+                    href={enrollment.certificateLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand-hover px-2.5 py-1.5 rounded-lg border border-brand-light hover:bg-brand-pale transition-colors"
+                >
+                    <ExternalLink size={12} />
+                    Ver diploma
+                </a>
+            )}
             <button
-                onClick={() => onReview(enrollment.id, 'approve', certificateLink)}
-                disabled={isReviewing || !canApprove}
-                title={canApprove ? 'Aprobar' : 'Ingresá el link del diploma para aprobar'}
+                onClick={() => onReview(enrollment.id, 'approve')}
+                disabled={isReviewing}
+                title="Aprobar"
                 className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <Check size={14} />
             </button>
             <button
-                onClick={() => onReview(enrollment.id, 'reject', null)}
+                onClick={() => onReview(enrollment.id, 'reject')}
                 disabled={isReviewing}
                 title="Rechazar"
                 className="p-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors cursor-pointer disabled:opacity-50"
@@ -175,7 +178,14 @@ export default function LearningDashboard() {
                                 {sortedEnrollments.map((enrollment) => (
                                     <tr key={enrollment.id} className="border-b border-slate-100 last:border-0">
                                         <td className="py-2.5 pr-3 text-slate-700">{employeeName(enrollment)}</td>
-                                        <td className="py-2.5 pr-3 text-slate-700">{enrollment.course?.title}</td>
+                                        <td className="py-2.5 pr-3 text-slate-700">
+                                            {enrollment.course?.title}
+                                            {enrollment.course?.isExternal && (
+                                                <span className="ml-2 inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-pale text-slate-600">
+                                                    Externo{enrollment.course?.institution ? ` · ${enrollment.course.institution}` : ''}
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="py-2.5 pr-3 text-slate-600">{enrollment.progress}%</td>
                                         <td className="py-2.5 pr-3">
                                             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[enrollment.status]}`}>
@@ -187,7 +197,7 @@ export default function LearningDashboard() {
                                                 <ReviewActions
                                                     enrollment={enrollment}
                                                     isReviewing={isReviewing}
-                                                    onReview={(id, decision, certificateLink) => review({ id, decision, certificateLink })}
+                                                    onReview={(id, decision) => review({ id, decision })}
                                                 />
                                             )}
                                         </td>

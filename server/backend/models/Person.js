@@ -56,6 +56,13 @@ module.exports = (sequelize) => {
 				type: DataTypes.STRING(50),
 				allowNull: true,
 			},
+			personal_email: {
+				type: DataTypes.STRING(150),
+				allowNull: true,
+				validate: {
+					isEmail: true,
+				},
+			},
 		},
 		{
 			sequelize,

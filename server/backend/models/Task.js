@@ -48,6 +48,16 @@ module.exports = (sequelize) => {
 			skill_id: {
 				type: DataTypes.UUID,
 				allowNull: true,
+			},
+			// Certificaciones externas subidas por el empleado (no forman parte del catálogo de cursos)
+			is_external: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			institution: {
+				type: DataTypes.STRING(150),
+				allowNull: true,
 			}
 		},
 		{
