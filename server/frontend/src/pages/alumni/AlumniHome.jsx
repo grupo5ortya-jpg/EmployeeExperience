@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search, X, GraduationCap } from 'lucide-react'
+import { Search, X, GraduationCap, UserPlus } from 'lucide-react'
 
-import { useAlumni } from '../../hooks/useAlumni'
+import { useAlumni, useRehireAlumni } from '../../hooks/useAlumni'
 import { getSkills } from '../../services/skillService'
 import EmployeeAvatar from '../employeeList/components/EmployeeAvatar'
 
@@ -25,6 +25,14 @@ export default function AlumniHome() {
     skillId: skillId || undefined,
     rehirable: rehirable || undefined,
   })
+  const { mutate: rehire, isPending: isRehiring } = useRehireAlumni()
+
+  const handleRehire = (e, alumniItem) => {
+    e.stopPropagation()
+    if (window.confirm(`¿Recontratar a ${alumniItem.firstName} ${alumniItem.lastName}? Volverá a ser un empleado activo (rol Colaborador).`)) {
+      rehire(alumniItem.id)
+    }
+  }
 
   const hasFilters = search !== '' || skillId !== '' || rehirable !== ''
   const clearFilters = () => { setSearch(''); setSkillId(''); setRehirable('') }
@@ -105,26 +113,27 @@ export default function AlumniHome() {
                 <th className="hidden lg:table-cell text-left text-xs font-semibold text-sky-200 px-4 py-3 whitespace-nowrap">Skills</th>
                 <th className="hidden lg:table-cell text-left text-xs font-semibold text-sky-200 px-4 py-3 whitespace-nowrap">Tags</th>
                 <th className="text-left text-xs font-semibold text-sky-200 px-4 py-3 whitespace-nowrap">Recontratable</th>
+                <th className="text-left text-xs font-semibold text-sky-200 px-4 py-3 whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="border-b border-brand-light animate-pulse">
-                    {Array.from({ length: 5 }).map((__, j) => (
+                    {Array.from({ length: 6 }).map((__, j) => (
                       <td key={j} className="px-4 py-4"><div className="h-3.5 bg-slate-200 rounded w-3/4" /></td>
                     ))}
                   </tr>
                 ))
               ) : isError ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-10 text-sm text-red-400 bg-brand-pale">
+                  <td colSpan={6} className="text-center py-10 text-sm text-red-400 bg-brand-pale">
                     Error al cargar los alumni. Intentá de nuevo.
                   </td>
                 </tr>
               ) : alumni.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-10 text-sm text-slate-400 bg-brand-pale">
+                  <td colSpan={6} className="text-center py-10 text-sm text-slate-400 bg-brand-pale">
                     No se encontraron alumni
                   </td>
                 </tr>
@@ -174,6 +183,18 @@ export default function AlumniHome() {
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${a.rehirable ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
                         {a.rehirable ? 'Sí' : 'No'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={(e) => handleRehire(e, a)}
+                        disabled={isRehiring}
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
+                                   bg-brand-pale text-brand hover:bg-brand-light transition-colors
+                                   cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <UserPlus size={13} />
+                        Recontratar
+                      </button>
                     </td>
                   </tr>
                 ))

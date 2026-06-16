@@ -37,6 +37,7 @@ export function srv_front_router_generate_routes() {
     if (pageName === 'TemplateDetailPage') continue
     if (pageName === 'FeedbackDetailPage') continue
     // Role-restricted — registered manually in App.jsx with RoleRoute
+    if (pageName === 'FeedbackHome') continue
     if (pageName === 'OKRManagement') continue
     if (pageName === 'MyObjectives') continue
     if (pageName === 'CourseCatalog') continue

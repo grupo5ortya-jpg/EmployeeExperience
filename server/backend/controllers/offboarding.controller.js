@@ -45,6 +45,7 @@ async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterview
 		employeeId:     offboarding.employee_id,
 		initiatedBy:    offboarding.initiated_by,
 		lastWorkingDay: offboarding.last_working_day,
+		rehirable:      offboarding.rehirable,
 		status:         offboarding.status,
 		startedAt:      offboarding.started_at,
 		completedAt:    offboarding.completed_at ?? null,
@@ -78,7 +79,7 @@ async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterview
 
 const startOffboarding = async (req, res, next) => {
 	try {
-		const { employeeId, lastWorkingDay } = req.body;
+		const { employeeId, lastWorkingDay, rehirable } = req.body;
 		if (!employeeId || !lastWorkingDay) {
 			return res.status(400).json({ status: 'fail', message: 'employeeId y lastWorkingDay son requeridos' });
 		}
@@ -100,6 +101,7 @@ const startOffboarding = async (req, res, next) => {
 			employee_id:      employeeId,
 			initiated_by:     req.user?.employeeId ?? null,
 			last_working_day: lastWorkingDay,
+			rehirable:        rehirable !== undefined ? !!rehirable : true,
 			status:           EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
 		});
 
@@ -229,7 +231,7 @@ const completeOffboarding = async (req, res, next) => {
 
 		await AlumniProfile.findOrCreate({
 			where:    { employee_id: employeeId },
-			defaults: { employee_id: employeeId, rehirable: true, tags: [] },
+			defaults: { employee_id: employeeId, rehirable: offboarding.rehirable, tags: [] },
 		});
 
 		const checklistTaskType = await getOffboardingChecklistTaskType();

@@ -84,6 +84,7 @@ module.exports = {
 		ACTIVE_ROLES: ['Talento', 'Líder', 'Colaborador'],
 		INACTIVE_ROLES: ['Alumni'],
 		ALUMNI: 'Alumni',
+		COLABORADOR: 'Colaborador',
 	},
 	SKILL: {
 		TYPES: ['hard', 'soft'],
@@ -119,5 +120,12 @@ module.exports = {
 		TASK_TYPE_SUB_TYPE_CAPACITATION_SOFT: 'Certificación - Soft Skill',
 		TASK_TYPE_SUB_TYPE_COURSE: 'Curso',
 		TASK_TYPE_SUB_TYPE_CHECKLIST: 'Checklist',
+		// TaskTypes usadas internamente por el sistema (Onboarding, Offboarding, Learning) —
+		// siempre protegidas contra borrado, no se puede desproteger vía PATCH.
+		SYSTEM_TASK_TYPES: [
+			{ name: 'Onboarding estándar', sub_type: 'Checklist' },
+			{ name: 'Offboarding estándad', sub_type: 'Checklist' },
+			{ name: 'Aprendizaje - curso', sub_type: 'Curso' },
+		],
 	},
 };

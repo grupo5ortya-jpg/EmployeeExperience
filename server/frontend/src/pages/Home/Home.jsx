@@ -153,7 +153,7 @@ function TalentoDashboard() {
         <SummaryCard icon={RotateCcw}  iconBg="bg-violet-100"  iconColor="text-violet-600"
           label="Ciclos 360° activos" value={surveys.length} unit="ciclos"   to="/feedbackhome" />
         <SummaryCard icon={ClipboardList} iconBg="bg-amber-100" iconColor="text-amber-600"
-          label="Tareas de onboarding" value={pendingTasks}  unit="pendientes" to="/all-assignments" />
+          label="Planes asignados"     value={pendingTasks}  unit="pendientes" to="/all-assignments" />
         <SummaryCard icon={Target}     iconBg="bg-emerald-100" iconColor="text-emerald-600"
           label="OKR activos"       value={activeOkrs}       unit="activos"     to="/okrmanagement" />
         <SummaryCard icon={Briefcase}  iconBg="bg-indigo-100"  iconColor="text-indigo-600"
@@ -168,9 +168,11 @@ function LiderDashboard({ employeeId }) {
   const { data: unread = 0 }          = useUnreadAlerts()
   const { data: assignments = [] }     = useMyFeedbackAssignments(employeeId)
   const { data: allTasks = [] }        = useAllEmployeeTasks()
+  const { data: allEmployees = [] }    = useEmployees()
 
   const pendingEvals  = assignments.filter((a) => a.status === 'PENDING').length
   const submittedTeam = allTasks.filter((t) => t.status === 'SUBMITTED' || t.status === 'SUBMITED').length
+  const teamCount     = allEmployees.filter((e) => e.manager?.id === employeeId).length
 
   return (
     <>
@@ -181,7 +183,8 @@ function LiderDashboard({ employeeId }) {
           label="Alertas del equipo"     value={unread}          unit="alertas" to="/alerts" />
         <SummaryCard icon={ClipboardList} iconBg="bg-amber-100"   iconColor="text-amber-600"
           label="Tareas a revisar"       value={submittedTeam}   unit="tareas" to="/all-assignments" />
-        <ComingSoon icon={Users} label="Equipo" />
+        <SummaryCard icon={Users} iconBg="bg-emerald-100" iconColor="text-emerald-600"
+          label="Mi equipo"             value={teamCount}        unit="personas" to="/employeelist" />
       </div>
 
       <PerformancePanel employeeId={employeeId} />
@@ -206,7 +209,6 @@ function LiderDashboard({ employeeId }) {
         </PendingSection>
       )}
 
-      <ReceivedFeedbacksPanel employeeId={employeeId} />
     </>
   )
 }
@@ -363,13 +365,13 @@ function ColaboradorDashboard({ employeeId }) {
 
       {/* Tareas pendientes */}
       {pendingTasks.length > 0 && (
-        <PendingSection title="Tus tareas de onboarding" to="/mytasks">
+        <PendingSection title="Tus planes de trabajo" to="/mytasks">
           {pendingTasks.slice(0, 5).map((t) => (
             <PendingItem
               key={t.taskId}
               icon={Circle} iconClass="text-slate-300"
               title={t.task?.name ?? '—'}
-              subtitle={t.task?.taskType?.name ?? 'Onboarding'}
+              subtitle={t.task?.taskType?.name ?? 'Plan'}
               badge={t.dueDate
                 ? { label: new Date(t.dueDate).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }), cls: 'text-slate-400' }
                 : null}

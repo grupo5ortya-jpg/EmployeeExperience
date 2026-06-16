@@ -1,12 +1,30 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Clock, ChevronRight, Trash2, RotateCcw, PlusCircle, AlertTriangle, CalendarClock } from 'lucide-react'
+import { Clock, ChevronRight, Trash2, RotateCcw, PlusCircle, AlertTriangle, CalendarClock, Lock, Unlock } from 'lucide-react'
 import { useTasks } from '../../hooks/useTasks'
 import { updateTask, createTask, deleteTask, deleteTaskType } from '../../services/taskService'
 import { updateTaskType } from '../../services/taskTypeService'
 
 const MAX_TASKS = 10
+
+// TaskTypes usadas internamente por el sistema (Onboarding, Offboarding, Learning) —
+// siempre protegidas, no se pueden desproteger desde la UI.
+const SYSTEM_TASK_TYPES = [
+    { name: 'Onboarding estándar', sub_type: 'Checklist' },
+    { name: 'Offboarding estándad', sub_type: 'Checklist' },
+]
+const isSystemTemplate = (type) =>
+    SYSTEM_TASK_TYPES.some((s) => s.name === type.name && s.sub_type === type.sub_type)
+
+// "Aprendizaje - curso" es el TaskType singleton de Learning (LXP): sus "tareas" son
+// cursos gestionados desde LearningDashboard (/learning-courses), no templates de onboarding.
+// Se oculta por completo de esta página (sigue protegido contra borrado a nivel backend).
+const HIDDEN_TASK_TYPES = [
+    { name: 'Aprendizaje - curso', sub_type: 'Curso' },
+]
+const isHiddenTemplate = (type) =>
+    HIDDEN_TASK_TYPES.some((s) => s.name === type.name && s.sub_type === type.sub_type)
 
 const inputCls = `w-full rounded-lg border border-brand-light px-3 py-2 text-sm text-slate-700
   placeholder:text-slate-400 outline-none bg-white
@@ -40,6 +58,8 @@ export default function OnboardingHome() {
     // Borrar template: null | TaskType
     const [deleteIntent,   setDeleteIntent]   = useState(null)
     const [deleting,       setDeleting]       = useState(false)
+    // Blindar/desblindar template: id del TaskType en proceso
+    const [togglingId,     setTogglingId]     = useState(null)
 
     // ── Filtros del panel izquierdo ───────────────────────────
     const [filterName, setFilterName] = useState('')
@@ -50,6 +70,7 @@ export default function OnboardingHome() {
         const map = {}
         tasks.forEach((t) => {
             if (!t.taskType) return
+            if (isHiddenTemplate(t.taskType)) return
             if (!map[t.taskType.id]) map[t.taskType.id] = { ...t.taskType, taskCount: 0 }
             map[t.taskType.id].taskCount++
         })
@@ -141,6 +162,19 @@ export default function OnboardingHome() {
         } finally {
             setDeleting(false)
             setDeleteIntent(null)
+        }
+    }
+
+    // ── Blindar / desblindar template ─────────────────────────
+    const handleToggleProtected = async (e, type) => {
+        e.stopPropagation()
+        if (isSystemTemplate(type) || togglingId) return
+        setTogglingId(type.id)
+        try {
+            await updateTaskType(type.id, { isProtected: !type.is_protected })
+            await queryClient.refetchQueries({ queryKey: ['tasks'] })
+        } finally {
+            setTogglingId(null)
         }
     }
 
@@ -252,8 +286,8 @@ export default function OnboardingHome() {
 
             {/* Header */}
             <div className="border-l-4 border-brand pl-4">
-                <h1 className="text-lg lg:text-xl font-bold text-slate-800">Templates de onboarding</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Gestioná los templates de tareas.</p>
+                <h1 className="text-lg lg:text-xl font-bold text-slate-800">Gestión de planes</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Gestioná los templates de planes de trabajo.</p>
             </div>
 
             {/* Split layout */}
@@ -339,10 +373,35 @@ export default function OnboardingHome() {
                                         </span>
                                         <button
                                             type="button"
-                                            onClick={(e) => { e.stopPropagation(); setDeleteIntent(type) }}
-                                            className="opacity-0 group-hover:opacity-100 text-slate-300
-                                                       hover:text-red-400 transition-all cursor-pointer p-0.5 rounded"
-                                            title="Eliminar template"
+                                            onClick={(e) => handleToggleProtected(e, type)}
+                                            disabled={isSystemTemplate(type) || togglingId === type.id}
+                                            className={`p-0.5 rounded transition-all ${
+                                                isSystemTemplate(type)
+                                                    ? 'text-slate-300 cursor-not-allowed'
+                                                    : type.is_protected
+                                                        ? 'text-slate-400 hover:text-brand cursor-pointer'
+                                                        : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-brand cursor-pointer'
+                                            } disabled:opacity-100`}
+                                            title={
+                                                isSystemTemplate(type)
+                                                    ? 'Template protegido por el sistema'
+                                                    : type.is_protected
+                                                        ? 'Quitar protección'
+                                                        : 'Proteger template (no se podrá eliminar)'
+                                            }
+                                        >
+                                            {type.is_protected ? <Lock size={14} /> : <Unlock size={14} />}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); if (!type.is_protected) setDeleteIntent(type) }}
+                                            disabled={type.is_protected}
+                                            className={`p-0.5 rounded transition-all ${
+                                                type.is_protected
+                                                    ? 'text-slate-200 cursor-not-allowed'
+                                                    : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 cursor-pointer'
+                                            }`}
+                                            title={type.is_protected ? 'Template protegido — no se puede eliminar' : 'Eliminar template'}
                                         >
                                             <Trash2 size={14} />
                                         </button>

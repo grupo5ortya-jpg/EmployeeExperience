@@ -37,10 +37,11 @@ async function suggestMentors(newEmployee, candidates) {
         const hireYear = c.hireDate ? new Date(c.hireDate).getFullYear() : null;
         const seniority = hireYear ? `Ingresó en ${hireYear}` : 'Antigüedad desconocida';
         const sameDept = c.department === newEmployee.department ? ' ✓ mismo departamento' : '';
+        const performance = c.feedbackAverage != null ? `\n  Promedio de feedback 360° recibido: ${c.feedbackAverage}/5` : '';
         return `- ID: ${c.employeeId}
   Nombre: ${c.name}
   Departamento: ${c.department ?? '—'}${sameDept} | Cargo: ${c.position ?? '—'}
-  ${seniority} | Encuestas completadas: ${c.completedSurveys}`;
+  ${seniority} | Encuestas completadas: ${c.completedSurveys}${performance}`;
     }).join('\n\n');
 
     const prompt = `Eres un sistema de recursos humanos especializado en programas de mentoring.
@@ -58,6 +59,7 @@ Criterios de selección (en orden de prioridad):
 2. Antigüedad — candidatos con más años en la empresa tienen mayor contexto organizacional
 3. Encuestas completadas — indica mayor engagement con los procesos de la empresa
 4. Compatibilidad de cargo — cargo complementario al del nuevo empleado
+5. Desempeño (feedback 360°) — candidatos con mejor promedio de feedback recibido son mentores más confiables, cuando el dato está disponible
 
 Seleccioná los mejores 2 o 3 mentores y explicá brevemente por qué cada uno es adecuado.
 

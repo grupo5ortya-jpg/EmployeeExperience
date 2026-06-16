@@ -348,9 +348,9 @@ export default function CreateEmployeeModal({ isOpen, onClose, onSave, employees
                 </Field>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Template de onboarding">
+                <Field label="Template de plan">
                   <select name="taskTypeId" value={form.taskTypeId} onChange={handle} className={inputCls}>
-                    <option value="">Onboarding - estándar</option>
+                    <option value="">Plan estándar</option>
                     {taskTypes.map((tt) => (
                       <option key={tt.id} value={tt.id}>
                         {tt.name}{tt.subType ? ` · ${tt.subType}` : ''}

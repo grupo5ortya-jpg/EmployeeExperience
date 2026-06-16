@@ -2,7 +2,7 @@ import { useState, useMemo }  from 'react'
 import { useSelector }        from 'react-redux'
 import {
     CheckCircle2, Circle, ClipboardList,
-    Clock, Archive, ChevronDown, ChevronRight,
+    Clock, Archive, ChevronDown, ChevronRight, AlertCircle,
 } from 'lucide-react'
 import { useMyTasks, useUpdateTaskStatus, useArchiveTemplate } from '../../hooks/useMyTasks'
 
@@ -11,22 +11,24 @@ const STATUS_ENROLLED  = 'ENROLLED'
 const STATUS_DROPPED   = 'DROPPED'
 
 /* ─── Fila de tarea ──────────────────────────────────────── */
-function TaskRow({ task, onToggle, isUpdating, disabled = false }) {
+function TaskRow({ task, onToggle, isUpdating, disabled = false, isOverdue = false }) {
     const isCompleted = task.status === 'COMPLETED'
     const isSubmitted = task.status === STATUS_SUBMITTED
     const isDropped   = task.status === STATUS_DROPPED
     const done        = isCompleted || isSubmitted || isDropped
-    const locked      = done || disabled
+    const locked      = done || disabled || isOverdue
 
     const icon = (isCompleted || isDropped)
         ? <CheckCircle2 size={15} className={`shrink-0 ${disabled ? 'text-slate-400' : 'text-emerald-500'}`} />
         : isSubmitted
         ? <CheckCircle2 size={15} className="text-brand shrink-0" />
+        : isOverdue
+        ? <AlertCircle  size={15} className="text-red-400 shrink-0" />
         : <Circle       size={15} className="text-slate-300 shrink-0" />
 
     return (
         <div className={`flex items-center border-b border-brand-light last:border-0
-            ${disabled ? 'bg-slate-50' : isCompleted ? 'bg-emerald-50/20' : ''}`}>
+            ${disabled ? 'bg-slate-50' : isOverdue ? 'bg-red-50/30' : isCompleted ? 'bg-emerald-50/20' : ''}`}>
             <button
                 type="button"
                 onClick={!locked ? () => onToggle(task.taskId, task.status) : undefined}
@@ -39,15 +41,19 @@ function TaskRow({ task, onToggle, isUpdating, disabled = false }) {
                 <span className={`flex-1 text-sm leading-snug
                     ${disabled || isCompleted || isDropped
                         ? 'line-through text-slate-400'
+                        : isOverdue ? 'text-red-600'
                         : isSubmitted ? 'text-slate-500' : 'text-slate-700'}`}>
                     {task.task?.name ?? '—'}
                 </span>
-                {isSubmitted && !disabled && (
+                {isOverdue && (
+                    <span className="text-xs text-red-500 font-medium shrink-0">Vencida</span>
+                )}
+                {isSubmitted && !disabled && !isOverdue && (
                     <span className="text-xs text-brand font-medium shrink-0">
                         Pendiente aprobación
                     </span>
                 )}
-                {!done && !disabled && task.task?.estimatedDuration != null && (
+                {!done && !disabled && !isOverdue && task.task?.estimatedDuration != null && (
                     <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
                         <Clock size={11} />
                         {task.task.estimatedDuration}d
@@ -66,6 +72,12 @@ export default function MyTasks() {
     const { data: tasks = [], isLoading, isError } = useMyTasks(employeeId)
     const { mutate: updateStatus, isPending }               = useUpdateTaskStatus(employeeId)
     const { mutate: archiveTemplate, isPending: archiving } = useArchiveTemplate(employeeId)
+
+    const today = useMemo(() => {
+        const d = new Date()
+        d.setHours(0, 0, 0, 0)
+        return d
+    }, [])
 
     // ── Agrupar TODAS las tareas (incluyendo DROPPED) por template ──
     const allGroups = useMemo(() => {
@@ -123,12 +135,12 @@ export default function MyTasks() {
             {/* Header */}
             <div className="border-l-4 border-brand pl-4">
                 <h1 className="text-lg lg:text-xl font-bold text-slate-800">
-                    Mis tareas de onboarding
+                    Mis planes
                 </h1>
                 <p className="text-xs lg:text-sm text-slate-400 mt-0.5">
                     {totalTasks > 0
                         ? `${totalDone} de ${totalTasks} tareas completadas`
-                        : 'Tus tareas de incorporación aparecerán aquí'}
+                        : 'Tus planes de trabajo aparecerán aquí'}
                 </p>
             </div>
 
@@ -151,7 +163,7 @@ export default function MyTasks() {
                     {allDone && (
                         <p className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 mt-1">
                             <CheckCircle2 size={13} />
-                            ¡Completaste todas las tareas de onboarding!
+                            ¡Completaste todas las tareas!
                         </p>
                     )}
                 </div>
@@ -182,7 +194,7 @@ export default function MyTasks() {
                     <div>
                         <p className="text-sm font-semibold text-slate-700">Sin tareas asignadas</p>
                         <p className="text-xs text-slate-400 mt-1">
-                            RR.HH. asignará tus tareas de incorporación próximamente.
+                            RR.HH. te asignará un plan de trabajo próximamente.
                         </p>
                     </div>
                 </div>
@@ -261,6 +273,11 @@ export default function MyTasks() {
                                         task={t}
                                         onToggle={handleToggle}
                                         isUpdating={isPending}
+                                        isOverdue={
+                                            !!t.dueDate &&
+                                            new Date(t.dueDate) < today &&
+                                            !['COMPLETED', 'SUBMITTED', 'DROPPED'].includes(t.status)
+                                        }
                                     />
                                 ))}
                             </div>

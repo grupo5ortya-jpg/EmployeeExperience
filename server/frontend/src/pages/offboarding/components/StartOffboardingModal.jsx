@@ -15,6 +15,7 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
 
     const [employeeId, setEmployeeId] = useState('')
     const [lastWorkingDay, setLastWorkingDay] = useState('')
+    const [rehirable, setRehirable] = useState('true')
 
     if (!isOpen) return null
 
@@ -23,6 +24,7 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
     const handleClose = () => {
         setEmployeeId('')
         setLastWorkingDay('')
+        setRehirable('true')
         reset()
         onClose()
     }
@@ -31,7 +33,7 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
         e.preventDefault()
         if (!employeeId || !lastWorkingDay) return
         try {
-            await start({ employeeId, lastWorkingDay })
+            await start({ employeeId, lastWorkingDay, rehirable: rehirable === 'true' })
             handleClose()
         } catch {
             // El error se muestra debajo del formulario vía `error`
@@ -89,6 +91,18 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
                             className={inputCls}
                             required
                         />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <label className={labelCls}>Recontratable</label>
+                        <select
+                            value={rehirable}
+                            onChange={(e) => setRehirable(e.target.value)}
+                            className={inputCls}
+                        >
+                            <option value="true">Sí</option>
+                            <option value="false">No</option>
+                        </select>
                     </div>
 
                     {errorMessage && (

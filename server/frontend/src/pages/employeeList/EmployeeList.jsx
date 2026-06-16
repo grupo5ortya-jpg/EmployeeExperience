@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { UserPlus } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSelector } from 'react-redux'
 
 import { useEmployees } from '../../hooks/useEmployees'
 import { createEmployee } from '../../services/employeeService'
@@ -18,12 +19,21 @@ const ESTADO_OPTIONS = ['Todos', 'Activo', 'Inactivo', 'En licencia']
 
 export default function EmployeeList() {
   const queryClient = useQueryClient()
-  const { data: employees = [], isLoading, isError } = useEmployees()
+  const { user: authUser } = useSelector((s) => s.auth)
+  const { data: allEmployees = [], isLoading, isError } = useEmployees()
 
   const [search, setSearch] = useState('')
   const [depto, setDepto] = useState('Todos')
   const [estado, setEstado] = useState('Todos')
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Líder: solo ve a los integrantes de su equipo (y a sí mismo)
+  const employees = useMemo(() => {
+    if (authUser?.role !== 'Líder') return allEmployees
+    return allEmployees.filter(
+      (e) => e.id === authUser.employeeId || e.manager?.id === authUser.employeeId,
+    )
+  }, [allEmployees, authUser])
 
   const deptoOptions = useMemo(
     () => ['Todos', ...new Set(employees.map((e) => e.department?.name).filter(Boolean))],

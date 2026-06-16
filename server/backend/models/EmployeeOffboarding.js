@@ -28,6 +28,11 @@ module.exports = (sequelize) => {
 				allowNull: false,
 				defaultValue: EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
 			},
+			rehirable: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: true,
+			},
 			started_at: {
 				type: DataTypes.DATE,
 				allowNull: false,

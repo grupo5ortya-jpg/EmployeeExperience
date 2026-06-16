@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const {
 	Employee, Person, User, Role,
-	AlumniProfile, EmployeeSkill, Skill,
+	AlumniProfile, EmployeeSkill, Skill, Alert,
 } = require('../connection/sequelize');
 const { ROLE } = require('../utils/constants/models.constants.js');
 
@@ -113,4 +113,46 @@ const updateAlumni = async (req, res, next) => {
 	}
 };
 
-module.exports = { getAllAlumni, getAlumniByEmployee, updateAlumni };
+// PATCH /alumni/:employeeId/rehire — vuelve a convertir al alumni en empleado activo (rol Colaborador)
+const rehireAlumni = async (req, res, next) => {
+	try {
+		const { employeeId } = req.params;
+
+		const user = await User.findOne({ where: { employee_id: employeeId } });
+		if (!user) return res.status(404).json({ status: 'fail', message: 'User not found' });
+
+		const colaboradorRole = await Role.findOne({ where: { name: ROLE.COLABORADOR } });
+		if (!colaboradorRole) return res.status(404).json({ status: 'fail', message: 'Role not found' });
+
+		const employeeBefore = await Employee.findByPk(employeeId, {
+			include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+		});
+		const name = employeeBefore?.person
+			? `${employeeBefore.person.first_name ?? ''} ${employeeBefore.person.last_name ?? ''}`.trim()
+			: 'El alumni';
+
+		// Dispara el hook syncEmployeeStatus de User: Employee.status -> ACTIVE
+		await user.update({ role_id: colaboradorRole.id });
+
+		await Alert.create({
+			employee_id: employeeId,
+			type: 'EMPLOYEE_REHIRED',
+			message: `${name} fue recontratado!`,
+			status: 'UNREAD',
+		});
+
+		await Alert.create({
+			employee_id: employeeId,
+			type: 'REHIRE_WELCOME',
+			message: `¡Bienvenido de nuevo a la empresa, ${name}!`,
+			status: 'UNREAD',
+		});
+
+		const employee = await Employee.findByPk(employeeId);
+		res.json({ id: employee.id, status: employee.status });
+	} catch (err) {
+		next(err);
+	}
+};
+
+module.exports = { getAllAlumni, getAlumniByEmployee, updateAlumni, rehireAlumni };

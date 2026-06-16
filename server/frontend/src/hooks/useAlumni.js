@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getAlumni, getAlumniByEmployee, updateAlumni } from '../services/alumniService'
+import { getAlumni, getAlumniByEmployee, updateAlumni, rehireAlumni } from '../services/alumniService'
 
 export const useAlumni = (filters = {}) =>
     useQuery({
@@ -21,6 +21,16 @@ export const useUpdateAlumni = () => {
         onSuccess: (_, { employeeId }) => {
             queryClient.invalidateQueries({ queryKey: ['alumni'] })
             queryClient.invalidateQueries({ queryKey: ['alumni', 'employee', employeeId] })
+        },
+    })
+}
+
+export const useRehireAlumni = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (employeeId) => rehireAlumni(employeeId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['alumni'] })
         },
     })
 }

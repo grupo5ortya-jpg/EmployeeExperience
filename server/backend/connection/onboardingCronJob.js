@@ -31,33 +31,49 @@ async function checkOverdueTasks() {
 		const empName  = et.employee?.person
 			? `${et.employee.person.first_name} ${et.employee.person.last_name}`.trim()
 			: 'Un empleado';
+		const topics = { taskId: et.task_id };
 
-		// Avoid duplicate alerts (one per employee+task combo)
-		const existing = await Alert.findOne({
-			where: { employee_id: et.employee_id, type: 'ONBOARDING_TASK_OVERDUE' },
+		// Alert for HR (one per employee+task)
+		const hrExisting = await Alert.findOne({
+			where: { type: 'ONBOARDING_TASK_OVERDUE', topics: { [Op.contains]: topics } },
 		});
-		if (existing) continue;
+		if (!hrExisting) {
+			await Alert.create({
+				employee_id: et.employee_id,
+				type:        'ONBOARDING_TASK_OVERDUE',
+				message:     `La tarea "${taskName}" de ${empName} venció.`,
+				status:      'UNREAD',
+				topics,
+			});
+		}
 
-		// Alert for HR
-		await Alert.create({
-			employee_id: et.employee_id,
-			type:        'ONBOARDING_TASK_OVERDUE',
-			message:     `${empName} tiene la tarea "${taskName}" vencida.`,
-			status:      'UNREAD',
+		// Alert for the employee themselves (one per employee+task)
+		const empExisting = await Alert.findOne({
+			where: { employee_id: et.employee_id, type: 'TASK_OVERDUE', topics: { [Op.contains]: topics } },
 		});
+		if (!empExisting) {
+			await Alert.create({
+				employee_id: et.employee_id,
+				type:        'TASK_OVERDUE',
+				message:     `Tu tarea "${taskName}" venció.`,
+				status:      'UNREAD',
+				topics,
+			});
+		}
 
-		// Alert for the employee's direct leader
+		// Alert for the employee's direct leader (one per leader+task)
 		const leaderTeam = await Team.findOne({ where: { collaborator_id: et.employee_id } });
 		if (leaderTeam?.leader_id) {
 			const leaderExisting = await Alert.findOne({
-				where: { employee_id: leaderTeam.leader_id, type: 'TEAM_TASK_OVERDUE' },
+				where: { employee_id: leaderTeam.leader_id, type: 'TEAM_TASK_OVERDUE', topics: { [Op.contains]: topics } },
 			});
 			if (!leaderExisting) {
 				await Alert.create({
 					employee_id: leaderTeam.leader_id,
 					type:        'TEAM_TASK_OVERDUE',
-					message:     `${empName} tiene la tarea de onboarding "${taskName}" vencida.`,
+					message:     `La tarea "${taskName}" de ${empName} venció.`,
 					status:      'UNREAD',
+					topics,
 				});
 			}
 		}

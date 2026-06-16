@@ -99,6 +99,7 @@ function TypeSection({ label, Icon, items, tab, emptyText }) {
 export default function ContinuousFeedback() {
     const { user }       = useSelector((s) => s.auth)
     const employeeId     = user?.employeeId
+    const canSend        = user?.role === 'Colaborador'
     const [searchParams] = useSearchParams()
 
     const [tab,       setTab]       = useState('received')
@@ -138,6 +139,7 @@ export default function ContinuousFeedback() {
                         Reconocimientos y sugerencias entre colaboradores
                     </p>
                 </div>
+                {canSend && (
                 <button
                     onClick={() => setOpenModal(true)}
                     className="flex items-center gap-2 bg-brand hover:bg-brand-hover
@@ -147,6 +149,7 @@ export default function ContinuousFeedback() {
                     <Plus size={15} />
                     Enviar feedback
                 </button>
+                )}
             </div>
 
             {/* Tabs */}

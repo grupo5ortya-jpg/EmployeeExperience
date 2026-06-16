@@ -8,7 +8,7 @@ import { useEmployees }                          from '../hooks/useEmployees'
 
 // Quick-nav items the employee can search through
 const EMPLOYEE_NAV = [
-  { label: 'Mis tareas',        path: '/mytasks',              hint: 'Onboarding pendiente' },
+  { label: 'Mis planes',        path: '/mytasks',              hint: 'Planes pendientes' },
   { label: 'Mis evaluaciones',  path: '/myevaluations',        hint: 'Feedback 360° asignado' },
   { label: 'Alertas',           path: '/alerts',               hint: 'Notificaciones' },
   { label: 'Feedback continuo', path: '/continuous-feedback',  hint: 'Reconocimientos y sugerencias' },

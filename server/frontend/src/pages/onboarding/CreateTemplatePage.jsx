@@ -193,7 +193,7 @@ const CreateTemplatePage = () => {
                 <div className="flex items-start justify-between gap-4">
                     <div className="border-l-4 border-brand pl-4">
                         <h1 className="text-lg lg:text-xl font-bold text-slate-800">
-                            Nuevo template de onboarding
+                            Nuevo template de plan
                         </h1>
                         <p className="text-xs text-slate-400 mt-0.5">
                             Creá una plantilla con sus tareas asociadas.

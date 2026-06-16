@@ -46,11 +46,7 @@
 │ talento20@example.com     │ pass20   │ Talento (HR)              │
 └───────────────────────────┴──────────┴───────────────────────────┘
 
-- todo: alertas ordenadas por vistas y no vistas para mas orden.
-- todo: feedback continuo
-- todo: arreglar vacantes
-
--Estados OKR
+* Estados OKR
 
 COMPLETED
 - currentValue >= targetValue
@@ -118,14 +114,20 @@ No generar alertas duplicadas para el mismo objetivo.
 
 
 - Martin preguntas:
-- ¿Quien da el certificado entre empleado y rrhh sobre un curso?
-- ¿Qué sucede con las vacantes, solo se ven?
+
 
 - martin agregar:
-TODO: diplomas anteriores del empleado. (no prioritario)✅
+* diplomas anteriores del empleado.✅
+
 TODO: mails
-TODO: último módulo offboarding:✅
-* iniciar proceso en offboardingHome rh agregar cambiar estado a recontratable o no en el modal.
-- Si cambia rol que cambie la vista.
-* Tiene 30 dias para completar cuestionario
+
+* último módulo offboarding:✅
+* iniciar proceso en offboardingHome rh agregar cambiar estado a recontratable o no
+- Si cambia rol que cambie la vista. ✅
+- Talentos recibe alerta con boton para direccionar y setear datos del perfil✅
+
+* Blindar templates offboarding y onboarding, opcional poder hacerlo con otros.✅
+* Tiene 30 dias para completar cuestionario ✅
+* existe "mi perfil" y lider/colaborador puede cambiar sus campos personales.✅
+* Mejoria de mentoria por ia, toma scores de feedback 360.✅
 

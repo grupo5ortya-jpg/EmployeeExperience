@@ -2,7 +2,7 @@ const { Task, TaskType } = require('../connection/sequelize');
 
 const TASK_INCLUDE =
 	[
-		{ model: TaskType, as: 'taskType', attributes: ['id', 'name', 'sub_type'] },
+		{ model: TaskType, as: 'taskType', attributes: ['id', 'name', 'sub_type', 'is_protected'] },
 	];
 
 function formatTask(t) {

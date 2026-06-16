@@ -8,3 +8,6 @@ export const getAlumniByEmployee = (employeeId) =>
 
 export const updateAlumni = (employeeId, payload) =>
     apiClient.patch(`/alumni/${employeeId}`, payload).then((r) => r.data);
+
+export const rehireAlumni = (employeeId) =>
+    apiClient.patch(`/alumni/${employeeId}/rehire`).then((r) => r.data);

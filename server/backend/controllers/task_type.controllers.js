@@ -1,10 +1,19 @@
 const { TaskType, Task } = require('../connection/sequelize');
+const { TASK_TYPE } = require('../utils/constants/models.constants.js');
+
+function isSystemTaskType(taskType) {
+	return TASK_TYPE.SYSTEM_TASK_TYPES.some(
+		(s) => s.name === taskType.name && s.sub_type === taskType.sub_type,
+	);
+}
 
 function formatTaskType(t) {
 	return {
 		id: t.id,
 		name: t.name,
 		subType: t.sub_type ?? null,
+		isProtected: t.is_protected,
+		isSystem: isSystemTaskType(t),
 	};
 }
 
@@ -42,10 +51,12 @@ const updateTaskType = async (req, res, next) => {
 		const taskType = await TaskType.findByPk(req.params.id);
 		if (!taskType) return res.status(404).json({ status: 'fail', message: 'Task type not found' });
 
-		const { name, subType } = req.body;
+		const { name, subType, isProtected } = req.body;
 		const updates = {};
 		if (name !== undefined) updates.name = name;
 		if (subType !== undefined) updates.sub_type = subType || null;
+		// Las TaskTypes del sistema quedan siempre protegidas, no se pueden desproteger
+		if (isProtected !== undefined && !isSystemTaskType(taskType)) updates.is_protected = !!isProtected;
 
 		await taskType.update(updates);
 		res.json(formatTaskType(taskType));
@@ -58,6 +69,10 @@ const deleteTaskType = async (req, res, next) => {
 	try {
 		const taskType = await TaskType.findByPk(req.params.id);
 		if (!taskType) return res.status(404).json({ status: 'fail', message: 'Task type not found' });
+
+		if (taskType.is_protected) {
+			return res.status(400).json({ status: 'fail', message: 'Este template está protegido y no puede eliminarse.' });
+		}
 
 		// Soft-delete all tasks so EmployeeTask history is preserved via paranoid FK
 		await Task.destroy({ where: { task_type_id: req.params.id } });

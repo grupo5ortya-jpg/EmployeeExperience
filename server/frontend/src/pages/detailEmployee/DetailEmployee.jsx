@@ -84,11 +84,17 @@ export default function DetailEmployee() {
     const qc          = useQueryClient()
     const { user: authUser } = useSelector((s) => s.auth)
     const canEdit     = authUser?.role !== 'Alumni'
+    // Colaborador/Líder viendo "Mi perfil": solo pueden editar sus datos de contacto personales
+    // (email personal, teléfono, dirección, contacto de emergencia). El resto queda read-only.
+    const isSelf            = authUser?.employeeId === id
+    const isRestrictedSelf  = isSelf && ['Colaborador', 'Líder'].includes(authUser?.role)
     const { data: departments = [] }  = useDepartments()
     const { data: allEmployees = [] } = useEmployees()
     const { data: employee, isLoading, isError } = useEmployeeById(id)
 
     const [isEditing, setIsEditing] = useState(false)
+    // Edición de campos no-personales (Organización, Datos personales, header) — bloqueada en self-edit restringido
+    const editingRestricted = isEditing && !isRestrictedSelf
     const [form,      setForm]      = useState({})
     const [saving,    setSaving]    = useState(false)
     const [saveError, setSaveError] = useState('')
@@ -303,7 +309,7 @@ export default function DetailEmployee() {
                     <span className="text-white text-xl font-bold">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                    {isEditing ? (
+                    {editingRestricted ? (
                         <div className="flex flex-col gap-2">
                             <div className="grid grid-cols-2 gap-2">
                                 <input value={form.firstName} onChange={set('firstName')}
@@ -372,11 +378,11 @@ export default function DetailEmployee() {
 
                 {/* Organización */}
                 <Section title="Organización">
-                    <FieldRow icon={Briefcase} label="Posición" value={position} editing={isEditing}>
+                    <FieldRow icon={Briefcase} label="Posición" value={position} editing={editingRestricted}>
                         <input value={form.position} onChange={set('position')}
                             placeholder="Ej: Desarrollador Senior" className={inputCls} />
                     </FieldRow>
-                    <FieldRow icon={Building2} label="Departamento" value={department?.name} editing={isEditing}>
+                    <FieldRow icon={Building2} label="Departamento" value={department?.name} editing={editingRestricted}>
                         <select value={form.departmentId} onChange={set('departmentId')} className={inputCls}>
                             <option value="">Sin departamento</option>
                             {departments.map((d) => (
@@ -387,7 +393,7 @@ export default function DetailEmployee() {
                     <FieldRow
                         icon={User} label="Líder directo"
                         value={manager ? `${manager.firstName} ${manager.lastName}` : null}
-                        editing={isEditing}
+                        editing={editingRestricted}
                     >
                         <select value={form.leaderId} onChange={set('leaderId')} className={inputCls}>
                             <option value="">Sin líder asignado</option>
@@ -404,7 +410,7 @@ export default function DetailEmployee() {
                     <FieldRow
                         icon={User} label="Mentor"
                         value={mentor ? `${mentor.firstName} ${mentor.lastName}${mentor.position ? ` — ${mentor.position}` : ''}` : null}
-                        editing={isEditing}
+                        editing={editingRestricted}
                     >
                         <select value={form.mentorId} onChange={set('mentorId')} className={inputCls}>
                             <option value="">Sin mentor asignado</option>
@@ -418,7 +424,7 @@ export default function DetailEmployee() {
                             }
                         </select>
                     </FieldRow>
-                    <FieldRow icon={Calendar} label="Fecha de ingreso" value={formatDate(employee.hireDate)} editing={isEditing}>
+                    <FieldRow icon={Calendar} label="Fecha de ingreso" value={formatDate(employee.hireDate)} editing={editingRestricted}>
                         <input type="date" value={form.hireDate} onChange={set('hireDate')} className={inputCls} />
                     </FieldRow>
                 </Section>
@@ -429,7 +435,7 @@ export default function DetailEmployee() {
                         icon={User} label="Documento"
                         value={employee.documentType && employee.documentNumber
                             ? `${employee.documentType} ${employee.documentNumber}` : null}
-                        editing={isEditing}
+                        editing={editingRestricted}
                     >
                         <div className="grid grid-cols-3 gap-1.5">
                             <select value={form.documentType} onChange={set('documentType')} className={inputCls}>
@@ -442,7 +448,7 @@ export default function DetailEmployee() {
                                 placeholder="Número" className={`${inputCls} col-span-2`} />
                         </div>
                     </FieldRow>
-                    <FieldRow icon={Calendar} label="Fecha de nac." value={formatDate(employee.birthDate)} editing={isEditing}>
+                    <FieldRow icon={Calendar} label="Fecha de nac." value={formatDate(employee.birthDate)} editing={editingRestricted}>
                         <input type="date" value={form.birthDate} onChange={set('birthDate')} className={inputCls} />
                     </FieldRow>
                 </Section>

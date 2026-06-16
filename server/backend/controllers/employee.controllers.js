@@ -236,18 +236,30 @@ const createEmployee = async (req, res, next) => {
 	}
 };
 
+// Campos que Líder/Colaborador pueden editar de su propio perfil (resto read-only, ver DetailEmployee.jsx)
+const SELF_EDIT_FIELDS = ['personalEmail', 'phone', 'address', 'emergencyContactName', 'emergencyContactPhone'];
+
 const updateEmployee = async (req, res, next) => {
 	try {
+		const isSelf = req.user.employeeId === req.params.id;
+		if (req.user.role !== 'Talento' && !isSelf) {
+			return res.status(403).json({ status: 'fail', message: 'Acceso denegado.' });
+		}
+
 		const employee = await Employee.findByPk(req.params.id, {
 			include: [{ model: Person, as: 'person' }],
 		});
 		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
 
+		const body = req.user.role === 'Talento'
+			? req.body
+			: Object.fromEntries(Object.entries(req.body).filter(([key]) => SELF_EDIT_FIELDS.includes(key)));
+
 		const {
 			firstName, lastName, email, personalEmail, documentType, documentNumber, birthDate,
 			phone, address, emergencyContactName, emergencyContactPhone,
 			position, status, departmentId, hireDate,
-		} = req.body;
+		} = body;
 
 		const personUpdates = {};
 		if (firstName !== undefined) personUpdates.first_name = firstName;

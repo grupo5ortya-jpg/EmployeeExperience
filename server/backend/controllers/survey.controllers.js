@@ -69,7 +69,7 @@ function formatSurvey(s) {
 
 const getAllSurveys = async (req, res, next) => {
 	try {
-		const surveys = await Survey.findAll({ include: SURVEY_INCLUDE });
+		const surveys = await Survey.findAll({ include: SURVEY_INCLUDE, order: [['createdAt', 'DESC']] });
 		// Exclude pulse surveys — those are managed separately via /pulse-surveys
 		const feedback = surveys.filter((s) => s.questionType?.name !== 'Pulso');
 		res.json(feedback.map(formatSurvey));

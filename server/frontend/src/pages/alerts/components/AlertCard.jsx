@@ -37,6 +37,10 @@ const REPORT_TYPES = {
     link:  (alert) => `/employeefeedbackreport?cycleId=${alert.topics?.[0]}&evaluatedId=${alert.employee?.id}`,
     label: 'Ver mis resultados',
   },
+  FEEDBACK_ASSIGNED: {
+    link:  () => `/myevaluations`,
+    label: 'Ver mis evaluaciones',
+  },
   FEEDBACK_CYCLE_COMPLETED: {
     link:  (alert) => `/hrfeedbackreport?cycleId=${alert.topics?.[0]}&evaluatedId=${alert.employee?.id}`,
     label: 'Ver resultados',
@@ -69,9 +73,12 @@ const REPORT_TYPES = {
     hrOnly: true,
   },
   TEAM_TASK_OVERDUE: {
-    link:   (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
-    label:  'Ver tarea vencida',
-    hrOnly: true,
+    link:  (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
+    label: 'Ver tarea vencida',
+  },
+  TASK_OVERDUE: {
+    link:  () => `/mytasks`,
+    label: 'Ver mis tareas',
   },
   CONTINUOUS_FEEDBACK_RECEIVED: {
     link:  () => `/continuous-feedback`,
@@ -103,7 +110,7 @@ const REPORT_TYPES = {
   },
   ONBOARDING_COMPLETED: {
     link:   (alert) => `/all-assignments?employeeId=${alert.employee?.id}`,
-    label:  'Ver onboarding',
+    label:  'Ver plan',
     hrOnly: true,
   },
   COURSE_COMPLETION_REQUESTED: {
@@ -123,6 +130,15 @@ const REPORT_TYPES = {
     link:   () => `/job-openings`,
     label:  'Ver vacantes',
     hrOnly: true,
+  },
+  EMPLOYEE_REHIRED: {
+    link:   (alert) => `/detailemployee/${alert.employee?.id}`,
+    label:  'Completa su perfil',
+    hrOnly: true,
+  },
+  REHIRE_WELCOME: {
+    link:  (alert) => `/detailemployee/${alert.employee?.id}`,
+    label: 'Ver mi perfil',
   },
 }
 
