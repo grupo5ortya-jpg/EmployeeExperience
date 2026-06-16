@@ -119,10 +119,10 @@ No generar alertas duplicadas para el mismo objetivo.
 - martin agregar:
 * diplomas anteriores del empleado.✅
 
-TODO: mails
+TODO: mails✖️
 
 * último módulo offboarding:✅
-* iniciar proceso en offboardingHome rh agregar cambiar estado a recontratable o no
+* iniciar proceso en offboardingHome rh agregar cambiar estado a recontratable o no✅
 - Si cambia rol que cambie la vista. ✅
 - Talentos recibe alerta con boton para direccionar y setear datos del perfil✅
 
