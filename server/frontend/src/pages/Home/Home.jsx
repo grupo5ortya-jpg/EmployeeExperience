@@ -1,10 +1,11 @@
+import { useState }        from 'react'
 import { useSelector }     from 'react-redux'
 import { Link }            from 'react-router-dom'
 import {
   Users, Bell, RotateCcw, ClipboardList,
   CheckCircle2, Clock, Circle, AlertCircle,
   BookOpen, Target, Sparkles, Briefcase, GraduationCap,
-  HeartHandshake, MessageSquareWarning, MessageSquareDashed,
+  HeartHandshake, MessageSquareWarning, MessageSquareDashed, User,
 } from 'lucide-react'
 
 import { useEmployees }              from '../../hooks/useEmployees'
@@ -14,12 +15,15 @@ import { useAllEmployeeTasks }       from '../../hooks/useAllEmployeeTasks'
 import { useMyTasks }                from '../../hooks/useMyTasks'
 import { useMyFeedbackAssignments }  from '../../hooks/useMyFeedbackAssignments'
 import { usePendingSurveys }         from '../../hooks/usePendingSurveys'
+import { usePendingExitInterviews }  from '../../hooks/useExitInterviews'
 import { useReceivedFeedbacks }      from '../continuousFeedback/hooks/useContinuousFeedback'
 import { useFeedbackResults }        from '../../hooks/useFeedbackResults'
 import { useOkrs, useMyOkrs }        from '../../hooks/useOkrs'
 import { useJobOpenings }            from '../jobOpenings/hooks/useJobOpenings'
 import { useEnrollments }            from '../../hooks/useLearning'
 import { CompetencyChart }           from '../feedback/components/CompetencyChart'
+import ExitInterviewCard             from '../pulse/components/ExitInterviewCard'
+import ExitInterviewForm             from '../pulse/components/ExitInterviewForm'
 
 /* ── Card de resumen ─────────────────────────────────────────── */
 function SummaryCard({ icon: Icon, iconBg, iconColor, label, value, unit, to }) {
@@ -149,7 +153,7 @@ function TalentoDashboard() {
         <SummaryCard icon={RotateCcw}  iconBg="bg-violet-100"  iconColor="text-violet-600"
           label="Ciclos 360° activos" value={surveys.length} unit="ciclos"   to="/feedbackhome" />
         <SummaryCard icon={ClipboardList} iconBg="bg-amber-100" iconColor="text-amber-600"
-          label="Tareas de onboarding" value={pendingTasks}  unit="pendientes" to="/all-assignments" />
+          label="Planes asignados"     value={pendingTasks}  unit="pendientes" to="/all-assignments" />
         <SummaryCard icon={Target}     iconBg="bg-emerald-100" iconColor="text-emerald-600"
           label="OKR activos"       value={activeOkrs}       unit="activos"     to="/okrmanagement" />
         <SummaryCard icon={Briefcase}  iconBg="bg-indigo-100"  iconColor="text-indigo-600"
@@ -164,9 +168,11 @@ function LiderDashboard({ employeeId }) {
   const { data: unread = 0 }          = useUnreadAlerts()
   const { data: assignments = [] }     = useMyFeedbackAssignments(employeeId)
   const { data: allTasks = [] }        = useAllEmployeeTasks()
+  const { data: allEmployees = [] }    = useEmployees()
 
   const pendingEvals  = assignments.filter((a) => a.status === 'PENDING').length
   const submittedTeam = allTasks.filter((t) => t.status === 'SUBMITTED' || t.status === 'SUBMITED').length
+  const teamCount     = allEmployees.filter((e) => e.manager?.id === employeeId).length
 
   return (
     <>
@@ -177,7 +183,8 @@ function LiderDashboard({ employeeId }) {
           label="Alertas del equipo"     value={unread}          unit="alertas" to="/alerts" />
         <SummaryCard icon={ClipboardList} iconBg="bg-amber-100"   iconColor="text-amber-600"
           label="Tareas a revisar"       value={submittedTeam}   unit="tareas" to="/all-assignments" />
-        <ComingSoon icon={Users} label="Equipo" />
+        <SummaryCard icon={Users} iconBg="bg-emerald-100" iconColor="text-emerald-600"
+          label="Mi equipo"             value={teamCount}        unit="personas" to="/employeelist" />
       </div>
 
       <PerformancePanel employeeId={employeeId} />
@@ -202,7 +209,6 @@ function LiderDashboard({ employeeId }) {
         </PendingSection>
       )}
 
-      <ReceivedFeedbacksPanel employeeId={employeeId} />
     </>
   )
 }
@@ -359,13 +365,13 @@ function ColaboradorDashboard({ employeeId }) {
 
       {/* Tareas pendientes */}
       {pendingTasks.length > 0 && (
-        <PendingSection title="Tus tareas de onboarding" to="/mytasks">
+        <PendingSection title="Tus planes de trabajo" to="/mytasks">
           {pendingTasks.slice(0, 5).map((t) => (
             <PendingItem
               key={t.taskId}
               icon={Circle} iconClass="text-slate-300"
               title={t.task?.name ?? '—'}
-              subtitle={t.task?.taskType?.name ?? 'Onboarding'}
+              subtitle={t.task?.taskType?.name ?? 'Plan'}
               badge={t.dueDate
                 ? { label: new Date(t.dueDate).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }), cls: 'text-slate-400' }
                 : null}
@@ -397,6 +403,53 @@ function ColaboradorDashboard({ employeeId }) {
 
       <PerformancePanel employeeId={employeeId} />
       <ReceivedFeedbacksPanel employeeId={employeeId} />
+    </>
+  )
+}
+
+/* ── Vista Alumni ────────────────────────────────────────────── */
+function AlumniDashboard({ employeeId }) {
+  const { data: exitInterviews = [] } = usePendingExitInterviews(employeeId)
+  const [activeExitInterview, setActiveExitInterview] = useState(null)
+
+  return (
+    <>
+      <Link
+        to={`/detailemployee/${employeeId}`}
+        className="bg-white rounded-xl border border-brand-light shadow-sm p-4 flex flex-col
+                   items-center justify-center gap-2 py-10 text-center hover:border-brand transition-colors"
+      >
+        <User size={24} className="text-brand" />
+        <p className="text-sm font-semibold text-slate-700">Ver mi perfil</p>
+        <p className="text-xs text-slate-400">Consultá tu información, certificaciones y skills</p>
+      </Link>
+
+      {/* Entrevista de salida pendiente */}
+      {exitInterviews.length > 0 && (
+        <>
+          <div className="border-l-4 border-brand pl-4">
+            <h2 className="text-base font-bold text-slate-800">Entrevista de salida</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Tu opinión nos ayuda a mejorar</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {exitInterviews.map((assignment) => (
+              <ExitInterviewCard
+                key={assignment.surveyId}
+                assignment={assignment}
+                onStart={() => setActiveExitInterview(assignment)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeExitInterview && (
+        <ExitInterviewForm
+          assignment={activeExitInterview}
+          onClose={() => setActiveExitInterview(null)}
+          onCompleted={() => setActiveExitInterview(null)}
+        />
+      )}
     </>
   )
 }
@@ -436,6 +489,7 @@ export default function Home() {
           {role === 'Talento' && 'Panel de recursos humanos'}
           {role === 'Líder'   && 'Panel de líder de equipo'}
           {role === 'Colaborador' && 'Tu espacio de trabajo'}
+          {role === 'Alumni'  && 'Tu espacio de ex empleado'}
         </p>
       </div>
 
@@ -443,12 +497,15 @@ export default function Home() {
       {role === 'Talento'     && <TalentoDashboard />}
       {role === 'Líder'       && <LiderDashboard employeeId={employeeId} />}
       {role === 'Colaborador' && <ColaboradorDashboard employeeId={employeeId} />}
+      {role === 'Alumni'      && <AlumniDashboard employeeId={employeeId} />}
 
       {/* Resumen secundario */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ObjectivesCard employeeId={employeeId} />
-        <LearningSummaryCard role={role} employeeId={employeeId} />
-      </div>
+      {role !== 'Alumni' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ObjectivesCard employeeId={employeeId} />
+          <LearningSummaryCard role={role} employeeId={employeeId} />
+        </div>
+      )}
 
     </main>
   )

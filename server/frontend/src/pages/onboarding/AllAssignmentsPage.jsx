@@ -15,7 +15,7 @@ const STATUS_LABEL = {
     SUBMITED:    'Entregado',
     SUBMITTED:   'Entregado',
     COMPLETED:   'Completado',
-    DROPPED:     'Abandonado',
+    DROPPED:     'Completado',
     OVERDUE:     'Vencido',
 }
 const STATUS_STYLE = {
@@ -24,7 +24,7 @@ const STATUS_STYLE = {
     SUBMITED:    'bg-violet-100 text-violet-600',
     SUBMITTED:   'bg-violet-100 text-violet-600',
     COMPLETED:   'bg-green-100 text-green-600',
-    DROPPED:     'bg-slate-100 text-slate-500',
+    DROPPED:     'bg-green-100 text-green-600',
     OVERDUE:     'bg-red-100 text-red-600',
 }
 
@@ -88,6 +88,12 @@ export default function AllAssignmentsPage() {
             return next
         })
 
+    const today = useMemo(() => {
+        const d = new Date()
+        d.setHours(0, 0, 0, 0)
+        return d
+    }, [])
+
     const qc = useQueryClient()
     const { mutate: approve, isPending: approving } = useMutation({
         mutationFn: ({ employeeId, taskId }) => updateTaskStatus(employeeId, taskId, 'COMPLETED'),
@@ -95,7 +101,8 @@ export default function AllAssignmentsPage() {
     })
 
     // Dedup: SUBMITED is a DB typo variant of SUBMITTED — show only once. OVERDUE is a computed pseudo-status.
-    const statusOptions = ['Todos', 'ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED', 'DROPPED', 'OVERDUE']
+    // DROPPED is displayed as COMPLETED so it's excluded from the filter options.
+    const statusOptions = ['Todos', 'ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED', 'OVERDUE']
 
     // ── Helpers ───────────────────────────────────────────────
     // Comprueba si un empleado ya tiene al menos una asignación.
@@ -131,8 +138,6 @@ export default function AllAssignmentsPage() {
     // ── Filtrar ───────────────────────────────────────────────
     const filtered = useMemo(() => {
         const q = search.toLowerCase()
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
         const NON_OVERDUE_STATUSES = ['COMPLETED', 'DROPPED']
 
         return allRows.filter((row) => {
@@ -156,6 +161,8 @@ export default function AllAssignmentsPage() {
             } else if (filterStatus === 'SUBMITTED') {
                 // Match both the correct spelling and the legacy typo
                 matchStatus = !row._unassigned && (row.status === 'SUBMITTED' || row.status === 'SUBMITED')
+            } else if (filterStatus === 'COMPLETED') {
+                matchStatus = !row._unassigned && (row.status === 'COMPLETED' || row.status === 'DROPPED')
             } else {
                 matchStatus = !row._unassigned && row.status === filterStatus
             }
@@ -201,9 +208,9 @@ export default function AllAssignmentsPage() {
 
             {/* Header */}
             <div className="border-l-4 border-brand pl-4">
-                <h1 className="text-lg lg:text-xl font-bold text-slate-800">Asignaciones</h1>
+                <h1 className="text-lg lg:text-xl font-bold text-slate-800">Planes asignados</h1>
                 <p className="text-xs text-slate-400 mt-0.5">
-                    Todos los empleados con sus tareas de onboarding
+                    Todos los empleados con sus planes de trabajo
                 </p>
             </div>
 
@@ -263,7 +270,7 @@ export default function AllAssignmentsPage() {
                         const empId   = employee?.id
                         const isOpen  = expanded.has(empId)
                         const allTasks = templateGroups.flatMap((tg) => tg.tasks)
-                        const done    = allTasks.filter((t) => t.status === 'COMPLETED').length
+                        const done    = allTasks.filter((t) => t.status === 'COMPLETED' || t.status === 'DROPPED').length
                         const total   = allTasks.length
                         const allDone = total > 0 && done === total
 
@@ -314,7 +321,7 @@ export default function AllAssignmentsPage() {
                                         {templateGroups.map((tg) => {
                                             const tmplKey   = `${empId}-${tg.id}`
                                             const isTmplOpen = expandedTemplates.has(tmplKey)
-                                            const tDone     = tg.tasks.filter((t) => t.status === 'COMPLETED').length
+                                            const tDone     = tg.tasks.filter((t) => t.status === 'COMPLETED' || t.status === 'DROPPED').length
                                             const tTotal    = tg.tasks.length
                                             const tAllDone  = tTotal > 0 && tDone === tTotal
 
@@ -344,23 +351,29 @@ export default function AllAssignmentsPage() {
                                                     {/* Tasks within template */}
                                                     {isTmplOpen && (
                                                         <div className="divide-y divide-brand-light">
-                                                            {tg.tasks.map((row) => (
+                                                            {tg.tasks.map((row) => {
+                                                                const done = row.status === 'COMPLETED' || row.status === 'DROPPED'
+                                                                const isOverdue = !done && row.dueDate && new Date(row.dueDate) < today && row.status !== 'SUBMITTED' && row.status !== 'SUBMITED'
+                                                                const displayStatus = isOverdue ? 'OVERDUE' : row.status
+                                                                return (
                                                                 <div key={row.taskId}
                                                                     className="flex items-center gap-3 pl-10 pr-5 py-3">
-                                                                    {row.status === 'COMPLETED'
+                                                                    {done
                                                                         ? <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
-                                                                        : <Circle       size={15} className="text-slate-300 shrink-0" />
+                                                                        : isOverdue
+                                                                        ? <Clock size={15} className="text-red-400 shrink-0" />
+                                                                        : <Circle size={15} className="text-slate-300 shrink-0" />
                                                                     }
                                                                     <span className={`flex-1 text-sm truncate
-                                                                        ${row.status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                                                                        ${done ? 'line-through text-slate-400' : isOverdue ? 'text-red-600' : 'text-slate-700'}`}>
                                                                         {row.task?.name ?? '—'}
                                                                     </span>
                                                                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0
-                                                                        ${STATUS_STYLE[row.status] ?? 'bg-slate-100 text-slate-500'}`}>
-                                                                        {STATUS_LABEL[row.status] ?? row.status}
+                                                                        ${STATUS_STYLE[displayStatus] ?? 'bg-slate-100 text-slate-500'}`}>
+                                                                        {STATUS_LABEL[displayStatus] ?? row.status}
                                                                     </span>
                                                                     {row.dueDate && (
-                                                                        <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
+                                                                        <span className={`flex items-center gap-1 text-xs shrink-0 ${isOverdue ? 'text-red-400' : 'text-slate-400'}`}>
                                                                             <Clock size={11} />
                                                                             {formatDate(row.dueDate)}
                                                                         </span>
@@ -377,7 +390,8 @@ export default function AllAssignmentsPage() {
                                                                         </button>
                                                                     )}
                                                                 </div>
-                                                            ))}
+                                                                )
+                                                            })}
                                                         </div>
                                                     )}
                                                 </div>

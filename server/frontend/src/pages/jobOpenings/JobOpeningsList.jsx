@@ -8,6 +8,7 @@ import { useDepartments } from '../../hooks/useDepartments'
 import JobOpeningFilters from './components/JobOpeningFilters.jsx'
 import JobOpeningTable from './components/JobOpeningTable'
 import JobOpeningDetailModal from './components/JobOpeningDetailModal'
+import JobOpeningApplyModal from './components/JobOpeningApplyModal'
 import CreateJobOpeningModal from './components/CreateJobOpeningModal'
 
 export default function JobOpeningsList() {
@@ -115,11 +116,19 @@ export default function JobOpeningsList() {
             />
 
             {/* DETAIL / EDIT MODAL */}
-            <JobOpeningDetailModal
-                isOpen={isDetailOpen}
-                job={selectedJob}
-                onClose={handleCloseDetail}
-            />
+            {isTalento ? (
+                <JobOpeningDetailModal
+                    isOpen={isDetailOpen}
+                    job={selectedJob}
+                    onClose={handleCloseDetail}
+                />
+            ) : (
+                <JobOpeningApplyModal
+                    isOpen={isDetailOpen}
+                    job={selectedJob}
+                    onClose={handleCloseDetail}
+                />
+            )}
 
         </main>
     )

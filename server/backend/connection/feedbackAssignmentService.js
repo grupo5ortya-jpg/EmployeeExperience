@@ -1,4 +1,4 @@
-const { Employee, FeedbackAssignment } = require('./sequelize');
+const { Employee, FeedbackAssignment, Alert, Survey } = require('./sequelize');
 
 const PEERS_PER_EMPLOYEE = 2;
 
@@ -102,6 +102,24 @@ async function generateAssignmentsForCycle(cycleId, departmentId) {
 	}
 
 	await FeedbackAssignment.bulkCreate(rows, { ignoreDuplicates: true });
+
+	// Notify every unique evaluator that they have pending evaluations
+	const evaluatorIds = [...new Set(rows.map((r) => r.evaluator_id))];
+	if (evaluatorIds.length > 0) {
+		const cycle = await Survey.findByPk(cycleId, { attributes: ['name'] });
+		const cycleName = cycle?.name ?? 'un ciclo de Feedback 360°';
+		await Alert.bulkCreate(
+			evaluatorIds.map((eid) => ({
+				employee_id: eid,
+				type:        'FEEDBACK_ASSIGNED',
+				message:     `Tenés evaluaciones pendientes en el ciclo "${cycleName}". Completá tus evaluaciones de Feedback 360°.`,
+				status:      'UNREAD',
+				topics:      [cycleId],
+			})),
+			{ ignoreDuplicates: true },
+		);
+	}
+
 	return { created: rows.length };
 }
 

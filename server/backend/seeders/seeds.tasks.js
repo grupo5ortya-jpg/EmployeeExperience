@@ -167,11 +167,17 @@ module.exports = async function (sequelize) {
 			name: 'Completar curso de inducción digital',
 			task_type_id: taskTypeByKey['Aprendizaje - curso'],
 			estimated_duration: 3,
+			description: 'Curso introductorio sobre las herramientas digitales, políticas internas y cultura de la empresa.',
+			duration: '3 horas',
+			modality: 'Online',
 		},
 		{
 			name: 'Participar en workshop de habilidades blandas',
 			task_type_id: taskTypeByKey['Aprendizaje - curso'],
 			estimated_duration: 2,
+			description: 'Taller práctico para desarrollar comunicación, trabajo en equipo y resolución de conflictos.',
+			duration: '2 horas',
+			modality: 'Presencial',
 		},
 		{
 			name: 'Obtener certificación de seguridad informática',

@@ -26,6 +26,38 @@ module.exports = (sequelize) => {
 					min: TASK.ESTIMATED_DURATION.MIN,
 				},
 				comment: TASK.ESTIMATED_DURATION.COMMENT,
+			},
+			// Campos de catálogo de Learning (sub_type 'Curso'): duration es texto libre (ej. "12 horas"),
+			// distinto de estimated_duration (días, usado para due_date de onboarding)
+			description: {
+				type: DataTypes.TEXT,
+				allowNull: true,
+			},
+			duration: {
+				type: DataTypes.STRING(50),
+				allowNull: true,
+			},
+			modality: {
+				type: DataTypes.STRING(50),
+				allowNull: true,
+			},
+			link: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			skill_id: {
+				type: DataTypes.UUID,
+				allowNull: true,
+			},
+			// Certificaciones externas subidas por el empleado (no forman parte del catálogo de cursos)
+			is_external: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			institution: {
+				type: DataTypes.STRING(150),
+				allowNull: true,
 			}
 		},
 		{

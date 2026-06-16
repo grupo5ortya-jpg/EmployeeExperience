@@ -35,6 +35,7 @@ function formatEmployee(e) {
 		documentNumber: e.person?.document_number ?? null,
 		birthDate: e.person?.birth_date ?? null,
 		email: e.user?.email ?? null,
+		personalEmail: e.person?.personal_email ?? null,
 		phone: e.person?.phone ?? null,
 		address: e.person?.address ?? null,
 		emergencyContactName: e.person?.emergency_contact_name ?? null,
@@ -99,6 +100,7 @@ const createEmployee = async (req, res, next) => {
 		hireDate,
 		managerId,
 		email,
+		personalEmail,
 		roleId,
 		taskType
 	} = req.body;
@@ -121,6 +123,7 @@ const createEmployee = async (req, res, next) => {
 			address: address || null,
 			emergency_contact_name: emergencyContactName || null,
 			emergency_contact_phone: emergencyContactPhone || null,
+			personal_email: personalEmail || null,
 		}, { transaction: t });
 
 		// =========================================
@@ -233,23 +236,36 @@ const createEmployee = async (req, res, next) => {
 	}
 };
 
+// Campos que Líder/Colaborador pueden editar de su propio perfil (resto read-only, ver DetailEmployee.jsx)
+const SELF_EDIT_FIELDS = ['personalEmail', 'phone', 'address', 'emergencyContactName', 'emergencyContactPhone'];
+
 const updateEmployee = async (req, res, next) => {
 	try {
+		const isSelf = req.user.employeeId === req.params.id;
+		if (req.user.role !== 'Talento' && !isSelf) {
+			return res.status(403).json({ status: 'fail', message: 'Acceso denegado.' });
+		}
+
 		const employee = await Employee.findByPk(req.params.id, {
 			include: [{ model: Person, as: 'person' }],
 		});
 		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
 
+		const body = req.user.role === 'Talento'
+			? req.body
+			: Object.fromEntries(Object.entries(req.body).filter(([key]) => SELF_EDIT_FIELDS.includes(key)));
+
 		const {
-			firstName, lastName, email, documentType, documentNumber, birthDate,
+			firstName, lastName, email, personalEmail, documentType, documentNumber, birthDate,
 			phone, address, emergencyContactName, emergencyContactPhone,
 			position, status, departmentId, hireDate,
-		} = req.body;
+		} = body;
 
 		const personUpdates = {};
 		if (firstName !== undefined) personUpdates.first_name = firstName;
 		if (lastName !== undefined) personUpdates.last_name = lastName;
 		if (email !== undefined) personUpdates.email = email;
+		if (personalEmail !== undefined) personUpdates.personal_email = personalEmail || null;
 		if (documentType !== undefined) personUpdates.document_type = DOC_TYPE_MAP[documentType] ?? documentType;
 		if (documentNumber !== undefined) personUpdates.document_number = documentNumber;
 		if (birthDate !== undefined) personUpdates.birth_date = birthDate || null;

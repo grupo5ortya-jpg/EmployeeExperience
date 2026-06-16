@@ -2,7 +2,7 @@
 
 **Proyecto:** EmployeeExperience HR Platform  
 **Branch activo:** `fullstack-changes`  
-**Última actualización:** 2026-06-08  
+**Última actualización:** 2026-06-13  
 **Stack:** React 19 + Vite + Tailwind v4 / Express 5 + Sequelize 6 + PostgreSQL + Gemini AI
 
 ---
@@ -197,8 +197,13 @@ Página de alertas con tres secciones en acordeón: "No leídas" (abierta por de
 | `COURSE_COMPLETION_REQUESTED` | Talento |
 | `COURSE_COMPLETION_APPROVED` | Colaborador, Líder |
 | `COURSE_COMPLETION_REJECTED` | Colaborador, Líder |
+| `JOB_OPENING_APPLICATION` | Talento |
+| `OFFBOARDING_STARTED` | Colaborador, Líder (empleado en proceso de salida) |
+| `EXIT_INTERVIEW_COMPLETED` | Talento |
 
 **Nota técnica:** El campo `topics` de Alert puede ser array `[uuid]` u objeto `{}` dependiendo del tipo. Siempre normalizar con `Array.isArray(alert.topics) ? alert.topics : []` antes de llamar `.filter()`.
+
+**Nota técnica — CTAs directos (2026-06-11):** `AlertCard.jsx` (`REPORT_TYPES`) define un link/label de acción directa por tipo de alerta. Agregados en esta fecha: `COURSE_COMPLETION_REQUESTED` → "Revisar finalización" (`/learningdashboard`, solo Talento), `COURSE_COMPLETION_APPROVED`/`COURSE_COMPLETION_REJECTED` → "Ver mi aprendizaje" (`/mylearning`), `JOB_OPENING_APPLICATION` → "Ver vacantes" (`/job-openings`, solo Talento).
 
 **Ruta:** `/alerts`  
 **Endpoints:** `GET /alerts`, `GET /alerts/unread-count`, `PATCH /alerts/:id/read`
@@ -215,6 +220,26 @@ HR gestiona vacantes abiertas con título, departamento, descripción y skills r
 
 **Ruta:** `/job-openings`  
 **Endpoints:** `GET /job-openings`, `POST /job-openings`, `PATCH /job-openings/:id`, `DELETE /job-openings/:id`
+
+---
+
+### EXP-602 · Postulación a vacantes (Colaborador / Líder)
+**Tipo:** Story | **Rol:** Colaborador, Líder
+
+**Descripción:**
+Los empleados ven las vacantes en estado `open` y pueden postularse con un click. A diferencia de la vista de Talento (que abre un modal de edición), Colaborador/Líder ven un modal de solo lectura (`JobOpeningApplyModal`) con el detalle de la vacante y las skills requeridas, con un botón "Inscribirme". Al postularse, Talento recibe una alerta.
+
+**Acceptance Criteria:**
+- [ ] Click en una vacante abre `JobOpeningApplyModal` (solo lectura) para Colaborador/Líder, en vez del modal de edición de Talento
+- [ ] El modal muestra título, descripción, departamento, estado y skills requeridas (con nivel)
+- [ ] Botón "Inscribirme" solo visible si la vacante está `open`
+- [ ] `POST /job-openings/:id/apply` valida que la vacante esté `open` y crea un `Alert` (`type: 'JOB_OPENING_APPLICATION'`, `employee_id` = postulante) visible para Talento
+- [ ] No se permite postularse dos veces a la misma vacante (chequeo de `Alert` existente por `employee_id` + `topics` conteniendo el `jobOpeningId`, devuelve 409)
+- [ ] La alerta de Talento muestra CTA "Ver vacantes" → `/job-openings`
+
+**Ruta:** `/job-openings` (`RoleRoute` no aplica — misma ruta que Talento, vista condicionada por rol)
+**Endpoint:** `POST /job-openings/:id/apply` `{ employeeId }`
+**Nota técnica:** Sin tabla de "postulaciones" — se reutiliza `Alert.topics` (JSONB) como referencia al `jobOpeningId`, siguiendo el patrón de deduplicación de `OKR_BEHIND_SCHEDULE`/`OKR_COMPLETED`.
 
 ---
 
@@ -376,8 +401,36 @@ Los cursos completados y sus certificados (cuando HR los adjunta al aprobar) se 
 - [ ] Componente compartido `LearningCertifications` recibe `employeeId` y consulta `useEnrollments({ employeeId, status: 'COMPLETED' })`
 - [ ] Muestra título del curso, fecha de finalización y link al certificado (si existe)
 - [ ] Visible en `MyLearning` (vista propia) y en `DetailEmployee` (vista HR)
+- [ ] Separa "Cursos internos" de "Certificaciones externas" según `course.isExternal` (ver EXP-905)
 
 **Endpoint:** `GET /course-enrollments?employeeId=&status=COMPLETED`
+
+---
+
+### EXP-905 · Certificaciones externas
+**Tipo:** Story | **Rol:** Colaborador, Líder, Talento (HR)
+
+**Descripción:**
+El empleado puede registrar cursos/certificaciones realizados fuera de la empresa, subiendo el link del diploma. Se modela como un curso (`Task` con `is_external=true` + `institution`) más una inscripción (`EmployeeTask` creada directamente en `SUBMITTED`, `progress=100`, `certificate_link`=diploma), reutilizando el flujo de aprobación y alertas existente (EXP-902/903).
+
+**Flujo:**
+1. Empleado completa el modal "Subir certificación externa" (Título*, Duración, Modalidad, Skill opcional, Institución opcional, Diploma URL*) → `POST /course-enrollments/external`
+2. Se crea alerta `COURSE_COMPLETION_REQUESTED` para Talento
+3. HR revisa en `/learningdashboard` (tag "Externo · institución"), abre "Ver diploma" y aprueba/rechaza con el mismo `PATCH /:id/review { decision }`
+4. Aprobar → `COMPLETED` (+ upsert `EmployeeSkill.skill_evidence_url` si tiene skill asociada) → pasa a "Certificaciones externas" en el CV interno (EXP-904)
+5. Rechazar → `REJECTED` (definitivo, se conserva el diploma; sin reintento, a diferencia del rechazo de un curso interno que vuelve a `IN_PROGRESS`)
+
+**Acceptance Criteria:**
+- [ ] Botón "Subir certificación externa" en `/mylearning`
+- [ ] Campos del modal: Título* (texto), Duración, Modalidad, Skill (opcional, select), Institución (opcional), Diploma URL*
+- [ ] La certificación NO aparece en el catálogo `/coursecatalog` (`GET /learning-courses` filtra `is_external=false`)
+- [ ] HR ve la solicitud en `/learningdashboard` junto a las solicitudes internas, con tag "Externo · institución"
+- [ ] Aprobar → `COMPLETED`; Rechazar → `REJECTED` (estado final, sin reintento)
+- [ ] El badge `REJECTED` ("Rechazada") se muestra en `/mylearning` y `/learningdashboard`
+
+**Ruta:** `/mylearning` (`RoleRoute allowed={['Colaborador','Líder']}`)
+**Endpoint:** `POST /course-enrollments/external` `{ employeeId, title, duration, modality, skillId, institution, certificateLink }`
+**Modelo:** `Task.is_external` (BOOLEAN, default false), `Task.institution` (STRING(150), nullable); nuevo status `REJECTED` agregado a `EmployeeTask.status`/`CourseEnrollment.status`
 
 ---
 
@@ -391,6 +444,115 @@ HR y Líderes visualizan la lista de empleados con filtros. El detalle incluye i
 
 **Rutas:** `/employeelist`, `/detailemployee/:id`  
 **Endpoints:** `GET /employee`, `GET /employee/:id`, `PATCH /employee/:id/mentor`, `POST /ai/mentor-matching`
+
+---
+
+## ÉPICA 10 — Offboarding & Alumni
+
+### EXP-1001 · Inicio del proceso de offboarding
+**Tipo:** Story | **Rol:** Talento (HR)
+
+**Descripción:**
+HR inicia un proceso de offboarding para un empleado activo, indicando su último día de trabajo. El sistema genera automáticamente un checklist de salida (3 tareas, reutilizando el `TaskType` seedeado "Offboarding estándad") y programa la entrevista de salida digital, con vencimiento a 30 días desde el último día.
+
+**Flujo:**
+1. HR selecciona un empleado `ACTIVE` y la fecha de último día → `POST /offboarding`
+2. Se crea `EmployeeOffboarding` (`status: IN_PROGRESS`, `initiated_by` = HR que lo inicia)
+3. Se bulk-crean 3 `EmployeeTask` (checklist: devolver notebook/tarjetas, completar checklist con RRHH, entrevista de salida con RRHH), `due_date = lastWorkingDay`
+4. Se crea `Survey` + `SurveyAssignment` para la entrevista de salida (`question_type: Offboarding/Salida`, `due_date = lastWorkingDay + 30d`)
+5. Alerta `OFFBOARDING_STARTED` para el empleado
+
+**Acceptance Criteria:**
+- [ ] No se permite iniciar un offboarding si ya existe uno `IN_PROGRESS` para ese empleado (409)
+- [ ] El checklist aparece en `/mytasks` del empleado y en `/all-assignments` de HR
+- [ ] La entrevista de salida queda programada con vencimiento a 30 días
+
+**Ruta:** `/offboardinghome` (`RoleRoute allowed={['Talento']}`)
+**Endpoints:** `POST /offboarding`, `GET /offboarding`, `GET /offboarding/:employeeId`
+**Modelo:** `EmployeeOffboarding` (tabla `employee_offboardings`) — `employee_id`, `initiated_by`, `last_working_day`, `status` (`IN_PROGRESS`/`COMPLETED`), `started_at`, `completed_at`
+
+---
+
+### EXP-1002 · Seguimiento y finalización del proceso
+**Tipo:** Story | **Rol:** Talento (HR)
+
+**Descripción:**
+HR visualiza el detalle de un proceso de offboarding (progreso del checklist, estado de la entrevista de salida) y puede finalizarlo manualmente en cualquier momento. Finalizar transiciona al empleado al estado Alumni.
+
+**Flujo:**
+1. HR entra a `/offboarding/:employeeId` y revisa progreso checklist + estado entrevista
+2. Click "Finalizar proceso" (con confirmación) → `PATCH /offboarding/:employeeId/complete`
+3. `EmployeeOffboarding.status → COMPLETED`, `completed_at = now`
+4. Se busca el `Role` "Alumni" y se actualiza `User.role_id` del empleado → dispara el hook existente `syncEmployeeStatus` (`Employee.status → INACTIVE`, limpia `department_id`/`position`)
+5. `AlumniProfile.findOrCreate` (`rehirable: true, tags: []`)
+
+**Acceptance Criteria:**
+- [ ] Botón "Finalizar proceso" solo visible si `status === IN_PROGRESS`
+- [ ] No exige checklist/entrevista completos — HR puede forzar el cierre
+- [ ] 404 si no hay un proceso `IN_PROGRESS` para ese empleado (también evita doble-completado)
+- [ ] Tras finalizar, el empleado pasa a `INACTIVE` y aparece listado en `/alumnihome`
+
+**Ruta:** `/offboarding/:employeeId` (`RoleRoute allowed={['Talento']}`)
+**Endpoint:** `PATCH /offboarding/:employeeId/complete`
+
+---
+
+### EXP-1003 · Entrevista de salida digital
+**Tipo:** Story | **Rol:** Colaborador, Líder, Alumni
+
+**Descripción:**
+El empleado saliente completa una encuesta de salida (4 preguntas cerradas escala 1-5 + 1 pregunta abierta, `QuestionType` seedeado "Offboarding"/"Salida") dentro de los 30 días posteriores a su último día de trabajo. Si el proceso de offboarding se completa antes de que responda, el empleado ya tiene rol Alumni y completa la encuesta desde su propio home (pierde acceso a `/pulsesurveys`).
+
+**Flujo:**
+1. `PulseSurveys.jsx` (Colaborador/Líder) o el home de Alumni (`AlumniDashboard`) consultan `GET /exit-interviews/pending?employeeId=`
+2. Si hay una pendiente, se muestra una card (`ExitInterviewCard`) con preguntas cerradas + abierta y botón "Completar entrevista"
+3. El empleado completa y envía en un solo request → `POST /exit-interviews/:surveyId/submit` (`{employeeId, responses:[...]}`)
+4. `SurveyAssignment.status → COMPLETED`, se auto-completa la tarea "Entrevista de salida con RRHH" del checklist de offboarding, y se dispara alerta `EXIT_INTERVIEW_COMPLETED` para HR
+
+**Acceptance Criteria:**
+- [ ] No se puede responder si `due_date` ya venció (400)
+- [ ] No se puede reenviar una vez `COMPLETED` (400)
+- [ ] El rol Alumni puede usar este endpoint sin restricciones (`/exit-interviews/*` no tiene `authorize`)
+- [ ] Tras enviar, el checklist de offboarding refleja la tarea "Entrevista de salida con RRHH" como `COMPLETED`
+- [ ] En el home de Alumni, la sección "Entrevista de salida" solo se muestra si hay una pendiente
+
+**Rutas:** `/pulsesurveys` (sección "Entrevista de salida"), `/` (Home Alumni, `AlumniDashboard`)
+**Endpoints:** `GET /exit-interviews/pending?employeeId=`, `POST /exit-interviews/:surveyId/submit`
+**Componentes compartidos:** `ExitInterviewCard`, `ExitInterviewForm` (`pages/pulse/components/`)
+
+---
+
+### EXP-1004 · Gestión de perfiles Alumni
+**Tipo:** Story | **Rol:** Talento (HR)
+
+**Descripción:**
+HR mantiene un directorio de ex empleados ("Alumni") para posibles re-contrataciones futuras: busca por nombre, filtra por skill o disponibilidad (`rehirable`), consulta las skills del empleado (historial vía `EmployeeSkill`) y gestiona tags libres + flag "recontratable".
+
+**Acceptance Criteria:**
+- [ ] `/alumnihome` lista empleados con `User.role.name === 'Alumni'`, con filtros: búsqueda por nombre, skill (`<select>`) y `rehirable` (Sí/No/Todos)
+- [ ] `/alumni/:employeeId` muestra header (avatar, nombre, email, fecha de ingreso), toggle "Recontratable"/"No recontratable", tags (chips removibles + input para agregar) y skills (read-only, con nivel)
+- [ ] `PATCH /alumni/:employeeId` actualiza `rehirable`/`tags`
+- [ ] No se filtra por departamento — `syncEmployeeStatus` limpia `Employee.department_id` al pasar a Alumni, el dato no se persiste en ningún lado (limitación conocida)
+
+**Rutas:** `/alumnihome`, `/alumni/:employeeId` (`RoleRoute allowed={['Talento']}`)
+**Endpoints:** `GET /alumni`, `GET /alumni/:employeeId`, `PATCH /alumni/:employeeId`
+**Modelo:** `AlumniProfile` (tabla `alumni_profiles`, 1:1 con `Employee`) — `employee_id` (PK/FK), `rehirable` (default `true`), `tags` (JSONB, default `[]`)
+
+---
+
+### EXP-1005 · Acceso restringido para rol Alumni
+**Tipo:** Story | **Rol:** Alumni
+
+**Descripción:**
+Un usuario con rol Alumni accede a una versión mínima y de solo lectura de la plataforma: únicamente "Mi perfil" y, si corresponde, la entrevista de salida pendiente. No tiene acceso a ningún otro módulo del sidebar.
+
+**Acceptance Criteria:**
+- [ ] El sidebar de Alumni solo muestra "Mi perfil" (resuelve dinámicamente a `/detailemployee/:employeeId`) y "Alertas" — el resto de items mantiene sus `roles` originales y queda oculto
+- [ ] `DetailEmployee.jsx` no renderiza el botón "Editar" (ni el flujo de edición) para rol Alumni (`canEdit = authUser?.role !== 'Alumni'`)
+- [ ] El home de Alumni (`AlumniDashboard`) muestra una card "Ver mi perfil" → `/detailemployee/:employeeId` y, si hay una entrevista de salida pendiente, la sección correspondiente
+- [ ] `GET /alumni` (HR-only) devuelve 403 para rol Alumni; `GET /employees/:id` (usado por "Mi perfil") devuelve 200 para Alumni
+
+**Ruta:** `/` (Home, branch `role === 'Alumni'`), `/detailemployee/:employeeId` (sin `RoleRoute`, modo solo lectura para Alumni)
 
 ---
 
@@ -457,7 +619,7 @@ SYNC_PARAMS={"force":true}    # DESTRUYE la DB — solo desarrollo inicial
 | EXP-DEV-02 | `POST /admin/cron/pulse-run` para disparar cron de pulso manualmente | Baja |
 | EXP-DEV-03 | Mover `EmployeeFeedbackReport` y `PulseSurveys` a "Mi perfil" en sidebar cuando haya roles completos | Media |
 | EXP-DEV-04 | Reemplazar `assigned_by = employee_id` en FeedbackAssignment por el ID del usuario HR logueado real | Media |
-| EXP-DEV-05 | Definir flujo y vistas para rol Alumni | Baja |
+| EXP-DEV-05 | ~~Definir flujo y vistas para rol Alumni~~ — Resuelto, ver ÉPICA 10 | ~~Baja~~ |
 | EXP-DEV-06 | Implementar `GET /employee?departmentId=X` en backend para escalar filtro de participantes 360° | Media |
 
 ---

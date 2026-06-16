@@ -8,6 +8,7 @@ import {
     enrollInCourse,
     updateEnrollmentProgress,
     requestCompletion,
+    createExternalCertification,
     reviewCompletion,
 } from '../services/learningService'
 
@@ -74,7 +75,15 @@ export const useUpdateProgress = () => {
 export const useRequestCompletion = () => {
     const invalidate = useInvalidateLearning()
     return useMutation({
-        mutationFn: (id) => requestCompletion(id),
+        mutationFn: ({ id, certificateLink }) => requestCompletion(id, certificateLink),
+        onSuccess: invalidate,
+    })
+}
+
+export const useCreateExternalCertification = () => {
+    const invalidate = useInvalidateLearning()
+    return useMutation({
+        mutationFn: (payload) => createExternalCertification(payload),
         onSuccess: invalidate,
     })
 }
@@ -82,7 +91,7 @@ export const useRequestCompletion = () => {
 export const useReviewCompletion = () => {
     const invalidate = useInvalidateLearning()
     return useMutation({
-        mutationFn: ({ id, decision, certificateLink }) => reviewCompletion(id, { decision, certificateLink }),
+        mutationFn: ({ id, decision }) => reviewCompletion(id, decision),
         onSuccess: invalidate,
     })
 }

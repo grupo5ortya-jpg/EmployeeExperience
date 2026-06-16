@@ -18,7 +18,7 @@ const INITIAL = {
   firstName: '', lastName: '', documentType: 'DNI', documentNumber: '',
   birthDate: '', position: '', status: 'ACTIVE', departmentId: '',
   managerId: '', hireDate: '', phone: '', address: '',
-  emergencyContactName: '', emergencyContactPhone: '', email: '', roleId: '', taskTypeId: '',
+  emergencyContactName: '', emergencyContactPhone: '', email: '', personalEmail: '', roleId: '', taskTypeId: '',
 }
 
 const inputCls = `
@@ -348,9 +348,9 @@ export default function CreateEmployeeModal({ isOpen, onClose, onSave, employees
                 </Field>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Template de onboarding">
+                <Field label="Template de plan">
                   <select name="taskTypeId" value={form.taskTypeId} onChange={handle} className={inputCls}>
-                    <option value="">Onboarding - estándar</option>
+                    <option value="">Plan estándar</option>
                     {taskTypes.map((tt) => (
                       <option key={tt.id} value={tt.id}>
                         {tt.name}{tt.subType ? ` · ${tt.subType}` : ''}
@@ -398,6 +398,11 @@ export default function CreateEmployeeModal({ isOpen, onClose, onSave, employees
                 </Field>
                 <Field label="Dirección">
                   <input name="address" value={form.address} onChange={handle} className={inputCls} placeholder="Ej. Av. Corrientes 1234" />
+                </Field>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Email personal">
+                  <input type="email" name="personalEmail" value={form.personalEmail} onChange={handle} className={inputCls} placeholder="Ej. maria.gonzalez@gmail.com" />
                 </Field>
               </div>
             </div>

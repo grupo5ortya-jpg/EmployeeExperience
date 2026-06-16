@@ -1,5 +1,6 @@
 
-const { JobOpening, Skill, JobOpeningSkill, Department } = require('../connection/sequelize');
+const { Op } = require('sequelize');
+const { JobOpening, Skill, JobOpeningSkill, Department, Employee, Person, Alert } = require('../connection/sequelize');
 const { JOB_OPENING } = require('../utils/constants/models.constants.js');
 
 
@@ -180,10 +181,59 @@ const core_ctrl_delete_job_opening = async (req, res, next) => {
 };
 
 
+const core_ctrl_apply_to_job_opening = async (req, res, next) => {
+	try {
+		const { id } = req.params;
+		const { employeeId } = req.body;
+
+		if (!employeeId) {
+			return res.status(400).json({ message: 'employeeId es requerido' });
+		}
+
+		const job = await JobOpening.findByPk(id);
+		if (!job) return res.status(404).json({ message: 'Not found' });
+		if (job.status !== JOB_OPENING.STATUS_OPEN) {
+			return res.status(400).json({ message: 'La vacante no está abierta' });
+		}
+
+		const existing = await Alert.findOne({
+			where: {
+				employee_id: employeeId,
+				type: 'JOB_OPENING_APPLICATION',
+				topics: { [Op.contains]: [id] },
+			},
+		});
+		if (existing) {
+			return res.status(409).json({ message: 'Ya te postulaste para esta vacante' });
+		}
+
+		const employee = await Employee.findByPk(employeeId, {
+			include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+		});
+		const name = employee?.person
+			? `${employee.person.first_name ?? ''} ${employee.person.last_name ?? ''}`.trim()
+			: 'Un empleado';
+
+		await Alert.create({
+			employee_id: employeeId,
+			type: 'JOB_OPENING_APPLICATION',
+			message: `${name} se postuló para la vacante "${job.title}".`,
+			status: 'UNREAD',
+			topics: [id],
+		});
+
+		res.status(201).json({ message: 'Postulación enviada' });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
+
 module.exports = {
 	core_ctrl_get_job_openings,
 	core_ctrl_get_job_opening_by_id,
 	core_ctrl_create_job_opening,
 	core_ctrl_update_job_opening,
-	core_ctrl_delete_job_opening
+	core_ctrl_delete_job_opening,
+	core_ctrl_apply_to_job_opening,
 };

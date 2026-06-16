@@ -29,7 +29,9 @@ const core_conn_apply_associations = (sequelize) => {
 		Skill,
 		JobOpeningSkill,
 		Okr,
-		EmployeeSkill
+		EmployeeSkill,
+		EmployeeOffboarding,
+		AlumniProfile
 	} = sequelize.models;
 
 	//! Department !//
@@ -460,6 +462,44 @@ const core_conn_apply_associations = (sequelize) => {
 	Skill.hasMany(EmployeeSkill, {
 		foreignKey: 'skill_id',
 		as: 'employeeSkills',
+	});
+
+	//! Task / Skill (curso de Learning -> skill asociado) !//
+	Task.belongsTo(Skill, {
+		foreignKey: 'skill_id',
+		as: 'skill',
+	});
+
+	Skill.hasMany(Task, {
+		foreignKey: 'skill_id',
+		as: 'courses',
+	});
+
+	//! Employee / EmployeeOffboarding !//
+	Employee.hasMany(EmployeeOffboarding, {
+		foreignKey: 'employee_id',
+		as: 'offboardings',
+	});
+
+	EmployeeOffboarding.belongsTo(Employee, {
+		foreignKey: 'employee_id',
+		as: 'employee',
+	});
+
+	EmployeeOffboarding.belongsTo(Employee, {
+		foreignKey: 'initiated_by',
+		as: 'initiator',
+	});
+
+	//! Employee / AlumniProfile !//
+	Employee.hasOne(AlumniProfile, {
+		foreignKey: 'employee_id',
+		as: 'alumniProfile',
+	});
+
+	AlumniProfile.belongsTo(Employee, {
+		foreignKey: 'employee_id',
+		as: 'employee',
 	});
 
 };

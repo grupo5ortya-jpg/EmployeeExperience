@@ -4,7 +4,7 @@ import {
   Home, UserPlus, RotateCcw, Target, BookOpen, GraduationCap,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
-  List, PlusSquare, UserPlus2, SendHorizonal, FileQuestion,
+  PlusSquare, UserPlus2, SendHorizonal, FileQuestion, LogOut, UserCheck,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
@@ -18,14 +18,14 @@ const ALL_NAV_ITEMS = [
   { icon: User,               label: 'Mi perfil' },
   { icon: Users,              label: 'Equipo',             to: '/employeelist',      roles: ['Talento', 'Líder'] },
   {
-    icon: UserPlus,           label: 'Onboarding',         to: '/onboardinghome',    roles: ['Talento'],
+    icon: UserPlus,           label: 'Planes',             to: '/onboardinghome',    roles: ['Talento'],
     children: [
-      { icon: List,       label: 'Ver asignaciones', to: '/all-assignments' },
       { icon: PlusSquare, label: 'Crear template',   to: '/createtemplatepage' },
       { icon: UserPlus2,  label: 'Asignar template', to: '/assigntemplatepage' },
     ],
   },
-  { icon: ClipboardList,      label: 'Onboarding equipo',  to: '/all-assignments',   roles: ['Líder'] },
+  { icon: ClipboardList,      label: 'Planes asignados',   to: '/all-assignments',   roles: ['Talento'] },
+  { icon: ClipboardList,      label: 'Planes del equipo',  to: '/all-assignments',   roles: ['Líder'] },
   {
     icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Talento'],
     children: [
@@ -33,7 +33,6 @@ const ALL_NAV_ITEMS = [
       { icon: FileQuestion,  label: 'Edición de preguntas', to: '/questionmanagement' },
     ],
   },
-  { icon: RotateCcw,          label: 'Feedback 360°',      to: '/feedbackhome',      roles: ['Líder'] },
   { icon: Target,             label: 'OKR Management',     to: '/okrmanagement',     roles: ['Talento'] },
   { icon: Target,             label: 'Mis objetivos',      to: '/myobjectives',      roles: ['Colaborador', 'Líder'] },
   { icon: BookOpen,           label: 'Cursos disponibles', to: '/coursecatalog',     roles: ['Colaborador', 'Líder'] },
@@ -41,16 +40,18 @@ const ALL_NAV_ITEMS = [
   { icon: GraduationCap,      label: 'Aprendizaje',        to: '/learningdashboard', roles: ['Talento'] },
   { icon: ClipboardList,      label: 'Plan de acción' },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
-  { icon: ClipboardList,      label: 'Mis tareas',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
+  { icon: ClipboardList,      label: 'Mis planes',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
   { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },
   { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
   {
-    icon: MessageSquareHeart, label: 'Feedback continuo', to: '/continuous-feedback', roles: ['Colaborador', 'Líder'],
+    icon: MessageSquareHeart, label: 'Feedback continuo', to: '/continuous-feedback', roles: ['Colaborador'],
     children: [
       { icon: SendHorizonal, label: 'Enviar feedback', to: '/continuous-feedback?new=1' },
     ],
   },
   { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento', 'Colaborador', 'Líder'] },
+  { icon: LogOut,             label: 'Offboarding',        to: '/offboardinghome',  roles: ['Talento'] },
+  { icon: UserCheck,          label: 'Alumni',             to: '/alumnihome',       roles: ['Talento'] },
   { icon: LifeBuoy,           label: 'Soporte' },
 ]
 
@@ -122,7 +123,13 @@ export default function Sidebar() {
 
   const navItems = ALL_NAV_ITEMS
     .filter((item) => !item.roles?.length || item.roles.includes(role))
-    .map((item)   => item.dynamicBadge ? { ...item, badge: unreadCount } : item)
+    .map((item) => {
+      if (item.dynamicBadge) return { ...item, badge: unreadCount }
+      if (item.label === 'Mi perfil' && user?.employeeId) {
+        return { ...item, to: `/detailemployee/${user.employeeId}` }
+      }
+      return item
+    })
 
   return (
     <aside className="hidden lg:flex w-56 shrink-0 h-screen bg-navy flex-col">

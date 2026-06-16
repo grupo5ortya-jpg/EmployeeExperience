@@ -15,13 +15,24 @@ module.exports = {
 		STATUS_ACTIVE: 'ACTIVE',
 		STATUS_INACTIVE: 'INACTIVE',
 	},
+	EMPLOYEE_OFFBOARDING: {
+		STATUS: ['IN_PROGRESS', 'COMPLETED'],
+		STATUS_IN_PROGRESS: 'IN_PROGRESS',
+		STATUS_COMPLETED: 'COMPLETED',
+	},
+	OFFBOARDING: {
+		CHECKLIST_TASK_TYPE: { name: 'Offboarding estándad', sub_type: 'Checklist' },
+		EXIT_INTERVIEW_QUESTION_TYPE: { name: 'Offboarding', sub_type: 'Salida' },
+		EXIT_INTERVIEW_WINDOW_DAYS: 30,
+	},
 	EMPLOYEE_TASK: {
-		STATUS: ['ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED', 'DROPPED'],
+		STATUS: ['ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED', 'DROPPED', 'REJECTED'],
 		STATUS_ENROLLED: 'ENROLLED',
 		STATUS_IN_PROGRESS: 'IN_PROGRESS',
 		STATUS_SUBMITTED: 'SUBMITTED',
 		STATUS_COMPLETED: 'COMPLETED',
 		STATUS_DROPPED: 'DROPPED',
+		STATUS_REJECTED: 'REJECTED',
 	},
 	FEEDBACK_ASSIGNMENT: {
 		TYPES: ['SELF', 'PEER', 'LEADER', 'DIRECT_REPORT'],
@@ -61,6 +72,8 @@ module.exports = {
 	ROLE: {
 		ACTIVE_ROLES: ['Talento', 'Líder', 'Colaborador'],
 		INACTIVE_ROLES: ['Alumni'],
+		ALUMNI: 'Alumni',
+		COLABORADOR: 'Colaborador',
 	},
 	SKILL: {
 		TYPES: ['hard', 'soft'],
@@ -96,5 +109,12 @@ module.exports = {
 		TASK_TYPE_SUB_TYPE_CAPACITATION_SOFT: 'Certificación - Soft Skill',
 		TASK_TYPE_SUB_TYPE_COURSE: 'Curso',
 		TASK_TYPE_SUB_TYPE_CHECKLIST: 'Checklist',
+		// TaskTypes usadas internamente por el sistema (Onboarding, Offboarding, Learning) —
+		// siempre protegidas contra borrado, no se puede desproteger vía PATCH.
+		SYSTEM_TASK_TYPES: [
+			{ name: 'Onboarding estándar', sub_type: 'Checklist' },
+			{ name: 'Offboarding estándad', sub_type: 'Checklist' },
+			{ name: 'Aprendizaje - curso', sub_type: 'Curso' },
+		],
 	},
 };
