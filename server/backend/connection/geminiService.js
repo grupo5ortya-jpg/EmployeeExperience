@@ -218,4 +218,82 @@ Tono: constructivo, profesional y orientado al crecimiento`;
     return JSON.parse(jsonStr);
 }
 
-module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseSurvey, analyzeGapAnalysis };
+/**
+ * Generates a personalized career development plan based on the skill gap
+ * between an employee's current skills and the requirements of a target position.
+ *
+ * @param {{ employeeName: string, currentPosition: string|null, targetPosition: string, targetDepartment: string|null, gapSnapshot: object }} payload
+ * @returns {Promise<{ summary: string, actions: Array, estimatedMonths: number }>}
+ */
+async function generateCareerPlan({ employeeName, currentPosition, targetPosition, targetDepartment, gapSnapshot }) {
+    const { covered = [], gaps = [], missing = [] } = gapSnapshot;
+
+    const coveredLines = covered.length
+        ? covered.map((s) => `  ✓ ${s.skillName} (${s.skillType}) — nivel actual: ${s.currentLevelName}, requerido: ${s.requiredLevelName}`).join('\n')
+        : '  (ninguna skill ya cumple el nivel requerido)';
+
+    const gapLines = gaps.length
+        ? gaps.map((s) => `  ⚠ ${s.skillName} (${s.skillType}) — nivel actual: ${s.currentLevelName}, requerido: ${s.requiredLevelName}`).join('\n')
+        : '  (ninguna)';
+
+    const missingLines = missing.length
+        ? missing.map((s) => `  ✗ ${s.skillName} (${s.skillType}) — nivel requerido: ${s.requiredLevelName} (el empleado no la tiene)`).join('\n')
+        : '  (ninguna)';
+
+    const prompt = `Sos un especialista en desarrollo de carrera y planificación de talento.
+
+Empleado: ${employeeName}
+Cargo actual: ${currentPosition ?? 'no especificado'}
+Puesto objetivo: ${targetPosition}${targetDepartment ? ` (departamento: ${targetDepartment})` : ''}
+
+ANÁLISIS DE BRECHA DE SKILLS:
+
+Skills que ya cumplen el nivel requerido:
+${coveredLines}
+
+Skills por debajo del nivel requerido:
+${gapLines}
+
+Skills faltantes (el empleado no las tiene):
+${missingLines}
+
+Generá un plan de desarrollo personalizado y accionable para que ${employeeName} alcance el puesto de ${targetPosition}.
+
+El plan debe incluir:
+1. Un resumen en 2-3 oraciones sobre la situación actual y el camino propuesto.
+2. Entre 3 y 6 acciones concretas priorizadas. Cada acción puede ser de tipo:
+   - "course": un curso o capacitación para desarrollar una skill específica (incluí el skillId y skillName de la skill a desarrollar cuando aplique)
+   - "experience": una experiencia práctica, proyecto o responsabilidad a asumir
+   - "soft_skill": un hábito, comportamiento o habilidad blanda a desarrollar
+3. Una estimación realista de meses para alcanzar el puesto objetivo.
+
+Respondé ÚNICAMENTE con un JSON válido, sin texto adicional:
+{
+  "summary": "Resumen en español...",
+  "actions": [
+    {
+      "type": "course",
+      "title": "Nombre corto de la acción",
+      "description": "Descripción concreta de qué hacer y por qué ayuda",
+      "skillId": "uuid-de-la-skill-o-null",
+      "skillName": "nombre-de-la-skill-o-null",
+      "priority": "high"
+    }
+  ],
+  "estimatedMonths": 6
+}
+
+Criterios:
+- Prioridad "high": skills faltantes o con brecha grande (>2 niveles)
+- Prioridad "medium": skills con brecha moderada (1-2 niveles) o experiencias clave
+- Prioridad "low": soft skills y mejoras complementarias
+- Para acciones tipo "course": usá el skillId y skillName exactos del gap análisis cuando corresponda; para cursos generales sin skill específica usá null
+- Estimación de meses: realista considerando la cantidad y profundidad de brechas (mínimo 2, máximo 36)
+- Tono: profesional, constructivo, orientado al crecimiento`;
+
+    const raw = await generarTexto(prompt);
+    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+    return JSON.parse(jsonStr);
+}
+
+module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseSurvey, analyzeGapAnalysis, generateCareerPlan };

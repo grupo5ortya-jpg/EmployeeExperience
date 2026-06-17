@@ -31,7 +31,8 @@ const core_conn_apply_associations = (sequelize) => {
 		Okr,
 		EmployeeSkill,
 		EmployeeOffboarding,
-		AlumniProfile
+		AlumniProfile,
+		CareerPlan,
 	} = sequelize.models;
 
 	//! Department !//
@@ -500,6 +501,27 @@ const core_conn_apply_associations = (sequelize) => {
 	AlumniProfile.belongsTo(Employee, {
 		foreignKey: 'employee_id',
 		as: 'employee',
+	});
+
+	//! CareerPlan !//
+	Employee.hasMany(CareerPlan, {
+		foreignKey: 'employee_id',
+		as: 'careerPlans',
+	});
+
+	CareerPlan.belongsTo(Employee, {
+		foreignKey: 'employee_id',
+		as: 'employee',
+	});
+
+	JobOpening.hasMany(CareerPlan, {
+		foreignKey: 'job_opening_id',
+		as: 'careerPlans',
+	});
+
+	CareerPlan.belongsTo(JobOpening, {
+		foreignKey: 'job_opening_id',
+		as: 'targetPosition',
 	});
 
 };

@@ -37,7 +37,9 @@ const routes_learning_course = require('./routes.learningCourse.js');
 const routes_course_enrollment = require('./routes.courseEnrollment.js');
 const routes_offboarding = require('./routes.offboarding.js');
 const routes_exit_interview = require('./routes.exitInterview.js');
-const routes_alumni = require('./routes.alumni.js');
+const routes_alumni          = require('./routes.alumni.js');
+const routes_career_simulator = require('./routes.careerSimulator.js');
+const routes_next_steps       = require('./routes.nextSteps.js');
 
 
 // Auth — public, must be first
@@ -128,6 +130,10 @@ router.use('/offboarding', routes_offboarding)
 router.use('/exit-interviews', routes_exit_interview)
 // Alumni — perfil de ex-empleados (Talento)
 router.use('/alumni', routes_alumni)
+// Career Simulator — plan de carrera con IA (Colaborador propio + Talento)
+router.use('/career-simulator', routes_career_simulator)
+// Next Steps — próximos pasos agregados para Home del Colaborador
+router.use('/next-steps', routes_next_steps)
 
 
 // TODO: eliminar estos endpoints — solo para pruebas de desarrollo

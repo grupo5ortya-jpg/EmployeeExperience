@@ -131,3 +131,6 @@ TODO: mails✖️
 * existe "mi perfil" y lider/colaborador puede cambiar sus campos personales.✅
 * Mejoria de mentoria por ia, toma scores de feedback 360.✅
 
+* enfocar vacantes en puestos SAP
+* Simulador de carrera usa vacantes disponibles pero se basa tambien en los cursos? intentar dirigir si hay uno existente.
+*

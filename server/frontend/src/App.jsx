@@ -29,6 +29,7 @@ import OffboardingHome        from './pages/offboarding/OffboardingHome.jsx'
 import OffboardingDetailPage  from './pages/offboarding/OffboardingDetailPage.jsx'
 import AlumniHome             from './pages/alumni/AlumniHome.jsx'
 import AlumniDetailPage       from './pages/alumni/AlumniDetailPage.jsx'
+import CareerSimulatorPage    from './pages/careerSimulator/CareerSimulatorPage.jsx'
 
 // Restores session from cookie on every page load
 function AuthInit({ children }) {
@@ -72,6 +73,7 @@ function App() {
               <Route path="/offboarding/:employeeId" element={<RoleRoute allowed={['Talento']}><OffboardingDetailPage /></RoleRoute>} />
               <Route path="/alumnihome"              element={<RoleRoute allowed={['Talento']}><AlumniHome /></RoleRoute>} />
               <Route path="/alumni/:employeeId"      element={<RoleRoute allowed={['Talento']}><AlumniDetailPage /></RoleRoute>} />
+              <Route path="/career-simulator"        element={<RoleRoute allowed={['Colaborador']}><CareerSimulatorPage /></RoleRoute>} />
             </Route>
 
             {/* Public pages: login, 404, etc. */}

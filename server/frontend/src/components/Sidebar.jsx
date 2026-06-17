@@ -4,7 +4,7 @@ import {
   Home, UserPlus, RotateCcw, Target, BookOpen, GraduationCap,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
-  PlusSquare, UserPlus2, SendHorizonal, FileQuestion, LogOut, UserCheck,
+  PlusSquare, UserPlus2, SendHorizonal, FileQuestion, LogOut, UserCheck, TrendingUp,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
@@ -49,6 +49,7 @@ const ALL_NAV_ITEMS = [
       { icon: SendHorizonal, label: 'Enviar feedback', to: '/continuous-feedback?new=1' },
     ],
   },
+  { icon: TrendingUp,          label: 'Simulador de carrera', to: '/career-simulator', roles: ['Colaborador'] },
   { icon: Briefcase,          label: 'Vacantes',           to: '/job-openings',      roles: ['Talento', 'Colaborador', 'Líder'] },
   { icon: LogOut,             label: 'Offboarding',        to: '/offboardinghome',  roles: ['Talento'] },
   { icon: UserCheck,          label: 'Alumni',             to: '/alumnihome',       roles: ['Talento'] },

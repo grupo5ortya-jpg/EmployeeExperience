@@ -48,6 +48,7 @@ export function srv_front_router_generate_routes() {
     if (pageName === 'OffboardingDetailPage') continue
     if (pageName === 'AlumniHome') continue
     if (pageName === 'AlumniDetailPage') continue
+    if (pageName === 'CareerSimulatorPage') continue
 
     layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
   }
