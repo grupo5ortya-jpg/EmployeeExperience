@@ -30,6 +30,7 @@ import OffboardingDetailPage  from './pages/offboarding/OffboardingDetailPage.js
 import AlumniHome             from './pages/alumni/AlumniHome.jsx'
 import AlumniDetailPage       from './pages/alumni/AlumniDetailPage.jsx'
 import CareerSimulatorPage    from './pages/careerSimulator/CareerSimulatorPage.jsx'
+import EmployeeList           from './pages/employeeList/EmployeeList.jsx'
 
 // Restores session from cookie on every page load
 function AuthInit({ children }) {
@@ -53,7 +54,7 @@ function App() {
               ))}
               <Route path="/detailemployee/:id"      element={<DetailEmployee />} />
               <Route path="/onboarding-template/:id" element={<TemplateDetailPage />} />
-              <Route path="/all-assignments"         element={<AllAssignmentsPage />} />
+              <Route path="/all-assignments"         element={<RoleRoute allowed={['Talento', 'Líder']}><AllAssignmentsPage /></RoleRoute>} />
               <Route path="/feedbackhome"            element={<RoleRoute allowed={['Talento']}><FeedbackHome /></RoleRoute>} />
               <Route path="/feedback/:id"            element={<FeedbackDetailPage />} />
               <Route path="/hrfeedbackreport"        element={<HRFeedbackReport />} />
@@ -74,6 +75,7 @@ function App() {
               <Route path="/alumnihome"              element={<RoleRoute allowed={['Talento']}><AlumniHome /></RoleRoute>} />
               <Route path="/alumni/:employeeId"      element={<RoleRoute allowed={['Talento']}><AlumniDetailPage /></RoleRoute>} />
               <Route path="/career-simulator"        element={<RoleRoute allowed={['Colaborador']}><CareerSimulatorPage /></RoleRoute>} />
+              <Route path="/employeelist"            element={<RoleRoute allowed={['Talento', 'Líder']}><EmployeeList /></RoleRoute>} />
             </Route>
 
             {/* Public pages: login, 404, etc. */}

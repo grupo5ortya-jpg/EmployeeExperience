@@ -38,6 +38,8 @@ export function srv_front_router_generate_routes() {
     if (pageName === 'FeedbackDetailPage') continue
     // Role-restricted — registered manually in App.jsx with RoleRoute
     if (pageName === 'FeedbackHome') continue
+    if (pageName === 'ContinuousFeedback') continue
+    if (pageName === 'ContinuousFeedbackDetail') continue
     if (pageName === 'OKRManagement') continue
     if (pageName === 'MyObjectives') continue
     if (pageName === 'CourseCatalog') continue
@@ -49,6 +51,8 @@ export function srv_front_router_generate_routes() {
     if (pageName === 'AlumniHome') continue
     if (pageName === 'AlumniDetailPage') continue
     if (pageName === 'CareerSimulatorPage') continue
+    if (pageName === 'EmployeeList') continue
+    if (pageName === 'AllAssignmentsPage') continue
 
     layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
   }

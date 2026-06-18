@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask, Alert, Team } = require('../connection/sequelize');
 
 const DOC_TYPE_MAP = Person.rawAttributes.document_type.values;
@@ -66,7 +67,18 @@ function formatEmployee(e) {
 
 const getAllEmployees = async (req, res, next) => {
 	try {
-		const employees = await Employee.findAll({ include: EMPLOYEE_INCLUDE });
+		const where = {};
+
+		// Líder solo ve su propio registro + sus reportes directos (Team)
+		if (req.user.role === 'Líder') {
+			const reports = await Team.findAll({
+				where: { leader_id: req.user.employeeId },
+				attributes: ['collaborator_id'],
+			});
+			where.id = { [Op.in]: [req.user.employeeId, ...reports.map((r) => r.collaborator_id)] };
+		}
+
+		const employees = await Employee.findAll({ where, include: EMPLOYEE_INCLUDE });
 		res.json(employees.map(formatEmployee));
 	} catch (err) {
 		next(err);

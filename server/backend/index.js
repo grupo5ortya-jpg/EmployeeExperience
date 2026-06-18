@@ -10,6 +10,7 @@ const path = require('path');
 const core_seed_database = require('./seeders/seeds.js');
 const { startPulseCronJob }      = require('./connection/pulseCronJob.js');
 const { startOnboardingCronJob } = require('./connection/onboardingCronJob.js');
+const { startOkrCronJob }        = require('./connection/okrCronJob.js');
 
 
 async function core_start_server() {
@@ -34,6 +35,7 @@ async function core_start_server() {
 
 		startPulseCronJob();
 		startOnboardingCronJob();
+		startOkrCronJob();
 
 	} catch (error) {
 		console.error('Failed to start server:', error);

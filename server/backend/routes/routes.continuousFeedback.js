@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const { authorize } = require('../middlewares/authorize');
 
 const {
     createContinuousFeedback,
@@ -10,7 +11,7 @@ const {
 
 const router = Router();
 
-router.post('/',                      createContinuousFeedback);
+router.post('/',                      authorize('Colaborador'), createContinuousFeedback);
 router.get('/',                       getContinuousFeedbacks);
 router.get('/received/:employeeId',   getReceivedFeedbacks);
 router.get('/sent/:employeeId',       getSentFeedbacks);

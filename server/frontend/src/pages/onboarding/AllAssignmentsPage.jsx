@@ -12,7 +12,6 @@ import EmployeeAvatar from '../employeeList/components/EmployeeAvatar'
 const STATUS_LABEL = {
     ENROLLED:    'Inscripto',
     IN_PROGRESS: 'En progreso',
-    SUBMITED:    'Entregado',
     SUBMITTED:   'Entregado',
     COMPLETED:   'Completado',
     DROPPED:     'Completado',
@@ -21,7 +20,6 @@ const STATUS_LABEL = {
 const STATUS_STYLE = {
     ENROLLED:    'bg-sky-100 text-sky-600',
     IN_PROGRESS: 'bg-amber-100 text-amber-600',
-    SUBMITED:    'bg-violet-100 text-violet-600',
     SUBMITTED:   'bg-violet-100 text-violet-600',
     COMPLETED:   'bg-green-100 text-green-600',
     DROPPED:     'bg-green-100 text-green-600',
@@ -100,7 +98,7 @@ export default function AllAssignmentsPage() {
         onSuccess:  () => qc.invalidateQueries({ queryKey: ['employee-tasks', 'all'] }),
     })
 
-    // Dedup: SUBMITED is a DB typo variant of SUBMITTED — show only once. OVERDUE is a computed pseudo-status.
+    // OVERDUE is a computed pseudo-status.
     // DROPPED is displayed as COMPLETED so it's excluded from the filter options.
     const statusOptions = ['Todos', 'ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED', 'OVERDUE']
 
@@ -111,12 +109,23 @@ export default function AllAssignmentsPage() {
     const isAssigned = (employeeId, asgList) =>
         asgList.some((a) => a.employeeId === employeeId || a.employee?.id === employeeId)
 
+    // ── Acotar assignments a los employees visibles ────────────
+    // `employees` ya viene filtrado por rol desde el backend (Líder → su equipo).
+    // `assignments` (GET /employee-task) no lo está, así que se cruza acá con
+    // la misma lista para que un Líder solo vea los planes de su equipo.
+    const scopedAssignments = useMemo(() => {
+        const employeeIds = new Set(employees.map((e) => e.id))
+        return assignments.filter(
+            (a) => employeeIds.has(a.employeeId) || employeeIds.has(a.employee?.id),
+        )
+    }, [assignments, employees])
+
     // ── Construir lista completa de filas ─────────────────────
     // Employees con tareas → una fila por assignment (igual que antes)
     // Employees sin tareas → una fila sintética con _unassigned: true
     const allRows = useMemo(() => {
         const unassignedRows = employees
-            .filter((e) => !isAssigned(e.id, assignments))
+            .filter((e) => !isAssigned(e.id, scopedAssignments))
             .map((e) => ({
                 employeeId:  e.id,
                 taskId:      null,
@@ -132,8 +141,8 @@ export default function AllAssignmentsPage() {
                 task: null,
             }))
 
-        return [...assignments, ...unassignedRows]
-    }, [assignments, employees])
+        return [...scopedAssignments, ...unassignedRows]
+    }, [scopedAssignments, employees])
 
     // ── Filtrar ───────────────────────────────────────────────
     const filtered = useMemo(() => {
@@ -159,8 +168,7 @@ export default function AllAssignmentsPage() {
                     new Date(row.dueDate) < today &&
                     !NON_OVERDUE_STATUSES.includes(row.status)
             } else if (filterStatus === 'SUBMITTED') {
-                // Match both the correct spelling and the legacy typo
-                matchStatus = !row._unassigned && (row.status === 'SUBMITTED' || row.status === 'SUBMITED')
+                matchStatus = !row._unassigned && row.status === 'SUBMITTED'
             } else if (filterStatus === 'COMPLETED') {
                 matchStatus = !row._unassigned && (row.status === 'COMPLETED' || row.status === 'DROPPED')
             } else {
@@ -191,8 +199,8 @@ export default function AllAssignmentsPage() {
         }))
     }, [filtered])
 
-    const totalAssigned   = assignments.length
-    const totalUnassigned = employees.filter((e) => !isAssigned(e.id, assignments)).length
+    const totalAssigned   = scopedAssignments.length
+    const totalUnassigned = employees.filter((e) => !isAssigned(e.id, scopedAssignments)).length
 
     return (
         <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 flex flex-col gap-5">
@@ -353,7 +361,7 @@ export default function AllAssignmentsPage() {
                                                         <div className="divide-y divide-brand-light">
                                                             {tg.tasks.map((row) => {
                                                                 const done = row.status === 'COMPLETED' || row.status === 'DROPPED'
-                                                                const isOverdue = !done && row.dueDate && new Date(row.dueDate) < today && row.status !== 'SUBMITTED' && row.status !== 'SUBMITED'
+                                                                const isOverdue = !done && row.dueDate && new Date(row.dueDate) < today && row.status !== 'SUBMITTED'
                                                                 const displayStatus = isOverdue ? 'OVERDUE' : row.status
                                                                 return (
                                                                 <div key={row.taskId}
@@ -378,7 +386,7 @@ export default function AllAssignmentsPage() {
                                                                             {formatDate(row.dueDate)}
                                                                         </span>
                                                                     )}
-                                                                    {isTalento && (row.status === 'SUBMITED' || row.status === 'SUBMITTED') && (
+                                                                    {isTalento && row.status === 'SUBMITTED' && (
                                                                         <button
                                                                             onClick={() => approve({ employeeId: row.employeeId, taskId: row.taskId })}
                                                                             disabled={approving}

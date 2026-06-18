@@ -1,6 +1,6 @@
 
 const { DataTypes } = require('sequelize');
-const { TEAM_ERR } = require('../utils/constants/models.constants.js');
+const { TEAM_ERR } = require('../utils/constants/messages.constants.js').ERRORS.MODEL;
 
 
 module.exports = (sequelize) => {
