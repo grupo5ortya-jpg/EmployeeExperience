@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import TaskRow from './TaskRow';
 
-const COLUMNS = ['Tarea', 'Duración estimada', 'Acciones'];
+const COLUMNS = ['Tarea', 'Vence en (días)', 'Acciones'];
 
 export default function TasksSection({ tasks = [], onAddTask, onDeleteTask }) {
     return (

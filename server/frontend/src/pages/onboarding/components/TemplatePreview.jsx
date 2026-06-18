@@ -14,7 +14,7 @@ function PreviewTask({ task, index }) {
                 {task.estimatedDuration && (
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                         <Clock size={10} />
-                        {task.estimatedDuration} {Number(task.estimatedDuration) === 1 ? 'día' : 'días'}
+                        Vence en {task.estimatedDuration} {Number(task.estimatedDuration) === 1 ? 'día' : 'días'}
                     </p>
                 )}
             </div>

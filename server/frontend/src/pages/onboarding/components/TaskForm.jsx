@@ -16,7 +16,7 @@ export default function TaskForm({ form, onChange, onSubmit, submitting, error, 
             </div>
 
             <div>
-                <FieldLabel>Duración estimada (días)</FieldLabel>
+                <FieldLabel>Vence en (días)</FieldLabel>
                 <TextInput
                     type="number"
                     name="estimatedDuration"

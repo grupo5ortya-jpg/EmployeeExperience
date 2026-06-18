@@ -38,7 +38,6 @@ const ALL_NAV_ITEMS = [
   { icon: BookOpen,           label: 'Cursos disponibles', to: '/coursecatalog',     roles: ['Colaborador', 'Líder'] },
   { icon: GraduationCap,      label: 'Mi aprendizaje',     to: '/mylearning',        roles: ['Colaborador', 'Líder'] },
   { icon: GraduationCap,      label: 'Aprendizaje',        to: '/learningdashboard', roles: ['Talento'] },
-  { icon: ClipboardList,      label: 'Plan de acción' },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
   { icon: ClipboardList,      label: 'Mis planes',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
   { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },

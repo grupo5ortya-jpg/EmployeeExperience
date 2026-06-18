@@ -6,6 +6,15 @@ import { useEmployees }        from '../../hooks/useEmployees'
 import { useAllEmployeeTasks } from '../../hooks/useAllEmployeeTasks'
 import { createEmployeeTask }  from '../../services/employeeTaskService'
 
+// "Aprendizaje - curso" es el TaskType singleton de Learning (LXP): sus "tareas" son
+// cursos gestionados desde LearningDashboard (/learning-courses), no templates de onboarding.
+// Mismo criterio que OnboardingHome.jsx — se oculta también acá.
+const HIDDEN_TASK_TYPES = [
+    { name: 'Aprendizaje - curso', sub_type: 'Curso' },
+]
+const isHiddenTemplate = (type) =>
+    HIDDEN_TASK_TYPES.some((s) => s.name === type.name && s.sub_type === type.sub_type)
+
 /* ── Helpers ──────────────────────────────────────────────── */
 const AVATAR_COLORS = [
     'bg-sky-500', 'bg-violet-500', 'bg-emerald-500',
@@ -47,6 +56,7 @@ export default function AssignTemplatePage() {
         const map = {}
         tasks.forEach((t) => {
             if (!t.taskType) return
+            if (isHiddenTemplate(t.taskType)) return
             const { id, name, sub_type } = t.taskType
             if (!map[id]) map[id] = { id, name, sub_type, count: 0 }
             map[id].count++

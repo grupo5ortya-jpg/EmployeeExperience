@@ -119,7 +119,7 @@ export default function LearningDashboard() {
                 ) : courses.length === 0 ? (
                     <p className="text-sm text-slate-400">Todavía no creaste ningún curso.</p>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1">
                         {courses.map((course) => (
                             <div
                                 key={course.id}
@@ -153,7 +153,7 @@ export default function LearningDashboard() {
             </div>
 
             {/* Inscripciones */}
-            <div className="bg-white rounded-xl border border-brand-light shadow-sm p-4 flex flex-col gap-3 flex-1 min-h-0">
+            <div className="bg-white rounded-xl border border-brand-light shadow-sm p-4 flex flex-col gap-3">
                 <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Inscripciones ({enrollments.length})
                 </h3>
@@ -163,7 +163,7 @@ export default function LearningDashboard() {
                 ) : sortedEnrollments.length === 0 ? (
                     <p className="text-sm text-slate-400">Todavía no hay inscripciones.</p>
                 ) : (
-                    <div className="overflow-auto flex-1 min-h-0">
+                    <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-brand-light">

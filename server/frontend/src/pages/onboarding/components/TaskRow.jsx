@@ -10,12 +10,12 @@ export default function TaskRow({ task, index, onDelete }) {
                 <p className="text-sm font-medium text-slate-700 leading-tight">{task.name}</p>
             </td>
 
-            {/* Duración estimada */}
+            {/* Vence en X días */}
             <td className="px-4 py-3 whitespace-nowrap">
                 <span className="text-xs text-slate-500 flex items-center gap-1">
                     <Clock size={11} className="text-slate-300" />
                     {task.estimatedDuration
-                        ? `${task.estimatedDuration} ${Number(task.estimatedDuration) === 1 ? 'día' : 'días'}`
+                        ? `Vence en ${task.estimatedDuration} ${Number(task.estimatedDuration) === 1 ? 'día' : 'días'}`
                         : '—'}
                 </span>
             </td>
