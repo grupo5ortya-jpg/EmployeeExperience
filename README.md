@@ -132,11 +132,10 @@ _TODO_ mails✖️
 * existe "mi perfil" y lider/colaborador puede cambiar sus campos personales.✅
 * Mejoria de mentoria por ia, toma scores de feedback 360.✅
 
-* Simulador de carrera usa vacantes disponibles pero se basa tambien en los cursos? intentar dirigir si hay uno existente.
-* en talentos @job-openings borrar skills
+* en talentos @job-openings borrar skills ✖️
 ------------------------------------------------------------------------
 
-*  Auditoría: revisé todo el backend y todo el frontend (rutas, controllers, modelos, componentes, hooks, services) y entregué dos reportes con hallazgos clasificados CRITICAL/MEDIUM/LOW antes de tocar nada.
+🔴 Auditoría: revisé todo el backend y todo el frontend (rutas, controllers, modelos, componentes, hooks, services) y entregué dos reportes con hallazgos clasificados CRITICAL/MEDIUM/LOW antes de tocar nada.
 
 Bugs corregidos (7): import roto en Team.js, cron de OKR nunca arrancado, bypass de RoleRoute por rutas duplicadas en router.js (4 páginas), authorize() faltante en 7 archivos de rutas, GET /employees sin filtrar por Líder, AllAssignmentsPage mostrando toda la empresa, y una constante (COURSE_ENROLLMENT) que un commit de un compañero había borrado por error y tiraba el backend entero.
 
@@ -148,7 +147,7 @@ Refactors: deduplicación en geminiService.js, código muerto removido de server
 
 ----------------------------------------
 
-* ¿Qué hacer con Asset / EmployeeAsset? (feature incompleta — terminarla, dejarla o borrarla)
+🔴¿Qué hacer con Asset / EmployeeAsset? (feature incompleta — terminarla, dejarla o borrarla)
   ¿Qué hacer con EmployeeHistory? (datos acumulándose sin consumidor — exponer endpoint o eliminar los hooks)
   ediseñar el patrón de router.js para que no necesite lista manual
 

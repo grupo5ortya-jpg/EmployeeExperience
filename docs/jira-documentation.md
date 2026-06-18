@@ -2,7 +2,7 @@
 
 **Proyecto:** EmployeeExperience HR Platform  
 **Branch activo:** `fullstack-changes`  
-**Última actualización:** 2026-06-13  
+**Última actualización:** 2026-06-18  
 **Stack:** React 19 + Vite + Tailwind v4 / Express 5 + Sequelize 6 + PostgreSQL + Gemini AI
 
 ---
@@ -106,6 +106,8 @@ Los empleados pueden enviarse reconocimientos y sugerencias de forma continua (n
 
 **Nota técnica — bug resuelto:** Sequelize generaba JOINs en orden incorrecto cuando `EMPLOYEE_MINI_INCLUDE` era el mismo objeto compartido entre los includes de `emitter` y `receiver`. Solución: objetos separados para cada include + `subQuery: false` en los `findAll`.
 
+**Bug de seguridad resuelto (EXP-201-BUG-02, 2026-06-18):** `router.js` auto-generaba una ruta paralela sin protección (`/continuousfeedback`, sin guion) además de la ruta oficial `/continuous-feedback` (con `RoleRoute`). Cualquier rol podía acceder por URL directa, bypaseando la restricción a Colaborador. La única defensa real hasta entonces era ocultar el botón "Enviar feedback" en el componente. Fix: `ContinuousFeedback`/`ContinuousFeedbackDetail` agregados a la lista de exclusión del auto-generador + `authorize('Colaborador')` agregado a `POST /continuous-feedback` en el backend.
+
 ---
 
 ### EXP-202 · Widget de feedbacks recibidos en Home
@@ -152,6 +154,10 @@ HR crea templates de onboarding (`TaskType`) con tareas asociadas (`Task`). Pued
 **Rutas:** `/onboardinghome`, `/createtemplatepage`, `/onboarding-template/:id`, `/all-assignments`
 
 **Bug conocido (EXP-401-BUG):** Al asignar onboarding, en algunos casos solo aparece 1 tarea en `/mytasks` en lugar de todas. Investigar `bulkCreate` en `createEmployee` y deduplicación de Sequelize con composite PK.
+
+**Bug de seguridad resuelto (EXP-401-BUG-02, 2026-06-18):** la vista "Planes del equipo" (`/all-assignments`, Líder) mostraba los planes de **todos** los empleados de la empresa sin filtrar por equipo, y la ruta no tenía `RoleRoute` (accesible por URL para cualquier rol). Fix: nuevo cruce `scopedAssignments` (cruza `GET /employee-task` contra la lista de empleados ya filtrada por rol vía `GET /employee`) + `RoleRoute allowed={['Talento','Líder']}` + exclusión en `router.js`.
+
+**Bug resuelto (EXP-401-BUG-03, 2026-06-18):** el estado `SUBMITED` (typo, sin la segunda T) se podía seleccionar como estado inicial al asignar una tarea manualmente desde `/onboarding-template/:id` (`STATUS_OPTS` lo ofrecía como opción), generando datos inconsistentes con el resto del sistema, que usa `SUBMITTED`. Verificado que no había filas afectadas en la base; corregido en el origen (el `<select>`) y en todos los chequeos defensivos que dependían del typo.
 
 ---
 
@@ -300,6 +306,8 @@ Al actualizar el progreso de un OKR, si la fecha límite ya pasó y el valor act
 
 **Bug resuelto (EXP-803-BUG-01):** las cards de OKR (`OkrTreeNode.jsx`, `MyOkrCard.jsx`) mostraban "Vencido hace X días" en rojo aunque el objetivo ya estuviera `COMPLETED`, porque el badge se basaba solo en `daysRemaining < 0` (cálculo aritmético `dueDate - hoy`, sin mirar el estado). Fix: condicionar el badge con `node.isOverdue` (el campo que el backend ya calcula excluyendo `status === 'COMPLETED'` en `okr.controllers.js`), ocultando la línea de "vencido" cuando el objetivo se completó después de su fecha límite.
 
+**Bug resuelto (EXP-803-BUG-02, 2026-06-18):** el cron diario que reevalúa OKRs a `STAGNANT`/`AT_RISK` por el solo paso del tiempo (sin que el responsable actualice el progreso) existía en el código (`okrCronJob.js#startOkrCronJob`) pero nunca se ejecutaba — no estaba enchufado en el arranque del servidor (`index.js`). Un OKR abandonado se quedaba en su último estado para siempre, ya que la reevaluación solo ocurría al actualizar `currentValue` manualmente. Corregido.
+
 ---
 
 ### EXP-804 · Notificación de objetivo asignado
@@ -389,6 +397,8 @@ HR crea, edita y elimina cursos del catálogo, y revisa en una tabla global toda
 
 **Bug resuelto (EXP-903-BUG-01):** Al agregar el endpoint `DELETE /learning-courses/:id`, el frontend devolvía 404 (`"Route ... not found"`). Causa: el proceso del backend corría con `node` plano (sin `nodemon`), por lo que no recargaba las rutas nuevas — fue necesario reiniciar el proceso manualmente. Ver nota técnica en CLAUDE.md.
 
+**Bug resuelto (EXP-903-BUG-02, 2026-06-18):** la constante `COURSE_ENROLLMENT` (usada por `courseEnrollment.controller.js` para mapear `EmployeeTask.status` → `CourseEnrollment.status`) se había eliminado por error en un commit de limpieza de "constantes obsoletas", sin verificar que seguía en uso — esto tiraba el backend completo al arrancar (`TypeError` a nivel de módulo, antes de poder levantar el server). Restaurada, agregando además `STATUS_REJECTED` que faltaba desde la introducción de EXP-905.
+
 ---
 
 ### EXP-904 · Internal CV — Learning & Certifications
@@ -444,6 +454,10 @@ HR y Líderes visualizan la lista de empleados con filtros. El detalle incluye i
 
 **Rutas:** `/employeelist`, `/detailemployee/:id`  
 **Endpoints:** `GET /employee`, `GET /employee/:id`, `PATCH /employee/:id/mentor`, `POST /ai/mentor-matching`
+
+**Bug de seguridad resuelto (EXP-701-BUG-01, 2026-06-18):** `GET /employee` no filtraba por rol — cualquier usuario autenticado (incluido Colaborador, que ni siquiera tiene este ítem en el sidebar) podía ver el listado completo de empleados navegando a `/employeelist` por URL directa, ya que la página no tenía `RoleRoute` y el filtro de Líder era solo client-side (y no aplicaba a otros roles). Fix: filtro server-side en `employee.controllers.js#getAllEmployees` (Líder → `[propio id, ...reportes directos vía Team]`) + `RoleRoute allowed={['Talento','Líder']}` agregado a `/employeelist` en `App.jsx` + exclusión en `router.js`.
+
+**Bug resuelto (EXP-701-BUG-02, 2026-06-18):** el modelo `Team` (usado al asignar líder directo desde el alta/edición de un empleado) importaba el mensaje de error `TEAM_ERR` del archivo de constantes equivocado. Cualquier validación fallida (líder/colaborador requerido, rol inválido, colaborador duplicado) tiraba un error genérico 500 en vez del mensaje claro esperado por el frontend.
 
 ---
 
@@ -606,7 +620,10 @@ SYNC_PARAMS={"force":true}    # DESTRUYE la DB — solo desarrollo inicial
 ```
 
 ### Auto-generación de rutas
-`router.js` genera rutas automáticamente desde `src/pages/**/*.jsx` (nombre de archivo en minúsculas). Excepciones registradas manualmente en `App.jsx`: rutas con `:id`, `/continuous-feedback`, `/job-openings`, `/all-assignments`.
+`router.js` genera una ruta por cada página en `src/pages/**/*.jsx` (nombre de archivo en minúsculas), **salvo que esté en una lista de exclusión manual** — necesaria para páginas que se registran a mano en `App.jsx` por necesitar `:id` o un `RoleRoute`. El riesgo de este patrón: si una página nueva con `RoleRoute` no se agrega también a la exclusión de `router.js`, queda **auto-registrada en paralelo, sin protección**, en un path ligeramente distinto (ej. `/continuousfeedback` sin guion conviviendo con `/continuous-feedback`). Esto pasó realmente (ver EXP-201-BUG-02, EXP-701-BUG-01) y deja la página accesible para cualquier rol con solo escribir la URL. Mientras no se rediseñe el patrón (una sola fuente de verdad en vez de dos listas sincronizadas a mano — ver TODOs), **toda página nueva con `RoleRoute` debe agregarse explícitamente a la exclusión de `router.js`**.
+
+### Seguridad — cobertura de `authorize()` por rol (auditoría 2026-06-18)
+Una auditoría completa de backend + frontend encontró varias rutas de escritura sin `authorize()` — solo protegidas por `authenticateToken` (sesión válida, sin chequeo de rol). Cualquier usuario autenticado podía, por ejemplo, cambiarle el rol a otro usuario (`PATCH /user/:id`) o borrar un departamento/template/equipo. Se agregó `authorize('Talento')` a `routes.user.js`, `routes.department.js`, `routes.team.js`, `routes.task.js`, `routes.task_type.js` y `routes.jobOpening.js` (excepto `POST /:id/apply`, que es la postulación de Colaborador/Líder — ver EXP-602), y `authorize('Colaborador')` a `POST /continuous-feedback`. Ver también EXP-201-BUG-02 y EXP-701-BUG-01 para los bypasses de `RoleRoute` encontrados en el mismo relevamiento.
 
 ---
 
@@ -621,6 +638,9 @@ SYNC_PARAMS={"force":true}    # DESTRUYE la DB — solo desarrollo inicial
 | EXP-DEV-04 | Reemplazar `assigned_by = employee_id` en FeedbackAssignment por el ID del usuario HR logueado real | Media |
 | EXP-DEV-05 | ~~Definir flujo y vistas para rol Alumni~~ — Resuelto, ver ÉPICA 10 | ~~Baja~~ |
 | EXP-DEV-06 | Implementar `GET /employee?departmentId=X` en backend para escalar filtro de participantes 360° | Media |
+| EXP-DEV-07 | Decidir destino de `Asset`/`EmployeeAsset` (modelo + seed completos, sin controllers/rutas/UI) — terminar la feature, dejarla, o borrar modelo+seed+asociaciones | Media |
+| EXP-DEV-08 | Decidir destino de `EmployeeHistory` (los hooks de `Employee` escriben en cada cambio de depto/posición, pero ningún endpoint la expone) — exponer un endpoint de historial o eliminar los hooks | Media |
+| EXP-DEV-09 | Rediseñar el patrón de exclusión manual de `router.js` (ver nota técnica arriba) — unificar en una sola fuente de verdad para evitar que una página nueva con `RoleRoute` quede sin proteger por descuido | Baja |
 
 ---
 
