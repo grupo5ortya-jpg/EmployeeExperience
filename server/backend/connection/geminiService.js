@@ -8,6 +8,12 @@ const ai = new GoogleGenAI({
     location: undefined
 });
 
+// Strip markdown code fences if Gemini wraps the response, then parse the JSON
+function parseGeminiJson(raw) {
+    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+    return JSON.parse(jsonStr);
+}
+
 async function generarTexto(prompt) {
     try {
         if (!process.env.GEMINI_API_KEY) {
@@ -73,10 +79,7 @@ Respondé ÚNICAMENTE con un JSON válido, sin texto adicional, con este formato
 ]`;
 
     const raw = await generarTexto(prompt);
-
-    // Strip markdown code fences if Gemini wraps the response
-    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(jsonStr);
+    return parseGeminiJson(raw);
 }
 
 async function testGeminiConnection() {
@@ -136,8 +139,7 @@ Respondé ÚNICAMENTE con un JSON válido, sin texto adicional:
 }`;
 
     const raw = await generarTexto(prompt);
-    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(jsonStr);
+    return parseGeminiJson(raw);
 }
 
 /**
@@ -214,8 +216,7 @@ Ejemplos correctos: "Se observa consistencia en...", "Existe una oportunidad de 
 Tono: constructivo, profesional y orientado al crecimiento`;
 
     const raw = await generarTexto(prompt);
-    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(jsonStr);
+    return parseGeminiJson(raw);
 }
 
 /**
@@ -292,8 +293,7 @@ Criterios:
 - Tono: profesional, constructivo, orientado al crecimiento`;
 
     const raw = await generarTexto(prompt);
-    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(jsonStr);
+    return parseGeminiJson(raw);
 }
 
 module.exports = { generarTexto, suggestMentors, testGeminiConnection, analyzePulseSurvey, analyzeGapAnalysis, generateCareerPlan };

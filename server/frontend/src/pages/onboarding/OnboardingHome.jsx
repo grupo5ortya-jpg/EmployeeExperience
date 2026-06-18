@@ -1,10 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Clock, ChevronRight, Trash2, RotateCcw, PlusCircle, AlertTriangle, CalendarClock, Lock, Unlock } from 'lucide-react'
 import { useTasks } from '../../hooks/useTasks'
 import { updateTask, createTask, deleteTask, deleteTaskType } from '../../services/taskService'
 import { updateTaskType } from '../../services/taskTypeService'
+import TemplateListPanel from './components/TemplateListPanel'
+import TemplateEditorPanel from './components/TemplateEditorPanel'
+import DiscardChangesModal from './components/DiscardChangesModal'
+import DeleteTemplateModal from './components/DeleteTemplateModal'
 
 const MAX_TASKS = 10
 
@@ -26,14 +29,6 @@ const HIDDEN_TASK_TYPES = [
 const isHiddenTemplate = (type) =>
     HIDDEN_TASK_TYPES.some((s) => s.name === type.name && s.sub_type === type.sub_type)
 
-const inputCls = `w-full rounded-lg border border-brand-light px-3 py-2 text-sm text-slate-700
-  placeholder:text-slate-400 outline-none bg-white
-  focus:border-brand focus:ring-2 focus:ring-brand-light transition-colors`
-
-const durationCls = `w-20 rounded-lg border border-brand-light px-3 py-2 text-sm text-slate-700
-  text-center outline-none bg-white
-  focus:border-brand focus:ring-2 focus:ring-brand-light transition-colors`
-
 // Contador fuera del componente → no se resetea en re-renders
 let newTaskSeq = 0
 
@@ -46,7 +41,6 @@ export default function OnboardingHome() {
     // ── Estado del panel derecho ──────────────────────────────
     const [selectedType,      setSelectedType]      = useState(null)
     const [localSiblings,     setLocalSiblings]     = useState([])
-    const [localDefaultDays,  setLocalDefaultDays]  = useState('')
     const [saving,            setSaving]            = useState(false)
     const [saveError,         setSaveError]         = useState('')
 
@@ -109,7 +103,6 @@ export default function OnboardingHome() {
     const doSelectType = (type) => {
         const siblings = tasks.filter((t) => t.taskType?.id === type.id)
         setSelectedType(type)
-        setLocalDefaultDays(type.default_due_days != null ? String(type.default_due_days) : '')
         setLocalSiblings(siblings.map((t) => ({
             id:                t.id,
             name:              t.name,
@@ -220,13 +213,6 @@ export default function OnboardingHome() {
         setSaving(true)
         setSaveError('')
         try {
-            // PATCH del TaskType si cambió defaultDueDays
-            const parsedDays = localDefaultDays !== '' ? Number(localDefaultDays) : null
-            const originalDays = selectedType.default_due_days ?? null
-            if (parsedDays !== originalDays) {
-                await updateTaskType(selectedType.id, { defaultDueDays: parsedDays })
-            }
-
             // PATCH modificadas
             const toUpdate = localSiblings.filter((t) => !t._isNew && t._modified && !t._deleted)
             await Promise.all(toUpdate.map((t) =>
@@ -270,14 +256,17 @@ export default function OnboardingHome() {
         }
     }
 
+    // ── Navegar a las asignaciones del template seleccionado ──
+    const handleViewAssignments = () => {
+        const first = tasks.find((t) => t.taskType?.id === selectedType.id)
+        if (first) navigate(`/onboarding-template/${first.id}`)
+    }
+
     // ── Contadores derivados ──────────────────────────────────
     const activeCount  = localSiblings.filter((t) => !t._deleted).length
     const deletedCount = localSiblings.filter((t) => t._deleted).length
     const canAddMore   = activeCount < MAX_TASKS
-    const parsedDefaultDays = localDefaultDays !== '' ? Number(localDefaultDays) : null
-    const daysChanged   = parsedDefaultDays !== (selectedType?.default_due_days ?? null)
     const hasChanges    =
-        daysChanged ||
         localSiblings.some((t) => t._modified || t._deleted || (t._isNew && t.name.trim() !== ''))
 
     /* ── JSX ─────────────────────────────────────────────────── */
@@ -293,373 +282,62 @@ export default function OnboardingHome() {
             {/* Split layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
-                {/* ── Izquierda: lista de plantillas (TaskTypes) ── */}
-                <div className="bg-white rounded-xl border border-brand-light shadow-sm overflow-hidden">
+                <TemplateListPanel
+                    taskTypes={taskTypes}
+                    filteredTypes={filteredTypes}
+                    isLoading={isLoading}
+                    isError={isError}
+                    filterName={filterName}
+                    setFilterName={setFilterName}
+                    filterSub={filterSub}
+                    setFilterSub={setFilterSub}
+                    typeNames={typeNames}
+                    subTypes={subTypes}
+                    selectedType={selectedType}
+                    onSelectType={handleSelectType}
+                    togglingId={togglingId}
+                    onToggleProtected={handleToggleProtected}
+                    onRequestDelete={setDeleteIntent}
+                />
 
-                    <div className="px-5 py-3.5 border-b border-brand-light bg-brand-pale/40 flex flex-col gap-3">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                            Plantillas ({isLoading ? '…' : filteredTypes.length})
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <select
-                                value={filterName}
-                                onChange={(e) => { setFilterName(e.target.value); setFilterSub('') }}
-                                className={inputCls}
-                            >
-                                <option value="">Todos los tipos</option>
-                                {typeNames.map((n) => <option key={n} value={n}>{n}</option>)}
-                            </select>
-                            <select
-                                value={filterSub}
-                                onChange={(e) => setFilterSub(e.target.value)}
-                                disabled={!filterName || subTypes.length === 0}
-                                className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed`}
-                            >
-                                <option value="">Todos los subtipos</option>
-                                {subTypes.map((s) => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    {isLoading ? (
-                        <div className="divide-y divide-brand-light">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                                <div key={i} className="px-5 py-4 animate-pulse flex justify-between">
-                                    <div className="space-y-1.5 flex-1">
-                                        <div className="h-3.5 bg-slate-200 rounded w-1/2" />
-                                        <div className="h-3 bg-slate-200 rounded w-1/4" />
-                                    </div>
-                                    <div className="h-5 w-8 bg-slate-200 rounded-full" />
-                                </div>
-                            ))}
-                        </div>
-                    ) : isError ? (
-                        <p className="px-5 py-10 text-center text-sm text-red-400">Error al cargar las plantillas.</p>
-                    ) : filteredTypes.length === 0 ? (
-                        <div className="px-5 py-10 text-center">
-                            <p className="text-sm text-slate-500">
-                                {taskTypes.length === 0
-                                    ? 'No hay plantillas todavía.'
-                                    : 'No hay plantillas para esos filtros.'}
-                            </p>
-                            {(filterName || filterSub) && (
-                                <button
-                                    onClick={() => { setFilterName(''); setFilterSub('') }}
-                                    className="mt-3 text-xs font-medium text-brand hover:text-brand-hover transition-colors cursor-pointer"
-                                >
-                                    Limpiar filtros
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <ul className="divide-y divide-brand-light">
-                            {filteredTypes.map((type) => (
-                                <li
-                                    key={type.id}
-                                    onClick={() => handleSelectType(type)}
-                                    className={`px-5 py-4 flex items-center justify-between gap-3 cursor-pointer transition-colors
-                                        hover:bg-brand-pale/60 group
-                                        ${selectedType?.id === type.id ? 'bg-brand-pale border-l-4 border-brand' : ''}`}
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-semibold text-slate-700 truncate">{type.name}</p>
-                                        {type.sub_type && (
-                                            <p className="text-xs text-slate-400 mt-0.5">{type.sub_type}</p>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <span className="text-xs font-semibold text-brand bg-brand-pale px-2 py-0.5 rounded-full">
-                                            {type.taskCount} {type.taskCount === 1 ? 'tarea' : 'tareas'}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleToggleProtected(e, type)}
-                                            disabled={isSystemTemplate(type) || togglingId === type.id}
-                                            className={`p-0.5 rounded transition-all ${
-                                                isSystemTemplate(type)
-                                                    ? 'text-slate-300 cursor-not-allowed'
-                                                    : type.is_protected
-                                                        ? 'text-slate-400 hover:text-brand cursor-pointer'
-                                                        : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-brand cursor-pointer'
-                                            } disabled:opacity-100`}
-                                            title={
-                                                isSystemTemplate(type)
-                                                    ? 'Template protegido por el sistema'
-                                                    : type.is_protected
-                                                        ? 'Quitar protección'
-                                                        : 'Proteger template (no se podrá eliminar)'
-                                            }
-                                        >
-                                            {type.is_protected ? <Lock size={14} /> : <Unlock size={14} />}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => { e.stopPropagation(); if (!type.is_protected) setDeleteIntent(type) }}
-                                            disabled={type.is_protected}
-                                            className={`p-0.5 rounded transition-all ${
-                                                type.is_protected
-                                                    ? 'text-slate-200 cursor-not-allowed'
-                                                    : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 cursor-pointer'
-                                            }`}
-                                            title={type.is_protected ? 'Template protegido — no se puede eliminar' : 'Eliminar template'}
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                        <ChevronRight size={15} className="text-slate-300" />
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-
-                {/* ── Derecha: editor de plantilla ── */}
-                <div className="bg-white rounded-xl border border-brand-light shadow-sm">
-                    {!selectedType ? (
-                        <div className="flex items-center justify-center px-6 py-24 text-center">
-                            <div>
-                                <p className="text-sm font-medium text-slate-500">Seleccioná una plantilla</p>
-                                <p className="text-xs text-slate-400 mt-1">Hacé clic en una fila para ver y editar sus tareas.</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleSave} className="flex flex-col">
-
-                            {/* Header del panel */}
-                            <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-brand-light">
-                                <div className="min-w-0">
-                                    <h2 className="text-sm font-bold text-slate-800">{selectedType.name}</h2>
-                                    {selectedType.sub_type && (
-                                        <p className="text-xs text-slate-400 mt-0.5">{selectedType.sub_type}</p>
-                                    )}
-                                    <div className="flex items-center gap-1.5 mt-2">
-                                        <CalendarClock size={12} className="text-slate-400 shrink-0" />
-                                        <span className="text-xs text-slate-400">Vence en</span>
-                                        <input
-                                            type="number"
-                                            min={1}
-                                            value={localDefaultDays}
-                                            onChange={(e) => setLocalDefaultDays(e.target.value)}
-                                            placeholder="—"
-                                            className="w-14 text-center rounded border border-brand-light px-1.5 py-0.5
-                                                       text-xs text-slate-700 outline-none bg-white
-                                                       focus:border-brand focus:ring-1 focus:ring-brand/20"
-                                        />
-                                        <span className="text-xs text-slate-400">días desde contratación</span>
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const first = tasks.find((t) => t.taskType?.id === selectedType.id)
-                                        if (first) navigate(`/onboarding-template/${first.id}`)
-                                    }}
-                                    className="text-xs text-brand hover:text-brand-hover font-medium transition-colors cursor-pointer shrink-0"
-                                >
-                                    Ver asignaciones →
-                                </button>
-                            </div>
-
-                            {/* Lista de tareas */}
-                            <div className="px-6 py-4 flex flex-col gap-2">
-                                <div className="flex items-center justify-between mb-1">
-                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                        Tareas ({activeCount}/{MAX_TASKS}{deletedCount > 0 && `, ${deletedCount} a eliminar`})
-                                    </p>
-                                    <p className="text-xs text-slate-400">días est.</p>
-                                </div>
-
-                                {localSiblings.map((t) => {
-                                    const key = getKey(t)
-                                    return t._deleted ? (
-                                        /* Tarea marcada para eliminar */
-                                        <div key={key} className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg border border-red-100">
-                                            <p className="flex-1 text-xs text-red-400 line-through truncate">{t.name}</p>
-                                            <button
-                                                type="button"
-                                                onClick={() => undoDelete(key)}
-                                                className="text-slate-400 hover:text-brand transition-colors cursor-pointer shrink-0"
-                                                title="Deshacer"
-                                            >
-                                                <RotateCcw size={14} />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        /* Tarea editable */
-                                        <div key={key} className="flex items-center gap-2">
-                                            <input
-                                                value={t.name}
-                                                onChange={(e) => updateSibling(key, 'name', e.target.value)}
-                                                placeholder="Nombre de la tarea"
-                                                className={`${inputCls} flex-1`}
-                                                required={!t._isNew}
-                                                autoFocus={t._isNew && getKey(t) === lastAddedKey}
-                                            />
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                <input
-                                                    type="number"
-                                                    value={t.estimatedDuration}
-                                                    onChange={(e) => updateSibling(key, 'estimatedDuration', e.target.value)}
-                                                    min={0}
-                                                    placeholder="—"
-                                                    className={durationCls}
-                                                />
-                                                <Clock size={11} className="text-slate-300" />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => markDeleted(key)}
-                                                className="text-slate-300 hover:text-red-400 transition-colors cursor-pointer shrink-0"
-                                                title={t._isNew ? 'Cancelar' : 'Eliminar tarea'}
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
-                                        </div>
-                                    )
-                                })}
-
-                                {/* Botón agregar */}
-                                {canAddMore ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleAddNewTask}
-                                        className="flex items-center gap-1.5 text-xs text-brand hover:text-brand-hover
-                                                   font-medium transition-colors cursor-pointer mt-1 w-fit"
-                                    >
-                                        <PlusCircle size={14} />
-                                        Agregar tarea
-                                    </button>
-                                ) : (
-                                    <p className="text-xs text-slate-400 mt-1">
-                                        Límite de {MAX_TASKS} tareas por plantilla alcanzado.
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Error */}
-                            {saveError && (
-                                <div className="mx-6 mb-4">
-                                    <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-                                        {saveError}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Footer */}
-                            <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-brand-light">
-                                <button
-                                    type="button"
-                                    onClick={handleCancelEdit}
-                                    className="text-sm font-medium text-slate-500 hover:text-slate-700 px-4 py-2.5
-                                               rounded-lg hover:bg-brand-pale transition-colors cursor-pointer"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={saving || !hasChanges}
-                                    className="bg-brand hover:bg-brand-hover text-white text-sm font-semibold
-                                               px-5 py-2.5 rounded-lg transition-colors cursor-pointer
-                                               disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {saving ? 'Guardando...' : 'Guardar cambios'}
-                                </button>
-                            </div>
-
-                        </form>
-                    )}
-                </div>
+                <TemplateEditorPanel
+                    selectedType={selectedType}
+                    localSiblings={localSiblings}
+                    lastAddedKey={lastAddedKey}
+                    activeCount={activeCount}
+                    deletedCount={deletedCount}
+                    canAddMore={canAddMore}
+                    saving={saving}
+                    saveError={saveError}
+                    hasChanges={hasChanges}
+                    onSave={handleSave}
+                    onCancel={handleCancelEdit}
+                    onViewAssignments={handleViewAssignments}
+                    onAddNewTask={handleAddNewTask}
+                    onUpdateSibling={updateSibling}
+                    onMarkDeleted={markDeleted}
+                    onUndoDelete={undoDelete}
+                />
 
             </div>
 
             {/* ── Modal: cambios sin guardar ────────────────────── */}
             {discardIntent && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm"
-                    onClick={() => setDiscardIntent(null)}
-                >
-                    <div
-                        className="bg-white rounded-2xl border border-brand-light shadow-xl w-full max-w-sm mx-4 p-6"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <h3 className="text-base font-bold text-slate-800 mb-1">¿Descartar cambios?</h3>
-                        <p className="text-sm text-slate-400 mb-5">
-                            Tenés cambios sin guardar en{' '}
-                            <span className="font-semibold text-slate-600">{selectedType?.name}</span>.
-                            Si continuás se perderán.
-                        </p>
-                        <div className="flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setDiscardIntent(null)}
-                                className="text-sm font-medium text-slate-500 hover:text-slate-700
-                                           px-4 py-2.5 rounded-lg hover:bg-brand-pale transition-colors cursor-pointer"
-                            >
-                                Seguir editando
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmDiscard}
-                                className="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold
-                                           px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
-                            >
-                                Sí, descartar
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <DiscardChangesModal
+                    currentTypeName={selectedType?.name}
+                    onCancel={() => setDiscardIntent(null)}
+                    onConfirm={handleConfirmDiscard}
+                />
             )}
 
             {/* ── Modal: confirmar borrado de template ──────────── */}
             {deleteIntent && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm"
-                    onClick={() => !deleting && setDeleteIntent(null)}
-                >
-                    <div
-                        className="bg-white rounded-2xl border border-brand-light shadow-xl w-full max-w-sm mx-4 p-6"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                                <AlertTriangle size={16} className="text-red-400" />
-                            </div>
-                            <h3 className="text-base font-bold text-slate-800">Eliminar template</h3>
-                        </div>
-                        <p className="text-sm text-slate-500 mb-1">
-                            Vas a eliminar{' '}
-                            <span className="font-semibold text-slate-700">"{deleteIntent.name}"</span>
-                            {deleteIntent.sub_type && (
-                                <span className="text-slate-400"> — {deleteIntent.sub_type}</span>
-                            )}.
-                        </p>
-                        <p className="text-xs text-slate-400 mb-5">
-                            Los empleados que ya tenían tareas de este template las conservarán en su historial.
-                        </p>
-                        <div className="flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setDeleteIntent(null)}
-                                disabled={deleting}
-                                className="text-sm font-medium text-slate-500 hover:text-slate-700
-                                           px-4 py-2.5 rounded-lg hover:bg-brand-pale transition-colors
-                                           cursor-pointer disabled:opacity-40"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmDelete}
-                                disabled={deleting}
-                                className="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold
-                                           px-5 py-2.5 rounded-lg transition-colors cursor-pointer
-                                           disabled:opacity-40"
-                            >
-                                {deleting ? 'Eliminando…' : 'Sí, eliminar'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <DeleteTemplateModal
+                    template={deleteIntent}
+                    deleting={deleting}
+                    onCancel={() => setDeleteIntent(null)}
+                    onConfirm={handleConfirmDelete}
+                />
             )}
 
         </main>
