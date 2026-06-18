@@ -2,7 +2,7 @@ const cron    = require('node-cron');
 const { Op }  = require('sequelize');
 const { EmployeeTask, Task, Employee, Person, Team, Alert } = require('./sequelize');
 
-const ACTIVE_STATUSES = ['ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'SUBMITED'];
+const ACTIVE_STATUSES = ['ENROLLED', 'IN_PROGRESS', 'SUBMITTED'];
 
 async function checkOverdueTasks() {
 	const today = new Date();

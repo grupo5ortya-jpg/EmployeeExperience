@@ -14,18 +14,18 @@ import EmployeeAvatar from '../employeeList/components/EmployeeAvatar'
 const STATUS_LABEL = {
     ENROLLED:    'Inscripto',
     IN_PROGRESS: 'En progreso',
-    SUBMITED:    'Entregado',
+    SUBMITTED:   'Entregado',
     COMPLETED:   'Completado',
     DROPPED:     'Abandonado',
 }
 const STATUS_STYLE = {
     ENROLLED:    'bg-sky-100 text-sky-600',
     IN_PROGRESS: 'bg-amber-100 text-amber-600',
-    SUBMITED:    'bg-violet-100 text-violet-600',
+    SUBMITTED:   'bg-violet-100 text-violet-600',
     COMPLETED:   'bg-green-100 text-green-600',
     DROPPED:     'bg-slate-100 text-slate-500',
 }
-const STATUS_OPTS = ['ENROLLED', 'IN_PROGRESS', 'SUBMITED', 'COMPLETED', 'DROPPED']
+const STATUS_OPTS = ['ENROLLED', 'IN_PROGRESS', 'SUBMITTED', 'COMPLETED', 'DROPPED']
 
 const inputCls = `w-full rounded-lg border border-brand-light px-3.5 py-2 text-sm text-slate-700
   placeholder:text-slate-400 outline-none bg-white
@@ -246,7 +246,7 @@ export default function TemplateDetailPage() {
                 {task.estimatedDuration != null && (
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-brand bg-brand-pale px-3 py-1.5 rounded-lg shrink-0">
                         <Clock size={13} />
-                        {task.estimatedDuration} días estimados
+                        Vence en {task.estimatedDuration} días
                     </div>
                 )}
             </div>
