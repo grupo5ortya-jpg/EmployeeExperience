@@ -85,13 +85,13 @@ El home del empleado muestra un widget "Mi rendimiento 360°" con el gráfico de
 ## ÉPICA 2 — Feedback Continuo
 
 ### EXP-201 · Enviar y recibir feedback entre empleados
-**Tipo:** Story | **Rol:** Colaborador, Líder
+**Tipo:** Story | **Rol:** Colaborador
 
 **Descripción:**  
 Los empleados pueden enviarse reconocimientos y sugerencias de forma continua (no vinculado a ciclos 360°). El feedback puede ser anónimo (las sugerencias son siempre anónimas).
 
 **Acceptance Criteria:**
-- [ ] Solo visible para Colaborador y Líder (Talento excluido del sidebar Y de las rutas)
+- [ ] Solo visible para Colaborador (Talento y Líder excluidos del sidebar Y de las rutas — actualizado 2026-06-15, era Colaborador+Líder originalmente)
 - [ ] Tabs "Recibidos" / "Enviados" en la página principal
 - [ ] Tarjetas agrupadas por tipo: Reconocimiento (verde) y Sugerencia (ámbar)
 - [ ] Modal de creación con: tipo, destinatario (combobox buscable), título, mensaje, opción anónimo
@@ -102,7 +102,7 @@ Los empleados pueden enviarse reconocimientos y sugerencias de forma continua (n
 
 **Rutas:** `/continuous-feedback`, `/continuous-feedback/:id`  
 **Endpoints:** `GET /continuous-feedback/received/:employeeId`, `GET /continuous-feedback/sent/:employeeId`, `POST /continuous-feedback`  
-**Restricción de ruta:** `RoleRoute allowed={['Colaborador', 'Líder']}` en `App.jsx`
+**Restricción de ruta:** `RoleRoute allowed={['Colaborador']}` en `App.jsx`
 
 **Nota técnica — bug resuelto:** Sequelize generaba JOINs en orden incorrecto cuando `EMPLOYEE_MINI_INCLUDE` era el mismo objeto compartido entre los includes de `emitter` y `receiver`. Solución: objetos separados para cada include + `subQuery: false` en los `findAll`.
 
@@ -111,7 +111,7 @@ Los empleados pueden enviarse reconocimientos y sugerencias de forma continua (n
 ---
 
 ### EXP-202 · Widget de feedbacks recibidos en Home
-**Tipo:** Story | **Rol:** Colaborador, Líder
+**Tipo:** Story | **Rol:** Colaborador
 
 **Descripción:**  
 El home del empleado muestra un panel "Feedbacks recibidos" con contador y las últimas 6 tarjetas de feedback continuo recibido. Cada tarjeta navega a `/continuous-feedback`.
@@ -122,6 +122,7 @@ El home del empleado muestra un panel "Feedbacks recibidos" con contador y las �
 - [ ] Anónimos muestran "Anónimo" como remitente
 - [ ] Link "Ver todos →" a la página completa
 - [ ] Estado vacío con mensaje descriptivo
+- [ ] Solo se muestra en el dashboard de Colaborador (removido del de Líder el 2026-06-15 — el feedback continuo dejó de ser una dinámica de Líder)
 
 ---
 
