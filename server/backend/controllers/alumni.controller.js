@@ -1,9 +1,9 @@
 const { Op } = require('sequelize');
 const {
 	Employee, Person, User, Role,
-	AlumniProfile, EmployeeSkill, Skill, Alert,
+	AlumniProfile, EmployeeSkill, Skill, Alert, EmployeeTask,
 } = require('../connection/sequelize');
-const { ROLE } = require('../utils/constants/models.constants.js');
+const { ROLE, EMPLOYEE_TASK } = require('../utils/constants/models.constants.js');
 
 const ALUMNI_INCLUDE = (personWhere) => [
 	{ model: Person, as: 'person', required: true, where: personWhere, attributes: ['first_name', 'last_name', 'document_number'] },
@@ -133,6 +133,27 @@ const rehireAlumni = async (req, res, next) => {
 
 		// Dispara el hook syncEmployeeStatus de User: Employee.status -> ACTIVE
 		await user.update({ role_id: colaboradorRole.id });
+
+		// Tareas que quedaron pendientes del paso por offboarding (el checklist nunca
+		// completado, o tareas de otros templates marcadas vencidas a propósito al irse)
+		// ya no aplican — se archivan (DROPPED) automáticamente. MyTasks.jsx ya agrupa los
+		// templates 100% DROPPED en "Archivados" (colapsado, sin acción), sin que el
+		// colaborador tenga que archivar nada a mano.
+		await EmployeeTask.update(
+			{ status: EMPLOYEE_TASK.STATUS_DROPPED },
+			{
+				where: {
+					employee_id: employeeId,
+					status: {
+						[Op.in]: [
+							EMPLOYEE_TASK.STATUS_ENROLLED,
+							EMPLOYEE_TASK.STATUS_IN_PROGRESS,
+							EMPLOYEE_TASK.STATUS_SUBMITTED,
+						],
+					},
+				},
+			},
+		);
 
 		await Alert.create({
 			employee_id: employeeId,

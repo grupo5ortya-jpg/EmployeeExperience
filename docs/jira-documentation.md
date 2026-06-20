@@ -559,15 +559,40 @@ HR mantiene un directorio de ex empleados ("Alumni") para posibles re-contrataci
 **Tipo:** Story | **Rol:** Alumni
 
 **Descripción:**
-Un usuario con rol Alumni accede a una versión mínima y de solo lectura de la plataforma: únicamente "Mi perfil" y, si corresponde, la entrevista de salida pendiente. No tiene acceso a ningún otro módulo del sidebar.
+Un usuario con rol Alumni accede a una versión mínima y de solo lectura de la plataforma: únicamente "Mi perfil" y, si corresponde, su checklist/entrevista de salida pendiente. No tiene acceso a ningún otro módulo del sidebar. **Actualizado 2026-06-19:** el nivel de acceso ahora depende del motivo de salida (`exitType`) — un Alumni despedido (`TERMINATION`) no tuvo checklist ni entrevista asignados (ver EXP-1006), así que tampoco debe ver esas secciones ni seguir recibiendo alertas nuevas.
 
 **Acceptance Criteria:**
-- [ ] El sidebar de Alumni solo muestra "Mi perfil" (resuelve dinámicamente a `/detailemployee/:employeeId`) y "Alertas" — el resto de items mantiene sus `roles` originales y queda oculto
+- [ ] El sidebar de Alumni que **renunció** (`exitType: RESIGNATION`) muestra "Mi perfil", "Mis planes" (checklist) y "Alertas"
+- [ ] El sidebar de Alumni **despedido** (`exitType: TERMINATION`) solo muestra "Mi perfil" — "Mis planes" y "Alertas" quedan ocultos (`Sidebar.jsx`, `HIDDEN_FOR_TERMINATED_ALUMNI`)
 - [ ] `DetailEmployee.jsx` no renderiza el botón "Editar" (ni el flujo de edición) para rol Alumni (`canEdit = authUser?.role !== 'Alumni'`)
-- [ ] El home de Alumni (`AlumniDashboard`) muestra una card "Ver mi perfil" → `/detailemployee/:employeeId` y, si hay una entrevista de salida pendiente, la sección correspondiente
+- [ ] El home de Alumni (`AlumniDashboard`) muestra una card "Ver mi perfil" siempre; el checklist y la entrevista de salida pendiente solo si `exitType !== 'TERMINATION'`
+- [ ] Los crons diarios (`onboardingCronJob.js`, `okrCronJob.js`) no generan alertas nuevas para empleados `INACTIVE` (Alumni) — filtrado por `Employee.status==='ACTIVE'` en el include
 - [ ] `GET /alumni` (HR-only) devuelve 403 para rol Alumni; `GET /employees/:id` (usado por "Mi perfil") devuelve 200 para Alumni
+- [ ] `exitType` viaja en la respuesta de `POST /auth/login` y `GET /auth/me` para usuarios con rol Alumni (`auth.controllers.js#formatUser`), ya que el propio Alumni no puede consultar `GET /offboarding/:employeeId` (Talento-only)
 
 **Ruta:** `/` (Home, branch `role === 'Alumni'`), `/detailemployee/:employeeId` (sin `RoleRoute`, modo solo lectura para Alumni)
+
+---
+
+### EXP-1006 · Filtro renuncia/despido
+**Tipo:** Story | **Rol:** Talento (HR)
+
+**Descripción:**
+Requerimiento del cliente (acta de reunión 2026-06-18): si el motivo de salida es despido, no se debe enviar ninguna comunicación, cuestionario ni checklist al empleado. HR elige el motivo al iniciar el proceso.
+
+**Flujo:**
+1. HR elige "Despido" en el `<select>` "Motivo de salida" de `StartOffboardingModal.jsx` → `POST /offboarding {..., exitType:'TERMINATION'}`
+2. El `EmployeeOffboarding` se crea igual (tracking de HR), pero **no** se bulk-crea el checklist, **no** se crea `Survey`/`SurveyAssignment` de entrevista de salida, **no** se dispara el alert `OFFBOARDING_STARTED`
+3. La transición a Alumni + `AlumniProfile` + el vencimiento de tareas de otros templates ocurren igual que para una renuncia (es una preocupación de acceso, no de comunicación)
+
+**Acceptance Criteria:**
+- [ ] `EmployeeOffboarding.exit_type` (`RESIGNATION`/`TERMINATION`, default `RESIGNATION`)
+- [ ] Con `exitType:'TERMINATION'`: `checklist.total === 0`, `exitInterview === null` en la respuesta de `GET /offboarding/:employeeId`
+- [ ] `OffboardingHome.jsx` muestra columna "Motivo" (badge) y "N/A" en Checklist/Entrevista para despidos; `OffboardingDetailPage.jsx` muestra "No aplica" en vez de listas vacías
+- [ ] Ver EXP-1005 para las restricciones de acceso del Alumni despedido resultante
+
+**Endpoint:** `POST /offboarding {employeeId, lastWorkingDay, rehirable, exitType}`
+**Gotcha conocido:** `formatOffboarding`/`formatUser` buscan el checklist/entrevista/exit_type del **empleado**, no del proceso específico — un empleado boomerang con un offboarding previo sin limpiar puede mostrar datos viejos en un proceso nuevo. No es exclusivo de este filtro, pero es más visible acá. Pendiente de decisión (ver TODOs).
 
 ---
 
@@ -642,6 +667,13 @@ Una auditoría completa de backend + frontend encontró varias rutas de escritur
 | EXP-DEV-07 | Decidir destino de `Asset`/`EmployeeAsset` (modelo + seed completos, sin controllers/rutas/UI) — terminar la feature, dejarla, o borrar modelo+seed+asociaciones | Media |
 | EXP-DEV-08 | Decidir destino de `EmployeeHistory` (los hooks de `Employee` escriben en cada cambio de depto/posición, pero ningún endpoint la expone) — exponer un endpoint de historial o eliminar los hooks | Media |
 | EXP-DEV-09 | Rediseñar el patrón de exclusión manual de `router.js` (ver nota técnica arriba) — unificar en una sola fuente de verdad para evitar que una página nueva con `RoleRoute` quede sin proteger por descuido | Baja |
+| EXP-1005-BUG-01 | ~~`useStartOffboarding` descartaba `rehirable`/`exitType` antes de llegar al backend~~ — Resuelto 2026-06-19, ver EXP-1006 | ~~Alta~~ |
+| EXP-1005-BUG-02 | ~~Crons diarios (`onboardingCronJob.js`, `okrCronJob.js`) generaban alertas para empleados `INACTIVE`/Alumni~~ — Resuelto 2026-06-19, filtrado por `Employee.status==='ACTIVE'` | ~~Alta~~ |
+| EXP-DEV-10 | Auditar otros paths de creación de `Alert` (feedback assignments, continuous feedback, job openings) por si también alcanzan empleados `INACTIVE` — menor riesgo porque suelen ser disparados por acción directa de HR, pero no verificado exhaustivamente | Media |
+| EXP-DEV-11 | `formatOffboarding`/`formatUser` buscan checklist/entrevista/`exitType` por `employee_id` sin scopear por proceso — un empleado boomerang con offboarding previo puede mostrar datos viejos en un proceso nuevo (ver EXP-1006) | Media |
+| EXP-DEV-12 | Implementar previsualización de email antes de enviar para acciones sensibles (paso a Alumni) — bloqueado: el envío de emails reales todavía no existe, solo alertas internas (acta cliente 2026-06-18) | Baja (bloqueado) |
+| EXP-DEV-13 | Migrar los ~30 botones celestes (`bg-brand hover:bg-brand-hover text-white`) repartidos por el frontend a `components/ui/Button.jsx` (variant `primary`) — empezado 2026-06-19 (`AlumniDetailPage.jsx` ya migrado), el resto se va migrando de forma oportunista cuando se toque ese archivo por otra razón, no como barrido único | Baja |
+| EXP-DEV-14 | Adoptar `components/ui/Button.jsx` (variants `ghost`/`danger`) y `components/ui/IconButton.jsx` (nuevo, variants `default`/`danger`/`success`/`reject`) en los botones "Cancelar", destructivos y de ícono-solo (editar/borrar/aprobar/rechazar) que hoy están repetidos en ~20 archivos — mismo criterio de migración oportunista que EXP-DEV-13 | Baja |
 
 ---
 

@@ -1,7 +1,8 @@
 const variants = {
   primary: 'bg-brand hover:bg-brand-hover text-white font-semibold shadow-sm disabled:opacity-60',
   outline: 'border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium',
-  ghost: 'hover:bg-gray-100 text-gray-600 font-medium',
+  ghost:   'text-slate-500 hover:text-slate-700 hover:bg-brand-pale font-medium disabled:opacity-60',
+  danger:  'bg-red-500 hover:bg-red-600 text-white font-semibold shadow-sm disabled:opacity-60',
 }
 
 export default function Button({ children, variant = 'primary', className = '', disabled, type = 'button', onClick }) {

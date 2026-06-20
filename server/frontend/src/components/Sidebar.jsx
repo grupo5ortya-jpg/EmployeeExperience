@@ -39,7 +39,7 @@ const ALL_NAV_ITEMS = [
   { icon: GraduationCap,      label: 'Mi aprendizaje',     to: '/mylearning',        roles: ['Colaborador', 'Líder'] },
   { icon: GraduationCap,      label: 'Aprendizaje',        to: '/learningdashboard', roles: ['Talento'] },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
-  { icon: ClipboardList,      label: 'Mis planes',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
+  { icon: ClipboardList,      label: 'Mis planes',         to: '/mytasks',           roles: ['Colaborador', 'Líder', 'Alumni'] },
   { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },
   { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
   {
@@ -116,13 +116,20 @@ function NavItem({ icon: Icon, label, active, badge, to, children }) {
   )
 }
 
+// Alumni despedido (exitType: 'TERMINATION') no tiene checklist ni entrevista de salida
+// asignados (ver startOffboarding) — "Mis planes" quedaría vacío y "Alertas" no debería
+// recibir nada nuevo (ver fix en onboardingCronJob.js), así que se ocultan ambos.
+const HIDDEN_FOR_TERMINATED_ALUMNI = ['Mis planes', 'Alertas']
+
 export default function Sidebar() {
   const { data: unreadCount = 0 } = useUnreadAlerts()
   const { user } = useSelector((s) => s.auth)
   const role = user?.role ?? ''
+  const isTerminatedAlumni = role === 'Alumni' && user?.exitType === 'TERMINATION'
 
   const navItems = ALL_NAV_ITEMS
     .filter((item) => !item.roles?.length || item.roles.includes(role))
+    .filter((item) => !(isTerminatedAlumni && HIDDEN_FOR_TERMINATED_ALUMNI.includes(item.label)))
     .map((item) => {
       if (item.dynamicBadge) return { ...item, badge: unreadCount }
       if (item.label === 'Mi perfil' && user?.employeeId) {

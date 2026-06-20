@@ -27,7 +27,7 @@ const useInvalidateOffboarding = () => {
 export const useStartOffboarding = () => {
     const invalidate = useInvalidateOffboarding()
     return useMutation({
-        mutationFn: ({ employeeId, lastWorkingDay }) => startOffboarding({ employeeId, lastWorkingDay }),
+        mutationFn: (payload) => startOffboarding(payload),
         onSuccess: invalidate,
     })
 }

@@ -4,9 +4,13 @@ import { User } from 'lucide-react'
 import { usePendingExitInterviews } from '../../../hooks/useExitInterviews'
 import ExitInterviewCard from '../../pulse/components/ExitInterviewCard'
 import ExitInterviewForm from '../../pulse/components/ExitInterviewForm'
+import OffboardingChecklistCard from './OffboardingChecklistCard'
 
 /* ── Vista Alumni ────────────────────────────────────────────── */
-export default function AlumniDashboard({ employeeId }) {
+export default function AlumniDashboard({ employeeId, exitType }) {
+  // Despido: no se le asignó checklist ni entrevista de salida (ver startOffboarding) —
+  // no tiene sentido mostrar esas secciones aunque, por algún dato viejo, hubiera algo.
+  const isTermination = exitType === 'TERMINATION'
   const { data: exitInterviews = [] } = usePendingExitInterviews(employeeId)
   const [activeExitInterview, setActiveExitInterview] = useState(null)
 
@@ -22,8 +26,11 @@ export default function AlumniDashboard({ employeeId }) {
         <p className="text-xs text-slate-400">Consultá tu información, certificaciones y skills</p>
       </Link>
 
-      {/* Entrevista de salida pendiente */}
-      {exitInterviews.length > 0 && (
+      {/* Checklist de salida (template "Offboarding estándad") — no aplica en despido */}
+      {!isTermination && <OffboardingChecklistCard employeeId={employeeId} />}
+
+      {/* Entrevista de salida pendiente — no aplica en despido */}
+      {!isTermination && exitInterviews.length > 0 && (
         <>
           <div className="border-l-4 border-brand pl-4">
             <h2 className="text-base font-bold text-slate-800">Entrevista de salida</h2>

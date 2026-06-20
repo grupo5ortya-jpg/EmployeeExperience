@@ -46,6 +46,7 @@ async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterview
 		initiatedBy:    offboarding.initiated_by,
 		lastWorkingDay: offboarding.last_working_day,
 		rehirable:      offboarding.rehirable,
+		exitType:       offboarding.exit_type,
 		status:         offboarding.status,
 		startedAt:      offboarding.started_at,
 		completedAt:    offboarding.completed_at ?? null,
@@ -79,10 +80,17 @@ async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterview
 
 const startOffboarding = async (req, res, next) => {
 	try {
-		const { employeeId, lastWorkingDay, rehirable } = req.body;
+		const { employeeId, lastWorkingDay, rehirable, exitType, tags } = req.body;
 		if (!employeeId || !lastWorkingDay) {
 			return res.status(400).json({ status: 'fail', message: 'employeeId y lastWorkingDay son requeridos' });
 		}
+
+		// Despido (TERMINATION): sin checklist, sin entrevista de salida, sin alert al empleado —
+		// el proceso se registra igual para tracking de HR, pero no se le envía nada al empleado.
+		const isTermination = exitType === EMPLOYEE_OFFBOARDING.EXIT_TYPE_TERMINATION;
+		const resolvedExitType = isTermination
+			? EMPLOYEE_OFFBOARDING.EXIT_TYPE_TERMINATION
+			: EMPLOYEE_OFFBOARDING.EXIT_TYPE_RESIGNATION;
 
 		const employee = await Employee.findByPk(employeeId);
 		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
@@ -97,19 +105,26 @@ const startOffboarding = async (req, res, next) => {
 			return res.status(409).json({ status: 'fail', message: 'Ya existe un proceso de offboarding en curso para este empleado' });
 		}
 
+		// Despido: no hay checklist/entrevista que esperar, así que el caso se cierra solo en
+		// el mismo momento — Talento no tiene que entrar después a tocar "Finalizar proceso".
+		const now = new Date();
 		const offboarding = await EmployeeOffboarding.create({
 			employee_id:      employeeId,
 			initiated_by:     req.user?.employeeId ?? null,
 			last_working_day: lastWorkingDay,
 			rehirable:        rehirable !== undefined ? !!rehirable : true,
-			status:           EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
+			exit_type:        resolvedExitType,
+			status:           isTermination ? EMPLOYEE_OFFBOARDING.STATUS_COMPLETED : EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
+			completed_at:     isTermination ? now : null,
 		});
 
-		// Checklist: una EmployeeTask por cada Task del TaskType "Offboarding estándad"/Checklist
+		// Checklist: una EmployeeTask por cada Task del TaskType "Offboarding estándad"/Checklist.
+		// En despido no se asignan — el TaskType se sigue resolviendo (findOrCreate) porque
+		// formatOffboarding lo necesita para reportar checklist:{total:0} de forma consistente.
 		const checklistTaskType = await getOffboardingChecklistTaskType();
 		const checklistTasks = await Task.findAll({ where: { task_type_id: checklistTaskType.id } });
 
-		if (checklistTasks.length > 0) {
+		if (!isTermination && checklistTasks.length > 0) {
 			const existingEmployeeTasks = await EmployeeTask.findAll({
 				where: { employee_id: employeeId, task_id: { [Op.in]: checklistTasks.map((t) => t.id) } },
 			});
@@ -129,34 +144,70 @@ const startOffboarding = async (req, res, next) => {
 			}
 		}
 
-		// Entrevista de salida: Survey + SurveyAssignment respondible hasta last_working_day + 30 días
+		// Entrevista de salida: Survey + SurveyAssignment respondible hasta last_working_day + 30 días.
+		// En despido no se genera — sin cuestionario para el empleado.
 		const exitInterviewQuestionType = await getExitInterviewQuestionType();
-		const dueDate = new Date(lastWorkingDay);
-		dueDate.setDate(dueDate.getDate() + OFFBOARDING.EXIT_INTERVIEW_WINDOW_DAYS);
 
-		const survey = await Survey.create({
-			name:              'Entrevista de salida',
-			question_type_id: exitInterviewQuestionType.id,
-			start_date:        new Date(),
-			end_date:          dueDate,
+		if (!isTermination) {
+			const dueDate = new Date(lastWorkingDay);
+			dueDate.setDate(dueDate.getDate() + OFFBOARDING.EXIT_INTERVIEW_WINDOW_DAYS);
+
+			const survey = await Survey.create({
+				name:              'Entrevista de salida',
+				question_type_id: exitInterviewQuestionType.id,
+				start_date:        new Date(),
+				end_date:          dueDate,
+			});
+
+			// assigned_by es parte de la PK compuesta (NOT NULL a nivel DB) — se usa el propio
+			// employee_id para asignaciones generadas por el sistema, igual que el cron de Pulse.
+			await SurveyAssignment.create({
+				survey_id:   survey.id,
+				employee_id: employeeId,
+				assigned_by: employeeId,
+				due_date:    dueDate,
+				status:      SURVEY_ASSIGNMENT.STATUS_PENDING,
+			});
+
+			Alert.create({
+				employee_id: employeeId,
+				type:        'OFFBOARDING_STARTED',
+				message:     'Se inició tu proceso de desvinculación. Revisá tu checklist de salida y completá la entrevista de salida.',
+				status:      'UNREAD',
+			}).catch(console.error);
+		}
+
+		// Transición a Alumni desde el inicio del proceso (no al finalizarlo): cambiar
+		// User.role_id dispara el hook syncEmployeeStatus (Employee.status='INACTIVE',
+		// limpia department_id/position). El empleado completa su checklist y entrevista
+		// de salida ya como Alumni; "Finalizar proceso" queda como cierre formal de HR.
+		const alumniRole = await Role.findOne({ where: { name: ROLE.ALUMNI } });
+		const user = await User.findOne({ where: { employee_id: employeeId } });
+		if (alumniRole && user) {
+			await user.update({ role_id: alumniRole.id });
+		}
+
+		await AlumniProfile.findOrCreate({
+			where:    { employee_id: employeeId },
+			defaults: { employee_id: employeeId, rehirable: offboarding.rehirable, tags: Array.isArray(tags) ? tags : [] },
 		});
 
-		// assigned_by es parte de la PK compuesta (NOT NULL a nivel DB) — se usa el propio
-		// employee_id para asignaciones generadas por el sistema, igual que el cron de Pulse.
-		await SurveyAssignment.create({
-			survey_id:   survey.id,
-			employee_id: employeeId,
-			assigned_by: employeeId,
-			due_date:    dueDate,
-			status:      SURVEY_ASSIGNMENT.STATUS_PENDING,
-		});
-
-		Alert.create({
-			employee_id: employeeId,
-			type:        'OFFBOARDING_STARTED',
-			message:     'Se inició tu proceso de desvinculación. Revisá tu checklist de salida y completá la entrevista de salida.',
-			status:      'UNREAD',
-		}).catch(console.error);
+		// Tareas pendientes de OTROS templates (ej. onboarding) dejan de tener sentido una vez
+		// que el empleado es Alumni — se marcan vencidas (due_date al pasado) en vez de quedar
+		// accionables para siempre en MyTasks/AllAssignmentsPage. No se tocan SUBMITTED/
+		// COMPLETED/DROPPED/REJECTED (ya resueltas).
+		const yesterday = new Date();
+		yesterday.setDate(yesterday.getDate() - 1);
+		await EmployeeTask.update(
+			{ due_date: yesterday },
+			{
+				where: {
+					employee_id: employeeId,
+					status:      { [Op.in]: [EMPLOYEE_TASK.STATUS_ENROLLED, EMPLOYEE_TASK.STATUS_IN_PROGRESS] },
+					task_id:     { [Op.notIn]: checklistTasks.map((t) => t.id) },
+				},
+			},
+		);
 
 		const full = await EmployeeOffboarding.findByPk(offboarding.id, { include: [EMPLOYEE_INCLUDE] });
 		res.status(201).json(await formatOffboarding(full, checklistTaskType.id, exitInterviewQuestionType.id));
@@ -216,22 +267,11 @@ const completeOffboarding = async (req, res, next) => {
 			return res.status(404).json({ status: 'fail', message: 'No hay un proceso de offboarding en curso para este empleado' });
 		}
 
+		// La transición a Alumni ya ocurrió al iniciar el proceso (ver startOffboarding).
+		// Esto es solo el cierre formal del caso por parte de HR.
 		await offboarding.update({
 			status:       EMPLOYEE_OFFBOARDING.STATUS_COMPLETED,
 			completed_at: new Date(),
-		});
-
-		// Transición a Alumni: cambiar User.role_id dispara el hook syncEmployeeStatus
-		// (Employee.status='INACTIVE', limpia department_id/position).
-		const alumniRole = await Role.findOne({ where: { name: ROLE.ALUMNI } });
-		const user = await User.findOne({ where: { employee_id: employeeId } });
-		if (alumniRole && user) {
-			await user.update({ role_id: alumniRole.id });
-		}
-
-		await AlumniProfile.findOrCreate({
-			where:    { employee_id: employeeId },
-			defaults: { employee_id: employeeId, rehirable: offboarding.rehirable, tags: [] },
 		});
 
 		const checklistTaskType = await getOffboardingChecklistTaskType();

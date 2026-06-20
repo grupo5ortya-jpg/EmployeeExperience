@@ -12,6 +12,7 @@ export default function Home() {
   const { user } = useSelector((s) => s.auth)
   const role       = user?.role
   const employeeId = user?.employeeId
+  const exitType   = user?.exitType
 
   return (
     <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 flex flex-col gap-5">
@@ -33,7 +34,7 @@ export default function Home() {
       {role === 'Talento'     && <TalentoDashboard />}
       {role === 'Líder'       && <LiderDashboard employeeId={employeeId} />}
       {role === 'Colaborador' && <ColaboradorDashboard employeeId={employeeId} />}
-      {role === 'Alumni'      && <AlumniDashboard employeeId={employeeId} />}
+      {role === 'Alumni'      && <AlumniDashboard employeeId={employeeId} exitType={exitType} />}
 
       {/* Resumen secundario */}
       {role !== 'Alumni' && (

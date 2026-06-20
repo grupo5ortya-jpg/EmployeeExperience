@@ -10,6 +10,10 @@ const STATUS_SUBMITTED = 'SUBMITTED'
 const STATUS_ENROLLED  = 'ENROLLED'
 const STATUS_DROPPED   = 'DROPPED'
 
+// Mismo TaskType seedeado que usa el backend para el checklist de salida
+// (getOffboardingChecklistTaskType — utils/offboarding.js).
+const OFFBOARDING_CHECKLIST_TASK_TYPE = 'Offboarding estándad'
+
 /* ─── Fila de tarea ──────────────────────────────────────── */
 function TaskRow({ task, onToggle, isUpdating, disabled = false, isOverdue = false }) {
     const isCompleted = task.status === 'COMPLETED'
@@ -68,10 +72,20 @@ function TaskRow({ task, onToggle, isUpdating, disabled = false, isOverdue = fal
 export default function MyTasks() {
     const { user }   = useSelector((s) => s.auth)
     const employeeId = user?.employeeId
+    const isAlumni   = user?.role === 'Alumni'
 
-    const { data: tasks = [], isLoading, isError } = useMyTasks(employeeId)
+    const { data: rawTasks = [], isLoading, isError } = useMyTasks(employeeId)
     const { mutate: updateStatus, isPending }               = useUpdateTaskStatus(employeeId)
     const { mutate: archiveTemplate, isPending: archiving } = useArchiveTemplate(employeeId)
+
+    // Alumni solo ve el template de offboarding — el resto de sus templates previos
+    // (ej. onboarding) quedan vencidos a nivel backend pero no deben listarse acá.
+    const tasks = useMemo(
+        () => isAlumni
+            ? rawTasks.filter((t) => t.task?.taskType?.name === OFFBOARDING_CHECKLIST_TASK_TYPE)
+            : rawTasks,
+        [rawTasks, isAlumni],
+    )
 
     const today = useMemo(() => {
         const d = new Date()

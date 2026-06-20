@@ -33,6 +33,11 @@ module.exports = (sequelize) => {
 				allowNull: false,
 				defaultValue: true,
 			},
+			exit_type: {
+				type: DataTypes.ENUM(...Object.values(EMPLOYEE_OFFBOARDING.EXIT_TYPE)),
+				allowNull: false,
+				defaultValue: EMPLOYEE_OFFBOARDING.EXIT_TYPE_RESIGNATION,
+			},
 			started_at: {
 				type: DataTypes.DATE,
 				allowNull: false,

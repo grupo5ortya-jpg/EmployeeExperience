@@ -1,6 +1,7 @@
 const cron    = require('node-cron');
 const { Op }  = require('sequelize');
 const { EmployeeTask, Task, Employee, Person, Team, Alert } = require('./sequelize');
+const { EMPLOYEE } = require('../utils/constants/models.constants.js');
 
 const ACTIVE_STATUSES = ['ENROLLED', 'IN_PROGRESS', 'SUBMITTED'];
 
@@ -8,6 +9,9 @@ async function checkOverdueTasks() {
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 
+	// required:true en el include de Employee filtra a empleados ACTIVE — un empleado que
+	// pasó a Alumni (INACTIVE) puede tener tareas de otros templates marcadas vencidas a
+	// propósito (ver startOffboarding) solo para que se vean tachadas, no para generar alertas.
 	const overdue = await EmployeeTask.findAll({
 		where: {
 			due_date: { [Op.lt]: today },
@@ -16,10 +20,12 @@ async function checkOverdueTasks() {
 		include: [
 			{ model: Task,     as: 'task',     attributes: ['id', 'name'] },
 			{
-				model:   Employee,
-				as:      'employee',
+				model:      Employee,
+				as:         'employee',
 				attributes: ['id'],
-				include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+				required:   true,
+				where:      { status: EMPLOYEE.STATUS_ACTIVE },
+				include:    [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
 			},
 		],
 	});

@@ -6,15 +6,10 @@
 - $ npm i
 - $ npm run init
 - $ npm run dev
-- colaborador5@example.com	pass5
-
-- Talento: empleados activos, alertas sin leer, ciclos 360° activos, tareas de onboarding pendientes.
 
 - Líder: evaluaciones pendientes de completar, alertas de equipo, tareas del equipo para aprobar, + lista de evaluaciones pendientes con links directos al formulario.
 
 - Colaborador: tareas pendientes, evaluaciones pendientes, encuestas de pulso, alertas + listas detalladas de sus tareas y evaluaciones con links directos.
-
-- Placeholders Objetivos y LMS con card "Próximamente" para cuando se construyan esas features.
 
 - ┌───────────────────────────┬──────────┬───────────────────────────┐
 │           Email           │ Password │            Rol            │
@@ -131,8 +126,12 @@ _TODO_ mails✖️
 * Tiene 30 dias para completar cuestionario ✅
 * existe "mi perfil" y lider/colaborador puede cambiar sus campos personales.✅
 * Mejoria de mentoria por ia, toma scores de feedback 360.✅
+* Al agregar vacante poner nivel jr-sr etc. y eliminar vacante
 
 * en talentos @job-openings borrar skills ✖️
+* renuncia se le mandan tareas e informe,
+
+* Usar buttons de ui y refactorizar
 ------------------------------------------------------------------------
 
 🔴 Auditoría: revisé todo el backend y todo el frontend (rutas, controllers, modelos, componentes, hooks, services) y entregué dos reportes con hallazgos clasificados CRITICAL/MEDIUM/LOW antes de tocar nada.
@@ -146,10 +145,10 @@ Limpieza: 13 archivos huérfanos borrados (3 backend + 10 frontend), verificando
 Refactors: deduplicación en geminiService.js, código muerto removido de server.js, lógica de IA extraída de feedbackAssignment.controllers.js a un service nuevo, y los 3 archivos más grandes del frontend partidos en componentes (OnboardingHome, CreateEmployeeModal, Home.jsx) — todo verificado con build antes de reportar, sin cambiar comportamiento ni estilos.
 
 ----------------------------------------
-
+------------DECIDIR-------------------
 🔴¿Qué hacer con Asset / EmployeeAsset? (feature incompleta — terminarla, dejarla o borrarla)
   ¿Qué hacer con EmployeeHistory? (datos acumulándose sin consumidor — exponer endpoint o eliminar los hooks)
-  ediseñar el patrón de router.js para que no necesite lista manual
+  rediseñar el patrón de router.js para que no necesite lista manual
 
 Asset / EmployeeAsset
 El backend tiene modelos completos, seeders con 135+ líneas de datos y mensajes de error dedicados — alguien invirtió tiempo real en esto. Las opciones son:
@@ -162,8 +161,8 @@ Necesitás saber si esa feature estaba en el roadmap o fue descartada.
 EmployeeHistory
 Los hooks de Employee escriben en esta tabla en cada cambio de departamento/posición, pero ningún endpoint la expone. Las opciones son:
 
-Exponer un endpoint: útil si querés un historial de movimientos del empleado (feature real).
-Eliminar los hooks: si nunca va a usarse, dejar de acumular datos silenciosamente.
+- Exponer un endpoint: útil si querés un historial de movimientos del empleado (feature real).
+- Eliminar los hooks: si nunca va a usarse, dejar de acumular datos silenciosamente.
 Depende de si el historial de carrera es algo que el producto necesita.
 
 router.js

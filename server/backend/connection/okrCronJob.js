@@ -1,14 +1,18 @@
 const cron = require('node-cron');
 const { Op } = require('sequelize');
-const { Okr } = require('./sequelize');
-const { OKR } = require('../utils/constants/models.constants.js');
+const { Okr, Employee } = require('./sequelize');
+const { OKR, EMPLOYEE } = require('../utils/constants/models.constants.js');
 const { recalculateAndNotify } = require('./okrService.js');
 
 // STAGNANT and AT_RISK can emerge purely from elapsed time (no user action), so
 // active objectives need periodic re-evaluation — not just on progress updates.
+// required:true filtra a responsables ACTIVE — si el responsable pasó a Alumni
+// (offboarding), no tiene sentido seguir reevaluando/alertando sobre su OKR
+// (mismo bug que se encontró y arregló en onboardingCronJob.js).
 async function reevaluateActiveOkrs() {
     const active = await Okr.findAll({
-        where: { status: { [Op.ne]: OKR.STATUS_COMPLETED } },
+        where:   { status: { [Op.ne]: OKR.STATUS_COMPLETED } },
+        include: [{ model: Employee, as: 'responsible', attributes: ['id'], required: true, where: { status: EMPLOYEE.STATUS_ACTIVE } }],
     });
 
     for (const okr of active) {

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, X, Plus, GraduationCap, CheckCircle2, XCircle } from 'lucide-react'
+import { ArrowLeft, X, Plus, GraduationCap } from 'lucide-react'
 
 import { useAlumniByEmployee, useUpdateAlumni } from '../../hooks/useAlumni'
 import EmployeeAvatar from '../employeeList/components/EmployeeAvatar'
+import Button from '../../components/ui/Button'
 
 function levelName(skill) {
   const level = skill.levels?.find((l) => l.order === skill.level)
@@ -73,18 +74,24 @@ export default function AlumniDetailPage() {
           </div>
         </div>
 
-        <button
-          onClick={toggleRehirable}
-          disabled={isPending}
-          className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors
-                      cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0
-                      ${alumni.rehirable
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-        >
-          {alumni.rehirable ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-          {alumni.rehirable ? 'Recontratable' : 'No recontratable'}
-        </button>
+        {/* Switch en vez de pill-button: el pill no comunicaba que era clickeable */}
+        <label className="inline-flex items-center gap-2.5 cursor-pointer shrink-0">
+          <input
+            type="checkbox"
+            checked={alumni.rehirable}
+            onChange={toggleRehirable}
+            disabled={isPending}
+            className="sr-only peer"
+          />
+          <div className="w-10 h-5 bg-slate-300 rounded-full relative transition-colors
+                          peer-checked:bg-green-500 peer-disabled:opacity-50
+                          after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                          after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all
+                          peer-checked:after:translate-x-5" />
+          <span className="text-sm font-semibold text-slate-700">
+            {alumni.rehirable ? 'Recontratable' : 'No recontratable'}
+          </span>
+        </label>
       </div>
 
       {/* Tags */}
@@ -116,16 +123,10 @@ export default function AlumniDetailPage() {
                        text-slate-700 placeholder:text-slate-400 outline-none bg-white
                        focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
           />
-          <button
-            onClick={addTag}
-            disabled={isPending || !newTag.trim()}
-            className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white
-                       text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors
-                       cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          <Button onClick={addTag} disabled={isPending || !newTag.trim()}>
             <Plus size={14} />
             Agregar
-          </button>
+          </Button>
         </div>
       </div>
 

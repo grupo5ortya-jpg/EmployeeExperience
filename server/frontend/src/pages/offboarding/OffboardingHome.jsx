@@ -5,14 +5,28 @@ import { Plus, ClipboardList, MessageSquare } from 'lucide-react'
 import { useOffboardings } from '../../hooks/useOffboarding'
 import StartOffboardingModal from './components/StartOffboardingModal'
 
+// "Caso" = cierre administrativo del proceso por parte de HR — independiente del progreso
+// real (checklist/entrevista). Si ambos ya están al 100% pero el caso sigue IN_PROGRESS,
+// se muestra "Listo para cerrar" para que HR sepa que puede finalizarlo.
 const STATUS_LABEL = {
-    IN_PROGRESS: 'En curso',
-    COMPLETED:   'Completado',
+    IN_PROGRESS: 'Abierto',
+    COMPLETED:   'Cerrado',
 }
 
 const STATUS_STYLE = {
     IN_PROGRESS: 'bg-amber-100 text-amber-700',
     COMPLETED:   'bg-green-100 text-green-700',
+}
+
+const READY_TO_CLOSE_STYLE = 'bg-brand-pale text-brand'
+
+function isReadyToClose(o) {
+    if (o.status !== 'IN_PROGRESS') return false
+    // Despido: no hay checklist ni entrevista que esperar — queda listo para cerrar de entrada.
+    if (o.exitType === 'TERMINATION') return true
+    const checklistDone = o.checklist.total > 0 && o.checklist.completed === o.checklist.total
+    const exitDone      = o.exitInterview?.status === 'COMPLETED'
+    return checklistDone && exitDone
 }
 
 const EXIT_INTERVIEW_LABEL = {
@@ -23,6 +37,18 @@ const EXIT_INTERVIEW_LABEL = {
 const EXIT_INTERVIEW_STYLE = {
     PENDING:   'bg-amber-100 text-amber-700',
     COMPLETED: 'bg-green-100 text-green-700',
+}
+
+// Despido (TERMINATION): no se le asigna checklist ni entrevista de salida — se muestra
+// "N/A" en vez de 0/0 para no confundirlo con una renuncia recién iniciada.
+const EXIT_TYPE_LABEL = {
+    RESIGNATION: 'Renuncia',
+    TERMINATION: 'Despido',
+}
+
+const EXIT_TYPE_STYLE = {
+    RESIGNATION: 'bg-slate-100 text-slate-600',
+    TERMINATION: 'bg-red-100 text-red-700',
 }
 
 export default function OffboardingHome() {
@@ -67,14 +93,18 @@ export default function OffboardingHome() {
                             <thead>
                                 <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-brand-light">
                                     <th className="py-2 pr-3">Empleado</th>
+                                    <th className="py-2 pr-3">Motivo</th>
                                     <th className="py-2 pr-3">Último día</th>
                                     <th className="py-2 pr-3">Checklist</th>
                                     <th className="py-2 pr-3">Entrevista de salida</th>
-                                    <th className="py-2 pr-3">Estado</th>
+                                    <th className="py-2 pr-3">Caso</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {offboardings.map((o) => (
+                                {offboardings.map((o) => {
+                                    const readyToClose = isReadyToClose(o)
+                                    const isTermination = o.exitType === 'TERMINATION'
+                                    return (
                                     <tr
                                         key={o.id}
                                         onClick={() => navigate(`/offboarding/${o.employeeId}`)}
@@ -83,17 +113,28 @@ export default function OffboardingHome() {
                                         <td className="py-2.5 pr-3 text-slate-700 font-medium">
                                             {o.employee ? `${o.employee.firstName ?? ''} ${o.employee.lastName ?? ''}`.trim() : '—'}
                                         </td>
+                                        <td className="py-2.5 pr-3">
+                                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${EXIT_TYPE_STYLE[o.exitType] ?? ''}`}>
+                                                {EXIT_TYPE_LABEL[o.exitType] ?? o.exitType}
+                                            </span>
+                                        </td>
                                         <td className="py-2.5 pr-3 text-slate-600">
                                             {o.lastWorkingDay ? new Date(o.lastWorkingDay).toLocaleDateString('es-AR') : '—'}
                                         </td>
                                         <td className="py-2.5 pr-3 text-slate-600">
-                                            <span className="inline-flex items-center gap-1.5">
-                                                <ClipboardList size={13} className="text-slate-400" />
-                                                {o.checklist.completed}/{o.checklist.total}
-                                            </span>
+                                            {isTermination ? (
+                                                <span className="text-slate-400">N/A</span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <ClipboardList size={13} className="text-slate-400" />
+                                                    {o.checklist.completed}/{o.checklist.total}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="py-2.5 pr-3">
-                                            {o.exitInterview ? (
+                                            {isTermination ? (
+                                                <span className="text-slate-400">N/A</span>
+                                            ) : o.exitInterview ? (
                                                 <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${EXIT_INTERVIEW_STYLE[o.exitInterview.status] ?? ''}`}>
                                                     <MessageSquare size={12} />
                                                     {EXIT_INTERVIEW_LABEL[o.exitInterview.status] ?? o.exitInterview.status}
@@ -101,12 +142,13 @@ export default function OffboardingHome() {
                                             ) : '—'}
                                         </td>
                                         <td className="py-2.5 pr-3">
-                                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[o.status] ?? ''}`}>
-                                                {STATUS_LABEL[o.status] ?? o.status}
+                                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${readyToClose ? READY_TO_CLOSE_STYLE : (STATUS_STYLE[o.status] ?? '')}`}>
+                                                {readyToClose ? 'Listo para cerrar' : (STATUS_LABEL[o.status] ?? o.status)}
                                             </span>
                                         </td>
                                     </tr>
-                                ))}
+                                    )
+                                })}
                             </tbody>
                         </table>
                     </div>
