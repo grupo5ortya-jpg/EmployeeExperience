@@ -2,7 +2,7 @@
 
 **Proyecto:** EmployeeExperience HR Platform  
 **Branch activo:** `fullstack-changes`  
-**Última actualización:** 2026-06-18  
+**Última actualización:** 2026-06-20  
 **Stack:** React 19 + Vite + Tailwind v4 / Express 5 + Sequelize 6 + PostgreSQL + Gemini AI
 
 ---
@@ -250,6 +250,30 @@ Los empleados ven las vacantes en estado `open` y pueden postularse con un click
 
 ---
 
+### EXP-603 · Validación y borrado de skills
+**Tipo:** Story | **Rol:** Talento (HR)
+
+**Descripción:**
+Al crear una vacante, HR debe seleccionar al menos una skill requerida (una vacante sin skills no es válida). Además, HR puede borrar una skill creada por error desde el mismo selector, siempre que no esté en uso.
+
+**Flujo:**
+1. `CreateJobOpeningModal.jsx` no permite enviar el formulario si `selectedSkills.length === 0` (botón disabled + mensaje inline)
+2. Backend (`core_ctrl_create_job_opening`) valida lo mismo server-side — 400 si `skills` viene vacío, no solo confiar en la UI
+3. Cada skill en la lista de "Skills requeridas" tiene un botón de borrar (`IconButton` variant `danger`) → `DELETE /skills/:id`
+4. El backend cuenta referencias en `JobOpeningSkill`/`EmployeeSkill`/`Task` antes de borrar — 409 si está en uso, 200 si está libre
+
+**Acceptance Criteria:**
+- [ ] No se puede crear una vacante sin al menos una skill (frontend + backend)
+- [ ] `DELETE /skills/:id` devuelve 409 con `{error, usage:{jobOpenings, employees, courses}}` si la skill tiene alguna referencia
+- [ ] `DELETE /skills/:id` sobre una skill sin uso devuelve 200 y la borra
+- [ ] `POST`/`PATCH`/`DELETE /skills` requieren rol Talento (antes cualquier autenticado podía mutar skills)
+- [ ] El modal muestra `window.confirm` antes de borrar y el mensaje de error del backend si la operación falla
+
+**Endpoints:** `POST /job-openings` (validación), `DELETE /skills/:id` (guard de uso)
+**Nota técnica:** sin `onDelete` definido en `relations.js` para las FKs de `Skill` — antes de este fix, borrar una skill en uso habría tirado un error crudo de violación de FK en vez de un mensaje claro.
+
+---
+
 ## ÉPICA 8 — OKR (Objetivos y Resultados Clave)
 
 ### EXP-801 · Gestión de OKRs (HR)
@@ -468,23 +492,28 @@ HR y Líderes visualizan la lista de empleados con filtros. El detalle incluye i
 **Tipo:** Story | **Rol:** Talento (HR)
 
 **Descripción:**
-HR inicia un proceso de offboarding para un empleado activo, indicando su último día de trabajo. El sistema genera automáticamente un checklist de salida (3 tareas, reutilizando el `TaskType` seedeado "Offboarding estándad") y programa la entrevista de salida digital, con vencimiento a 30 días desde el último día.
+HR inicia un proceso de offboarding para un empleado activo, indicando último día de trabajo, motivo de salida (renuncia/despido, ver EXP-1006), si es recontratable y tags opcionales. Para una renuncia, el sistema genera automáticamente un checklist de salida y programa la entrevista de salida digital (vencimiento a 30 días). El empleado pasa a rol Alumni **en este mismo request** (no al finalizar — rediseñado 2026-06-19).
 
-**Flujo:**
-1. HR selecciona un empleado `ACTIVE` y la fecha de último día → `POST /offboarding`
-2. Se crea `EmployeeOffboarding` (`status: IN_PROGRESS`, `initiated_by` = HR que lo inicia)
-3. Se bulk-crean 3 `EmployeeTask` (checklist: devolver notebook/tarjetas, completar checklist con RRHH, entrevista de salida con RRHH), `due_date = lastWorkingDay`
-4. Se crea `Survey` + `SurveyAssignment` para la entrevista de salida (`question_type: Offboarding/Salida`, `due_date = lastWorkingDay + 30d`)
+**Flujo (renuncia):**
+1. HR completa el modal (empleado `ACTIVE`, último día, motivo, recontratable, tags) → `POST /offboarding`
+2. Se crea `EmployeeOffboarding` (`status: IN_PROGRESS`, `initiated_by` = HR que lo inicia, `exit_type`, `rehirable`)
+3. Se bulk-crean/resetean las `EmployeeTask` del checklist (3-4 tareas según seed), `due_date = lastWorkingDay` — si el empleado ya tenía filas de una ronda anterior (boomerang), se resetean a `ENROLLED` (ver EXP-1002-FIX-01)
+4. Se crea `Survey` + `SurveyAssignment` para la entrevista de salida (`due_date = lastWorkingDay + 30d`)
 5. Alerta `OFFBOARDING_STARTED` para el empleado
+6. Rol → Alumni (dispara `syncEmployeeStatus`: `Employee.status → INACTIVE`, limpia `department_id`/`position`) + `AlumniProfile.findOrCreate` (usa `rehirable`/`tags` del body)
+7. Tareas pendientes de **otros** templates (ej. onboarding sin terminar) se marcan vencidas (`due_date` al pasado) — visual únicamente, vía la lógica de `isOverdue` ya existente
+
+**Flujo (despido, `exitType:'TERMINATION'`):** igual pero se saltan los pasos 3-5 — sin checklist, sin entrevista, sin alert al empleado (ver EXP-1006). El `EmployeeOffboarding` se crea directo en `status:'COMPLETED'` (el caso se cierra solo, no requiere "Finalizar proceso").
 
 **Acceptance Criteria:**
 - [ ] No se permite iniciar un offboarding si ya existe uno `IN_PROGRESS` para ese empleado (409)
-- [ ] El checklist aparece en `/mytasks` del empleado y en `/all-assignments` de HR
+- [ ] El checklist aparece en el Home de Alumni (`OffboardingChecklistCard`) y en `/all-assignments` de HR — ya no en `/mytasks` (sacado del sidebar para Alumni el 2026-06-20)
 - [ ] La entrevista de salida queda programada con vencimiento a 30 días
+- [ ] El rol del empleado pasa a Alumni inmediatamente al iniciar, no al finalizar
 
 **Ruta:** `/offboardinghome` (`RoleRoute allowed={['Talento']}`)
-**Endpoints:** `POST /offboarding`, `GET /offboarding`, `GET /offboarding/:employeeId`
-**Modelo:** `EmployeeOffboarding` (tabla `employee_offboardings`) — `employee_id`, `initiated_by`, `last_working_day`, `status` (`IN_PROGRESS`/`COMPLETED`), `started_at`, `completed_at`
+**Endpoints:** `POST /offboarding {employeeId, lastWorkingDay, exitType, rehirable, tags}`, `GET /offboarding`, `GET /offboarding/:employeeId`
+**Modelo:** `EmployeeOffboarding` (tabla `employee_offboardings`) — `employee_id`, `initiated_by`, `last_working_day`, `status` (`IN_PROGRESS`/`COMPLETED`), `exit_type` (`RESIGNATION`/`TERMINATION`), `rehirable`, `started_at`, `completed_at`
 
 ---
 
@@ -492,20 +521,19 @@ HR inicia un proceso de offboarding para un empleado activo, indicando su últim
 **Tipo:** Story | **Rol:** Talento (HR)
 
 **Descripción:**
-HR visualiza el detalle de un proceso de offboarding (progreso del checklist, estado de la entrevista de salida) y puede finalizarlo manualmente en cualquier momento. Finalizar transiciona al empleado al estado Alumni.
+HR visualiza el detalle de un proceso de offboarding (progreso del checklist, estado de la entrevista de salida, badge de "Caso") y puede finalizarlo manualmente en cualquier momento. **Rediseñado 2026-06-19:** la transición a Alumni ya ocurrió al iniciar el proceso (EXP-1001) — "Finalizar proceso" es ahora puramente el cierre administrativo formal del caso, no toca rol ni `AlumniProfile`. Para despidos, el caso ya nace `COMPLETED` (ver EXP-1006) y este botón ni se muestra.
 
 **Flujo:**
-1. HR entra a `/offboarding/:employeeId` y revisa progreso checklist + estado entrevista
-2. Click "Finalizar proceso" (con confirmación) → `PATCH /offboarding/:employeeId/complete`
-3. `EmployeeOffboarding.status → COMPLETED`, `completed_at = now`
-4. Se busca el `Role` "Alumni" y se actualiza `User.role_id` del empleado → dispara el hook existente `syncEmployeeStatus` (`Employee.status → INACTIVE`, limpia `department_id`/`position`)
-5. `AlumniProfile.findOrCreate` (`rehirable: true, tags: []`)
+1. HR entra a `/offboarding/:employeeId` y revisa progreso checklist + estado entrevista + badge "Caso" (Abierto/Cerrado/"Listo para cerrar" si checklist+entrevista ya están al 100%)
+2. Click "Finalizar proceso" (con confirmación, solo visible si `status === 'IN_PROGRESS'`) → `PATCH /offboarding/:employeeId/complete`
+3. `EmployeeOffboarding.status → COMPLETED`, `completed_at = now` — **nada más**, sin tocar `User.role_id` ni `AlumniProfile`
 
 **Acceptance Criteria:**
 - [ ] Botón "Finalizar proceso" solo visible si `status === IN_PROGRESS`
 - [ ] No exige checklist/entrevista completos — HR puede forzar el cierre
 - [ ] 404 si no hay un proceso `IN_PROGRESS` para ese empleado (también evita doble-completado)
-- [ ] Tras finalizar, el empleado pasa a `INACTIVE` y aparece listado en `/alumnihome`
+- [ ] El empleado ya es `INACTIVE`/Alumni desde que se inició el proceso (EXP-1001) — finalizar no cambia su status
+- [ ] Para despidos, el caso ya está `COMPLETED` desde `POST /offboarding` — no hay botón "Finalizar proceso" que mostrar
 
 **Ruta:** `/offboarding/:employeeId` (`RoleRoute allowed={['Talento']}`)
 **Endpoint:** `PATCH /offboarding/:employeeId/complete`
@@ -548,9 +576,11 @@ HR mantiene un directorio de ex empleados ("Alumni") para posibles re-contrataci
 - [ ] `/alumni/:employeeId` muestra header (avatar, nombre, email, fecha de ingreso), toggle "Recontratable"/"No recontratable", tags (chips removibles + input para agregar) y skills (read-only, con nivel)
 - [ ] `PATCH /alumni/:employeeId` actualiza `rehirable`/`tags`
 - [ ] No se filtra por departamento — `syncEmployeeStatus` limpia `Employee.department_id` al pasar a Alumni, el dato no se persiste en ningún lado (limitación conocida)
+- [ ] Botón "Recontratar" en `/alumnihome` (`window.confirm`) → `PATCH /alumni/:employeeId/rehire` — vuelve el rol a Colaborador (dispara `syncEmployeeStatus`, `Employee.status → ACTIVE`), **dropea automáticamente** toda `EmployeeTask` `ENROLLED`/`IN_PROGRESS`/`SUBMITTED` de ese empleado (checklist de offboarding sin terminar + cualquier otro template pendiente — sin esto, el recontratado vería tareas viejas trabadas en "Mis planes"), y crea alertas `EMPLOYEE_REHIRED` (HR) + `REHIRE_WELCOME` (empleado)
+- [ ] El empleado deja de listarse en `/alumnihome` inmediatamente tras recontratar (perdió el rol Alumni)
 
 **Rutas:** `/alumnihome`, `/alumni/:employeeId` (`RoleRoute allowed={['Talento']}`)
-**Endpoints:** `GET /alumni`, `GET /alumni/:employeeId`, `PATCH /alumni/:employeeId`
+**Endpoints:** `GET /alumni`, `GET /alumni/:employeeId`, `PATCH /alumni/:employeeId`, `PATCH /alumni/:employeeId/rehire`
 **Modelo:** `AlumniProfile` (tabla `alumni_profiles`, 1:1 con `Employee`) — `employee_id` (PK/FK), `rehirable` (default `true`), `tags` (JSONB, default `[]`)
 
 ---
@@ -559,16 +589,18 @@ HR mantiene un directorio de ex empleados ("Alumni") para posibles re-contrataci
 **Tipo:** Story | **Rol:** Alumni
 
 **Descripción:**
-Un usuario con rol Alumni accede a una versión mínima y de solo lectura de la plataforma: únicamente "Mi perfil" y, si corresponde, su checklist/entrevista de salida pendiente. No tiene acceso a ningún otro módulo del sidebar. **Actualizado 2026-06-19:** el nivel de acceso ahora depende del motivo de salida (`exitType`) — un Alumni despedido (`TERMINATION`) no tuvo checklist ni entrevista asignados (ver EXP-1006), así que tampoco debe ver esas secciones ni seguir recibiendo alertas nuevas.
+Un usuario con rol Alumni accede a una versión mínima y de solo lectura de la plataforma: únicamente "Mi perfil" y, si corresponde, su checklist/entrevista de salida pendiente (completable directo desde el Home). No tiene acceso a ningún otro módulo del sidebar. **Actualizado 2026-06-19:** el nivel de acceso ahora depende del motivo de salida (`exitType`) — un Alumni despedido (`TERMINATION`) no tuvo checklist ni entrevista asignados (ver EXP-1006), así que tampoco debe ver esas secciones ni seguir recibiendo alertas nuevas. **Actualizado 2026-06-20:** "Mis planes" se sacó del sidebar para **todo** Alumni (no solo despedido) — quedaba redundante con el checklist ya visible en el Home.
 
 **Acceptance Criteria:**
-- [ ] El sidebar de Alumni que **renunció** (`exitType: RESIGNATION`) muestra "Mi perfil", "Mis planes" (checklist) y "Alertas"
-- [ ] El sidebar de Alumni **despedido** (`exitType: TERMINATION`) solo muestra "Mi perfil" — "Mis planes" y "Alertas" quedan ocultos (`Sidebar.jsx`, `HIDDEN_FOR_TERMINATED_ALUMNI`)
+- [ ] El sidebar de Alumni nunca muestra "Mis planes" (ningún `exitType`) — el checklist se completa desde el Home (`AlumniDashboard`/`OffboardingChecklistCard`), no hay segunda vista
+- [ ] El sidebar de Alumni que **renunció** (`exitType: RESIGNATION`) muestra "Mi perfil" y "Alertas"
+- [ ] El sidebar de Alumni **despedido** (`exitType: TERMINATION`) solo muestra "Mi perfil" — "Alertas" queda oculto (`Sidebar.jsx`, `HIDDEN_FOR_TERMINATED_ALUMNI`)
 - [ ] `DetailEmployee.jsx` no renderiza el botón "Editar" (ni el flujo de edición) para rol Alumni (`canEdit = authUser?.role !== 'Alumni'`)
 - [ ] El home de Alumni (`AlumniDashboard`) muestra una card "Ver mi perfil" siempre; el checklist y la entrevista de salida pendiente solo si `exitType !== 'TERMINATION'`
 - [ ] Los crons diarios (`onboardingCronJob.js`, `okrCronJob.js`) no generan alertas nuevas para empleados `INACTIVE` (Alumni) — filtrado por `Employee.status==='ACTIVE'` en el include
 - [ ] `GET /alumni` (HR-only) devuelve 403 para rol Alumni; `GET /employees/:id` (usado por "Mi perfil") devuelve 200 para Alumni
 - [ ] `exitType` viaja en la respuesta de `POST /auth/login` y `GET /auth/me` para usuarios con rol Alumni (`auth.controllers.js#formatUser`), ya que el propio Alumni no puede consultar `GET /offboarding/:employeeId` (Talento-only)
+- [ ] La ruta `/mytasks` sigue sin `RoleRoute` (acceso por URL directa posible) pero `MyTasks.jsx` sigue filtrando para Alumni a solo el checklist de offboarding — no expone otros templates aunque se visite a mano
 
 **Ruta:** `/` (Home, branch `role === 'Alumni'`), `/detailemployee/:employeeId` (sin `RoleRoute`, modo solo lectura para Alumni)
 
@@ -592,7 +624,43 @@ Requerimiento del cliente (acta de reunión 2026-06-18): si el motivo de salida 
 - [ ] Ver EXP-1005 para las restricciones de acceso del Alumni despedido resultante
 
 **Endpoint:** `POST /offboarding {employeeId, lastWorkingDay, rehirable, exitType}`
-**Gotcha conocido:** `formatOffboarding`/`formatUser` buscan el checklist/entrevista/exit_type del **empleado**, no del proceso específico — un empleado boomerang con un offboarding previo sin limpiar puede mostrar datos viejos en un proceso nuevo. No es exclusivo de este filtro, pero es más visible acá. Pendiente de decisión (ver TODOs).
+**Gotcha conocido — resuelto parcialmente el 2026-06-20:** `formatOffboarding`/`formatUser` buscan el checklist/entrevista/exit_type del **empleado**, no del proceso específico. Para renuncias repetidas (boomerang) ya está resuelto — `startOffboarding` resetea a `ENROLLED` cualquier `EmployeeTask` del checklist que ya existiera de una ronda anterior (ver EXP-1002-FIX-01). Para despido después de una renuncia sin limpiar, la data vieja queda en la tabla pero el frontend nunca la muestra (checklist oculto por completo para `TERMINATION`).
+
+---
+
+### EXP-1002-FIX-01 · Checklist no se resetea para empleados boomerang
+**Tipo:** Bug | **Rol:** Talento (HR), Alumni
+
+**Descripción:**
+Un empleado que renuncia, es recontratado y renuncia de nuevo reutiliza las mismas filas `EmployeeTask` del checklist (PK compuesta `employee_id`+`task_id`, fijas porque los `Task` seedeados son siempre los mismos). `startOffboarding` solo creaba una fila nueva si no existía ninguna para ese `task_id` — si ya existía de la ronda anterior (en cualquier estado), la dejaba intacta, así que el checklist del Home de Alumni aparecía con tareas ya tachadas/vencidas de la ronda vieja en vez de limpio para la ronda nueva.
+
+**Fix:** dentro de `startOffboarding`, después de crear las `EmployeeTask` nuevas, un `EmployeeTask.update({status:'ENROLLED', due_date:lastWorkingDay})` resetea las que ya existían de rondas anteriores. Solo corre para `exitType:'RESIGNATION'` (en despido no hay checklist).
+
+**Verificado end-to-end:** renuncia → completar 1 de 4 tareas (`COMPLETED`) → recontratar (las otras 3 → `DROPPED` automático) → finalizar caso → renunciar de nuevo → las 4 tareas, incluida la que estaba `COMPLETED`, vuelven a `ENROLLED` con la nueva fecha límite.
+
+---
+
+### EXP-1002-FIX-02 · Entrevista de salida se duplicaba para empleados boomerang
+**Tipo:** Bug | **Rol:** Talento (HR), Alumni
+
+**Descripción:**
+Problema simétrico al de EXP-1002-FIX-01 pero con causa opuesta: como cada `startOffboarding` crea un `Survey`/`SurveyAssignment` **nuevo** para la entrevista de salida (sin PK fija que reusar, a diferencia del checklist), un empleado que renuncia, es recontratado y vuelve a renunciar/lo despiden dentro de la ventana de 30 días sin haber contestado la entrevista de la ronda anterior, terminaba con esa `SurveyAssignment` vieja `PENDING` para siempre — se acumulaba junto a la nueva en `GET /exit-interviews/pending`, mostrando la card de "Entrevista de salida" duplicada en `PulseSurveys`/`AlumniDashboard`.
+
+**Fix:** dentro de `startOffboarding`, antes de crear el `Survey`/`SurveyAssignment` nuevo (corre siempre, incluso si la ronda nueva es despido), se buscan `SurveyAssignment` `PENDING` de entrevistas de salida previas de ese empleado y se cancelan con `.destroy()`. `SurveyAssignment` es `paranoid:true` → soft-delete, desaparece automáticamente de cualquier query (incluida `/exit-interviews/pending`) sin necesitar un status nuevo (`CANCELLED`/`EXPIRED`). El `Survey` huérfano subyacente no se borra (inocuo).
+
+**Verificado end-to-end:** ronda 1 (renuncia, sin contestar la entrevista) → caso cerrado → recontratado → ronda 2 (renuncia boomerang) → `GET /exit-interviews/pending` devuelve 1 sola entrevista (la de la ronda 2), no 2.
+
+---
+
+### EXP-1002-FIX-03 · "Recontratar" no cerraba el EmployeeOffboarding colgado
+**Tipo:** Bug | **Rol:** Talento (HR)
+
+**Descripción:**
+Tercer bug de la familia boomerang: `PATCH /alumni/:employeeId/rehire` (botón "Recontratar" en `AlumniHome.jsx`) cambia el rol a Colaborador pero nunca tocaba el registro `EmployeeOffboarding`, que quedaba `IN_PROGRESS` para siempre si HR recontrataba sin haber pasado antes por "Finalizar proceso" en `OffboardingDetailPage` (flujo habitual y válido — no tiene sentido forzar ese orden). Efecto: un intento posterior de `POST /offboarding` para ese mismo empleado quedaba bloqueado con 409 ("Ya existe un proceso de offboarding en curso") aunque el empleado ya fuera Colaborador activo de nuevo.
+
+**Fix:** dentro de `rehireAlumni`, después de cambiar el rol, un `EmployeeOffboarding.update({status:'COMPLETED', completed_at:now}, {where:{employee_id, status:'IN_PROGRESS'}})` cierra cualquier caso colgado — recontratar resuelve el offboarding por definición. El botón "Finalizar proceso" sigue existiendo para el cierre administrativo manual cuando HR lo usa antes de recontratar; este fix solo cubre el camino en que no lo usó.
+
+**Verificado end-to-end:** caso `IN_PROGRESS` colgado → `PATCH .../rehire` → caso pasa a `COMPLETED` automáticamente → segundo `POST /offboarding` para el mismo empleado → 201 (antes 409).
 
 ---
 
@@ -670,10 +738,12 @@ Una auditoría completa de backend + frontend encontró varias rutas de escritur
 | EXP-1005-BUG-01 | ~~`useStartOffboarding` descartaba `rehirable`/`exitType` antes de llegar al backend~~ — Resuelto 2026-06-19, ver EXP-1006 | ~~Alta~~ |
 | EXP-1005-BUG-02 | ~~Crons diarios (`onboardingCronJob.js`, `okrCronJob.js`) generaban alertas para empleados `INACTIVE`/Alumni~~ — Resuelto 2026-06-19, filtrado por `Employee.status==='ACTIVE'` | ~~Alta~~ |
 | EXP-DEV-10 | Auditar otros paths de creación de `Alert` (feedback assignments, continuous feedback, job openings) por si también alcanzan empleados `INACTIVE` — menor riesgo porque suelen ser disparados por acción directa de HR, pero no verificado exhaustivamente | Media |
-| EXP-DEV-11 | `formatOffboarding`/`formatUser` buscan checklist/entrevista/`exitType` por `employee_id` sin scopear por proceso — un empleado boomerang con offboarding previo puede mostrar datos viejos en un proceso nuevo (ver EXP-1006) | Media |
-| EXP-DEV-12 | Implementar previsualización de email antes de enviar para acciones sensibles (paso a Alumni) — bloqueado: el envío de emails reales todavía no existe, solo alertas internas (acta cliente 2026-06-18) | Baja (bloqueado) |
-| EXP-DEV-13 | Migrar los ~30 botones celestes (`bg-brand hover:bg-brand-hover text-white`) repartidos por el frontend a `components/ui/Button.jsx` (variant `primary`) — empezado 2026-06-19 (`AlumniDetailPage.jsx` ya migrado), el resto se va migrando de forma oportunista cuando se toque ese archivo por otra razón, no como barrido único | Baja |
-| EXP-DEV-14 | Adoptar `components/ui/Button.jsx` (variants `ghost`/`danger`) y `components/ui/IconButton.jsx` (nuevo, variants `default`/`danger`/`success`/`reject`) en los botones "Cancelar", destructivos y de ícono-solo (editar/borrar/aprobar/rechazar) que hoy están repetidos en ~20 archivos — mismo criterio de migración oportunista que EXP-DEV-13 | Baja |
+| EXP-DEV-11 | ~~`formatOffboarding`/`formatUser` buscan checklist/entrevista/`exitType` por `employee_id` sin scopear por proceso~~ — Resuelto 2026-06-20 para renuncias repetidas (ver EXP-1002-FIX-01); para despido tras renuncia sin limpiar la data vieja queda pero el frontend nunca la muestra | ~~Media~~ |
+| EXP-DEV-12 | Implementar previsualización de email antes de enviar para acciones sensibles (paso a Alumni) — bloqueado por EXP-DEV-16 (no hay envío de emails reales todavía, solo alertas internas, acta cliente 2026-06-18) | Baja (bloqueado) |
+| EXP-DEV-16 | Implementar el envío de emails reales (hoy todo el sistema de notificación es `Alert` interno in-app, sin integración SMTP/proveedor de email) — desbloquea EXP-DEV-12 y cualquier comunicación que deba llegarle al usuario fuera de la plataforma (alta de cuenta, paso a Alumni, recontratación, vencimientos) | Media |
+| EXP-DEV-13 | Migrar los ~30 botones celestes (`bg-brand hover:bg-brand-hover text-white`) repartidos por el frontend a `components/ui/Button.jsx` (variant `primary`) — en progreso (migrado: `AlumniDetailPage.jsx`, `StartOffboardingModal.jsx`), el resto se va migrando de forma oportunista cuando se toque ese archivo por otra razón, no como barrido único | Baja |
+| EXP-DEV-14 | Adoptar `components/ui/Button.jsx` (variants `ghost`/`danger`) y `components/ui/IconButton.jsx` (nuevo, variants `default`/`danger`/`success`/`reject`) en los botones "Cancelar", destructivos y de ícono-solo (editar/borrar/aprobar/rechazar) que hoy están repetidos en ~20 archivos — en progreso (migrado: `StartOffboardingModal.jsx` Cancelar/tag, `CreateJobOpeningModal.jsx` borrar skill), mismo criterio de migración oportunista que EXP-DEV-13 | Baja |
+| EXP-DEV-15 | Borrar `components/ui/Button.jsx`'s variant `outline` sigue con colores `gray-*` (no `slate-*`/`brand-*` del resto del proyecto) — corregir si/cuando se empiece a usar ese variant | Baja |
 
 ---
 

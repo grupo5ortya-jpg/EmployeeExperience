@@ -227,30 +227,32 @@ export default function AlertCard({ alert }) {
         </div>
       )}
 
-      {/* CTA for report types */}
-      {reportLink && (
-        <Link
-          to={reportLink}
-          onClick={isUnread ? handleMarkRead : undefined}
-          className="self-start flex items-center gap-1.5 text-xs font-semibold text-white
-                     bg-brand hover:bg-brand-hover px-3 py-1.5 rounded-lg transition-colors"
-        >
-          <BarChart2 size={12} />
-          {reportLabel}
-        </Link>
-      )}
+      {/* CTA + mark as read */}
+      {(reportLink || isUnread) && (
+        <div className="flex items-center justify-between gap-2">
+          {reportLink ? (
+            <Link
+              to={reportLink}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white
+                         bg-brand hover:bg-brand-hover px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <BarChart2 size={12} />
+              {reportLabel}
+            </Link>
+          ) : <span />}
 
-      {/* Mark as read */}
-      {isUnread && !reportLink && (
-        <button
-          onClick={handleMarkRead}
-          disabled={isPending}
-          className="self-end flex items-center gap-1.5 text-xs font-medium text-slate-400
-                     hover:text-brand transition-colors disabled:pointer-events-none"
-        >
-          <CheckCheck size={13} />
-          Marcar como leída
-        </button>
+          {isUnread && (
+            <button
+              onClick={handleMarkRead}
+              disabled={isPending}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-400
+                         hover:text-brand transition-colors disabled:pointer-events-none shrink-0"
+            >
+              <CheckCheck size={13} />
+              Marcar como leída
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

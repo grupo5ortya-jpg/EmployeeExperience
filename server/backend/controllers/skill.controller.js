@@ -1,5 +1,5 @@
 
-const { Skill } = require('../connection/sequelize');
+const { Skill, JobOpeningSkill, EmployeeSkill, Task } = require('../connection/sequelize');
 
 
 const core_ctrl_get_skills = async (req, res) => {
@@ -48,6 +48,21 @@ const core_ctrl_delete_skill = async (req, res) => {
 		if (!skill) {
 			return res.status(404).json({ error: 'Skill not found' });
 		}
+
+		// Sin onDelete en relations.js — borrar una skill en uso rompería FKs (Postgres
+		// tiraría un error crudo). Se chequea uso real antes y se devuelve un 409 claro.
+		const [jobOpenings, employees, courses] = await Promise.all([
+			JobOpeningSkill.count({ where: { skill_id: id } }),
+			EmployeeSkill.count({ where: { skill_id: id } }),
+			Task.count({ where: { skill_id: id } }),
+		]);
+		if (jobOpenings > 0 || employees > 0 || courses > 0) {
+			return res.status(409).json({
+				error: 'No se puede eliminar: la skill está en uso',
+				usage: { jobOpenings, employees, courses },
+			});
+		}
+
 		await skill.destroy();
 		res.json({ message: 'Skill deleted successfully' });
 	} catch (error) {

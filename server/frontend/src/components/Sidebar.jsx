@@ -39,7 +39,7 @@ const ALL_NAV_ITEMS = [
   { icon: GraduationCap,      label: 'Mi aprendizaje',     to: '/mylearning',        roles: ['Colaborador', 'Líder'] },
   { icon: GraduationCap,      label: 'Aprendizaje',        to: '/learningdashboard', roles: ['Talento'] },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
-  { icon: ClipboardList,      label: 'Mis planes',         to: '/mytasks',           roles: ['Colaborador', 'Líder', 'Alumni'] },
+  { icon: ClipboardList,      label: 'Mis planes',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
   { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },
   { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
   {
@@ -116,10 +116,13 @@ function NavItem({ icon: Icon, label, active, badge, to, children }) {
   )
 }
 
-// Alumni despedido (exitType: 'TERMINATION') no tiene checklist ni entrevista de salida
-// asignados (ver startOffboarding) — "Mis planes" quedaría vacío y "Alertas" no debería
-// recibir nada nuevo (ver fix en onboardingCronJob.js), así que se ocultan ambos.
-const HIDDEN_FOR_TERMINATED_ALUMNI = ['Mis planes', 'Alertas']
+// Alumni despedido (exitType: 'TERMINATION') no debería seguir recibiendo alertas nuevas
+// (ver fix en onboardingCronJob.js/okrCronJob.js) — se oculta el acceso al historial.
+// "Mis planes" ya no aparece para ningún Alumni (renuncia o despido): el checklist de
+// salida se completa directo desde el Home (AlumniDashboard/OffboardingChecklistCard),
+// que es estrictamente el mismo template — tener el link duplicado en el sidebar no
+// agregaba nada.
+const HIDDEN_FOR_TERMINATED_ALUMNI = ['Alertas']
 
 export default function Sidebar() {
   const { data: unreadCount = 0 } = useUnreadAlerts()

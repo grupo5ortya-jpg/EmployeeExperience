@@ -1,9 +1,9 @@
 const { Op } = require('sequelize');
 const {
 	Employee, Person, User, Role,
-	AlumniProfile, EmployeeSkill, Skill, Alert, EmployeeTask,
+	AlumniProfile, EmployeeSkill, Skill, Alert, EmployeeTask, EmployeeOffboarding,
 } = require('../connection/sequelize');
-const { ROLE, EMPLOYEE_TASK } = require('../utils/constants/models.constants.js');
+const { ROLE, EMPLOYEE_TASK, EMPLOYEE_OFFBOARDING } = require('../utils/constants/models.constants.js');
 
 const ALUMNI_INCLUDE = (personWhere) => [
 	{ model: Person, as: 'person', required: true, where: personWhere, attributes: ['first_name', 'last_name', 'document_number'] },
@@ -133,6 +133,15 @@ const rehireAlumni = async (req, res, next) => {
 
 		// Dispara el hook syncEmployeeStatus de User: Employee.status -> ACTIVE
 		await user.update({ role_id: colaboradorRole.id });
+
+		// Cierra cualquier EmployeeOffboarding IN_PROGRESS colgado: recontratar resuelve el
+		// caso (el empleado ya no es Alumni), no hay motivo para que siga abierto esperando
+		// que HR pase por "Finalizar proceso" a mano. Sin este cierre, un próximo intento de
+		// startOffboarding para este empleado queda bloqueado (409) por un caso fantasma.
+		await EmployeeOffboarding.update(
+			{ status: EMPLOYEE_OFFBOARDING.STATUS_COMPLETED, completed_at: new Date() },
+			{ where: { employee_id: employeeId, status: EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS } },
+		);
 
 		// Tareas que quedaron pendientes del paso por offboarding (el checklist nunca
 		// completado, o tareas de otros templates marcadas vencidas a propósito al irse)

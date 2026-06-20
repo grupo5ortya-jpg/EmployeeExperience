@@ -142,11 +142,38 @@ const startOffboarding = async (req, res, next) => {
 			if (newEmployeeTasks.length > 0) {
 				await EmployeeTask.bulkCreate(newEmployeeTasks);
 			}
+
+			// Empleado boomerang (renunció, lo recontrataron, renuncia de nuevo): la
+			// EmployeeTask del checklist ya existe (misma PK employee_id+task_id) con el
+			// estado del ciclo anterior (COMPLETED/DROPPED/lo que sea) — se resetea a
+			// ENROLLED para este nuevo proceso, no debe arrastrar el checklist viejo.
+			if (existingTaskIds.size > 0) {
+				await EmployeeTask.update(
+					{ status: EMPLOYEE_TASK.STATUS_ENROLLED, due_date: lastWorkingDay },
+					{ where: { employee_id: employeeId, task_id: { [Op.in]: [...existingTaskIds] } } },
+				);
+			}
 		}
 
 		// Entrevista de salida: Survey + SurveyAssignment respondible hasta last_working_day + 30 días.
 		// En despido no se genera — sin cuestionario para el empleado.
 		const exitInterviewQuestionType = await getExitInterviewQuestionType();
+
+		// Empleado boomerang (renunció, lo recontrataron, renuncia/despiden de nuevo dentro de
+		// la ventana de 30 días): a diferencia del checklist (PK fija, se resetea), cada ronda
+		// crea un Survey/SurveyAssignment nuevo — si la ronda anterior quedó PENDING sin
+		// contestar, se cancela (soft delete, SurveyAssignment es paranoid) para que no se
+		// acumule junto a la nueva en /exit-interviews/pending. Corre siempre, incluso si esta
+		// ronda es despido (no debe quedar una entrevista vieja viva para alguien sin acceso).
+		const staleAssignments = await SurveyAssignment.findAll({
+			where: { employee_id: employeeId, status: SURVEY_ASSIGNMENT.STATUS_PENDING },
+			include: [{ model: Survey, as: 'survey', required: true, where: { question_type_id: exitInterviewQuestionType.id } }],
+		});
+		if (staleAssignments.length > 0) {
+			await SurveyAssignment.destroy({
+				where: { employee_id: employeeId, survey_id: { [Op.in]: staleAssignments.map((a) => a.survey_id) } },
+			});
+		}
 
 		if (!isTermination) {
 			const dueDate = new Date(lastWorkingDay);

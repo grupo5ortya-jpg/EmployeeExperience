@@ -55,6 +55,11 @@ const core_ctrl_create_job_opening = async (req, res, next) => {
 			return res.status(400).json({ message: 'Invalid departmentId' });
 		}
 
+		// Una vacante sin skills requeridas no tiene sentido — exigir al menos una.
+		if (!Array.isArray(skills) || skills.length === 0) {
+			return res.status(400).json({ message: 'Se requiere al menos una skill' });
+		}
+
 		const job = await JobOpening.create({
 			title: title,
 			description: description.trim(),

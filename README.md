@@ -104,11 +104,12 @@ STAGNANT:
 
 AT_RISK:
 - Progreso significativamente por debajo del esperado
+-----------------------------------------
 
-No generar alertas duplicadas para el mismo objetivo.
+No generar alertas duplicadas para el mismo objetivo.✅
 
 
-- Martin preguntas:
+
 
 
 - martin agregar:
@@ -116,6 +117,7 @@ No generar alertas duplicadas para el mismo objetivo.
 ---
 
 _TODO_ mails✖️
+_TODO_ seguir revisando TODOS y fallas.
 
 * último módulo offboarding:✅
 * iniciar proceso en offboardingHome rh agregar cambiar estado a recontratable o no✅
@@ -128,8 +130,8 @@ _TODO_ mails✖️
 * Mejoria de mentoria por ia, toma scores de feedback 360.✅
 * Al agregar vacante poner nivel jr-sr etc. y eliminar vacante
 
-* en talentos @job-openings borrar skills ✖️
-* renuncia se le mandan tareas e informe,
+* en talentos @job-openings borrar skills ✅
+* renuncia se le mandan tareas e informe,✅
 
 * Usar buttons de ui y refactorizar
 ------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSkills, createSkill } from '../../../services/skillService';
+import { getSkills, createSkill, deleteSkill } from '../../../services/skillService';
 
 export const useSkills = () => {
     return useQuery({
@@ -13,6 +13,17 @@ export const useCreateSkill = () => {
 
     return useMutation({
         mutationFn: createSkill,
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['skills'] });
+        },
+    });
+};
+
+export const useDeleteSkill = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: deleteSkill,
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['skills'] });
         },

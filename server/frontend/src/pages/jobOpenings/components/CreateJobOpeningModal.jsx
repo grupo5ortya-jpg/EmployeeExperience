@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { X, Save, Trash2, Plus } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { useSkills, useCreateSkill } from '../hooks/useSkills'
+import { useSkills, useCreateSkill, useDeleteSkill } from '../hooks/useSkills'
 import { useDepartments } from '../../../hooks/useDepartments'
 import { useUpdateJobOpening } from '../hooks/useUpdateJobOpening'
 import { useCreateJobOpening } from '../hooks/useCreateJobOpening'
+import IconButton from '../../../components/ui/IconButton'
 import {
     getSkillLevelLabel,
     getSkillLevelStyle,
@@ -32,6 +33,7 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
     const { data: skills = [] } = useSkills()
     const { mutateAsync: createJobOpening } = useCreateJobOpening()
     const { mutateAsync: createSkill, isPending: creatingSkill } = useCreateSkill()
+    const { mutateAsync: deleteSkill, isPending: deletingSkill } = useDeleteSkill()
 
     const [form, setForm] = useState(INITIAL)
     const [selectedSkills, setSelectedSkills] = useState([])
@@ -40,6 +42,7 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
 
     const [newSkill, setNewSkill] = useState(NEW_SKILL_INITIAL)
     const [newSkillError, setNewSkillError] = useState('')
+    const [deleteSkillError, setDeleteSkillError] = useState('')
 
     const availableSkills = useMemo(() => {
         return skills.filter(
@@ -131,11 +134,27 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
         }
     }
 
+    const handleDeleteSkill = async (skill) => {
+        if (!window.confirm(`¿Eliminar la skill "${skill.name}"? Esta acción no se puede deshacer.`)) return
+        setDeleteSkillError('')
+        try {
+            await deleteSkill(skill.id)
+        } catch (err) {
+            setDeleteSkillError(err.response?.data?.error ?? 'No se pudo eliminar la skill.')
+        }
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setLoading(true)
         setError('')
 
+        // Una vacante sin skills requeridas no tiene sentido — exigir al menos una.
+        if (selectedSkills.length === 0) {
+            setError('Tenés que seleccionar al menos una skill requerida.')
+            return
+        }
+
+        setLoading(true)
         try {
             await createJobOpening({
                 ...form,
@@ -204,7 +223,9 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
 
                     {/* SKILLS SELECTOR */}
                     <div className="border rounded p-3">
-                        <p className="text-sm font-semibold mb-2">Skills requeridas</p>
+                        <p className="text-sm font-semibold mb-2">
+                            Skills requeridas <span className="text-red-500">*</span>
+                        </p>
 
                         {/* Crear nueva skill */}
                         <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b">
@@ -241,16 +262,28 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
 
                         <div className="flex flex-wrap gap-2 mb-3">
                             {availableSkills.map((s) => (
-                                <button
-                                    type="button"
-                                    key={s.id}
-                                    onClick={() => addSkill(s)}
-                                    className="text-xs px-2 py-1 border rounded hover:bg-slate-100"
-                                >
-                                    + {s.name}
-                                </button>
+                                <div key={s.id} className="flex items-center border rounded overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => addSkill(s)}
+                                        className="text-xs px-2 py-1 hover:bg-slate-100"
+                                    >
+                                        + {s.name}
+                                    </button>
+                                    <IconButton
+                                        icon={Trash2}
+                                        variant="danger"
+                                        size={12}
+                                        disabled={deletingSkill}
+                                        title="Eliminar skill permanentemente"
+                                        onClick={() => handleDeleteSkill(s)}
+                                    />
+                                </div>
                             ))}
                         </div>
+                        {deleteSkillError && (
+                            <p className="text-xs text-red-500 mb-2">{deleteSkillError}</p>
+                        )}
 
                         <div className="flex flex-col gap-2">
                             {selectedSkills.map((s) => (
@@ -294,8 +327,8 @@ export default function CreateJobOpeningModal({ isOpen, onClose }) {
                     )}
 
                     <button
-                        disabled={loading}
-                        className="bg-brand text-white py-2 rounded"
+                        disabled={loading || selectedSkills.length === 0}
+                        className="bg-brand text-white py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Creando...' : 'Crear vacante'}
                     </button>
