@@ -4,7 +4,7 @@ import { useSelector }                      from 'react-redux'
 import { useQueryClient }                   from '@tanstack/react-query'
 import {
     ArrowLeft, Mail, Phone, MapPin, Briefcase, Building2,
-    User, AlertCircle, Calendar, Pencil, X, Check,
+    User, AlertCircle, Calendar, Pencil, X, Check, Laptop,
 } from 'lucide-react'
 import { useEmployeeById }  from '../../hooks/useEmployeeById'
 import { useDepartments }   from '../../hooks/useDepartments'
@@ -466,6 +466,27 @@ export default function DetailEmployee() {
                 </Section>
 
             </div>
+
+            {/* Activos asignados — solo lectura, sin alta/baja desde la UI (ver EXP-DEV-07) */}
+            {employee.assets?.length > 0 && (
+                <Section title="Activos asignados">
+                    <ul className="divide-y divide-brand-light">
+                        {employee.assets.map((a) => (
+                            <li key={a.id} className="py-2.5 flex items-center gap-3">
+                                <div className="w-7 h-7 rounded-lg bg-brand-pale flex items-center justify-center shrink-0">
+                                    <Laptop size={14} className="text-brand" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-700 leading-tight">{a.name}</p>
+                                    <p className="text-xs text-slate-400 leading-tight mt-0.5">
+                                        {a.serialNumber ? `Serie: ${a.serialNumber} · ` : ''}Desde {formatDate(a.assignmentDate)}
+                                    </p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </Section>
+            )}
 
             <LearningCertifications employeeId={employee.id} />
         </main>

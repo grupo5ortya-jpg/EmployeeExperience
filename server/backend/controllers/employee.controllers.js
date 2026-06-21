@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask, Alert, Team } = require('../connection/sequelize');
+const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask, Alert, Team, EmployeeAsset, Asset } = require('../connection/sequelize');
+const { TASK_TYPE } = require('../utils/constants/models.constants.js');
 
 const DOC_TYPE_MAP = Person.rawAttributes.document_type.values;
 
@@ -23,6 +24,22 @@ const EMPLOYEE_INCLUDE = [
 		as: 'mentor',
 		attributes: ['id', 'position'],
 		include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+	},
+];
+
+// Activos asignados — solo para el detalle (GET /employees/:id), no para el listado completo
+// (evitaría un JOIN extra por cada fila de EmployeeList sin necesidad).
+// separate:true es obligatorio acá: sin esto, este hasMany conviviendo con "leaders" (hasMany a
+// través de Team) en el mismo nivel genera un producto cartesiano que Sequelize no separa bien al
+// hidratar, truncando "assets" a 1 elemento aunque la fila real tenga varios (verificado con un
+// empleado con 6 assets devolviendo solo 1 sin este flag).
+const EMPLOYEE_DETAIL_INCLUDE = [
+	...EMPLOYEE_INCLUDE,
+	{
+		model: EmployeeAsset,
+		as: 'assets',
+		separate: true,
+		include: [{ model: Asset, as: 'asset', attributes: ['id', 'name', 'serial_number'] }],
 	},
 ];
 
@@ -62,6 +79,19 @@ function formatEmployee(e) {
 				position: e.mentor.position ?? null,
 			}
 			: null,
+		// undefined (no e.assets) → no aparece en el JSON; solo viene en el detalle (EMPLOYEE_DETAIL_INCLUDE).
+		// Solo activos sin devolver — lo que HR debería recuperar si el empleado se va.
+		assets: e.assets
+			? e.assets
+				.filter((ea) => !ea.return_date)
+				.map((ea) => ({
+					id: ea.asset_id,
+					name: ea.asset?.name ?? null,
+					serialNumber: ea.asset?.serial_number ?? null,
+					assignmentDate: ea.assignment_date,
+					note: ea.note ?? null,
+				}))
+			: undefined,
 	};
 }
 
@@ -78,6 +108,11 @@ const getAllEmployees = async (req, res, next) => {
 			where.id = { [Op.in]: [req.user.employeeId, ...reports.map((r) => r.collaborator_id)] };
 		}
 
+		// Filtros opcionales — evitan traer el directorio completo cuando el consumidor
+		// solo necesita un departamento/status puntual (ej. participantes de Feedback 360°).
+		if (req.query.departmentId) where.department_id = req.query.departmentId;
+		if (req.query.status)       where.status         = req.query.status;
+
 		const employees = await Employee.findAll({ where, include: EMPLOYEE_INCLUDE });
 		res.json(employees.map(formatEmployee));
 	} catch (err) {
@@ -87,7 +122,7 @@ const getAllEmployees = async (req, res, next) => {
 
 const getEmployeeById = async (req, res, next) => {
 	try {
-		const employee = await Employee.findByPk(req.params.id, { include: EMPLOYEE_INCLUDE });
+		const employee = await Employee.findByPk(req.params.id, { include: EMPLOYEE_DETAIL_INCLUDE });
 		if (!employee) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
 		res.json(formatEmployee(employee));
 	} catch (err) {
@@ -114,7 +149,7 @@ const createEmployee = async (req, res, next) => {
 		email,
 		personalEmail,
 		roleId,
-		taskType
+		taskTypeId
 	} = req.body;
 
 	const t = await sequelize.transaction();
@@ -176,18 +211,16 @@ const createEmployee = async (req, res, next) => {
 		// AUTO ASSIGN ONBOARDING TASKS
 		// =========================================
 
-		const onboardingTasks = await Task.findAll({
-			include: [
-				{
-					model: TaskType,
-					as: 'taskType',
-					where: {
-						name: taskType || 'Onboarding',
-					},
-				},
-			],
-			transaction: t,
-		});
+		// Si HR no elige un template explícito en "Template de plan", se usa el TaskType de
+		// sistema "Onboarding estándar" (TASK_TYPE.SYSTEM_TASK_TYPES) como default — antes esto
+		// buscaba por nombre 'Onboarding' (string que nunca matcheaba ningún TaskType real,
+		// ver EXP-401-BUG), dejando a todo empleado nuevo sin ninguna tarea asignada.
+		const resolvedTaskTypeId = taskTypeId
+			|| (await TaskType.findOne({ where: { name: TASK_TYPE.SYSTEM_TASK_TYPES[0].name }, transaction: t }))?.id;
+
+		const onboardingTasks = resolvedTaskTypeId
+			? await Task.findAll({ where: { task_type_id: resolvedTaskTypeId }, transaction: t })
+			: [];
 
 		if (onboardingTasks.length > 0) {
 
@@ -199,7 +232,7 @@ const createEmployee = async (req, res, next) => {
 					: new Date();
 
 				// si no tiene duración -> 0
-				const duration = task.estimatedDuration ?? 0;
+				const duration = task.estimated_duration ?? 0;
 
 				// sumar días
 				baseDate.setDate(
@@ -360,6 +393,26 @@ const assignLeader = async (req, res, next) => {
 	}
 };
 
+// Marca un activo asignado como devuelto (return_date) — cierra el loop de "Activos a devolver"
+// en OffboardingDetailPage. Sin alta/baja de activos desde la API todavía (ver EXP-DEV-07).
+const returnAsset = async (req, res, next) => {
+	try {
+		const { id, assetId } = req.params;
+
+		const employeeAsset = await EmployeeAsset.findOne({
+			where: { employee_id: id, asset_id: assetId, return_date: null },
+		});
+		if (!employeeAsset) {
+			return res.status(404).json({ status: 'fail', message: 'No se encontró una asignación activa de ese activo para este empleado.' });
+		}
+
+		await employeeAsset.update({ return_date: new Date() });
+		res.json({ id: assetId, returnDate: employeeAsset.return_date });
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
 	getAllEmployees,
 	getEmployeeById,
@@ -368,4 +421,5 @@ module.exports = {
 	deleteEmployee,
 	assignMentor,
 	assignLeader,
+	returnAsset,
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Plus, AlertCircle } from 'lucide-react'
+import { X, Plus, AlertCircle, Laptop } from 'lucide-react'
 import { useEmployees } from '../../../hooks/useEmployees'
 import { useStartOffboarding } from '../../../hooks/useOffboarding'
 import Button from '../../../components/ui/Button'
@@ -20,6 +20,9 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
     const [exitType, setExitType] = useState('RESIGNATION')
     const [tags, setTags] = useState([])
     const [newTag, setNewTag] = useState('')
+    const [assetsToReturn, setAssetsToReturn] = useState([])
+    const [newAssetName, setNewAssetName] = useState('')
+    const [newAssetSerial, setNewAssetSerial] = useState('')
 
     if (!isOpen) return null
 
@@ -33,6 +36,9 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
         setExitType('RESIGNATION')
         setTags([])
         setNewTag('')
+        setAssetsToReturn([])
+        setNewAssetName('')
+        setNewAssetSerial('')
         reset()
         onClose()
     }
@@ -46,11 +52,21 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
 
     const removeTag = (tag) => setTags((prev) => prev.filter((t) => t !== tag))
 
+    const addAsset = () => {
+        const name = newAssetName.trim()
+        if (!name) return
+        setAssetsToReturn((prev) => [...prev, { name, serialNumber: newAssetSerial.trim() }])
+        setNewAssetName('')
+        setNewAssetSerial('')
+    }
+
+    const removeAsset = (index) => setAssetsToReturn((prev) => prev.filter((_, i) => i !== index))
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!employeeId || !lastWorkingDay) return
         try {
-            await start({ employeeId, lastWorkingDay, rehirable: rehirable === 'true', exitType, tags })
+            await start({ employeeId, lastWorkingDay, rehirable: rehirable === 'true', exitType, tags, assets: assetsToReturn })
             handleClose()
         } catch {
             // El error se muestra debajo del formulario vía `error`
@@ -167,6 +183,46 @@ export default function StartOffboardingModal({ isOpen, onClose }) {
                                 className={inputCls}
                             />
                             <Button type="button" variant="ghost" onClick={addTag} disabled={!newTag.trim()} className="shrink-0">
+                                <Plus size={14} />
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Activos a devolver — registro manual, ej. equipo que nunca quedó cargado en el sistema */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className={labelCls}>Activos a devolver (opcional)</label>
+                        {assetsToReturn.length > 0 && (
+                            <ul className="flex flex-col gap-1 mb-1">
+                                {assetsToReturn.map((a, i) => (
+                                    <li key={i} className="flex items-center gap-2 text-xs bg-brand-pale text-brand rounded-lg px-2.5 py-1.5">
+                                        <Laptop size={13} className="shrink-0" />
+                                        <span className="flex-1 truncate">
+                                            {a.name}{a.serialNumber ? ` — Serie: ${a.serialNumber}` : ''}
+                                        </span>
+                                        <button type="button" onClick={() => removeAsset(i)} className="hover:text-brand-hover cursor-pointer shrink-0">
+                                            <X size={12} />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={newAssetName}
+                                onChange={(e) => setNewAssetName(e.target.value)}
+                                placeholder="Ej: Notebook Dell"
+                                className={inputCls}
+                            />
+                            <input
+                                type="text"
+                                value={newAssetSerial}
+                                onChange={(e) => setNewAssetSerial(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAsset() } }}
+                                placeholder="N° de serie (opcional)"
+                                className={`${inputCls} max-w-[40%]`}
+                            />
+                            <Button type="button" variant="ghost" onClick={addAsset} disabled={!newAssetName.trim()} className="shrink-0">
                                 <Plus size={14} />
                             </Button>
                         </div>

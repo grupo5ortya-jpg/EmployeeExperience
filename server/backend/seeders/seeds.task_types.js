@@ -11,7 +11,7 @@ module.exports = async function (sequelize) {
 		{ name: 'Onboarding estándar', sub_type: 'Checklist' },
 		{ name: 'Onboarding contabilidad', sub_type: 'Documentación' },
 		{ name: 'Onboarding líderes', sub_type: 'Integración' },
-		{ name: 'Offboarding estándad', sub_type: 'Checklist' },
+		{ name: 'Offboarding estándar', sub_type: 'Checklist' },
 		{ name: 'Offboarding prueba', sub_type: 'Entrevista de salida' },
 		{ name: 'Aprendizaje - curso', sub_type: 'Curso' },
 		{ name: 'SAP FI (Financial Accounting - Finanzas)', sub_type: TASK_TYPE.TASK_TYPE_SUB_TYPE_CAPACITATION_HARD },

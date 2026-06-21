@@ -6,7 +6,7 @@ const STATUS_ENROLLED  = 'ENROLLED'
 
 // Mismo TaskType seedeado que usa el backend para el checklist de salida
 // (getOffboardingChecklistTaskType — utils/offboarding.js).
-const OFFBOARDING_CHECKLIST_TASK_TYPE = 'Offboarding estándad'
+const OFFBOARDING_CHECKLIST_TASK_TYPE = 'Offboarding estándar'
 
 /* ── Card "Checklist de salida" — tareas del template Offboarding estándar ──
    Mismo patrón de toggle que MyTasks.jsx: click → SUBMITTED (pendiente de

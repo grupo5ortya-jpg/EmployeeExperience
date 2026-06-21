@@ -2,7 +2,7 @@
 const { TaskType, QuestionType } = require('../connection/sequelize');
 const { OFFBOARDING } = require('./constants/models.constants.js');
 
-// TaskType "Offboarding estándad"/Checklist — ya seedeada (ver seeds.tasks.js), se reusa siempre la misma.
+// TaskType "Offboarding estándar"/Checklist — ya seedeada (ver seeds.tasks.js), se reusa siempre la misma.
 // Filtra por name + sub_type porque "Onboarding estándar" también tiene sub_type 'Checklist'.
 async function getOffboardingChecklistTaskType() {
 	const [taskType] = await TaskType.findOrCreate({

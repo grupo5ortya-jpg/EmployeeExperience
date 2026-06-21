@@ -1,7 +1,7 @@
 import apiClient from './apiClient';
 
-export const getEmployees = async () => {
-    const response = await apiClient.get('/employees');
+export const getEmployees = async (params = {}) => {
+    const response = await apiClient.get('/employees', { params });
     return response.data;
 };
 
@@ -28,5 +28,10 @@ export const assignLeader = async (employeeId, leaderId) => {
 
 export const assignMentor = async (employeeId, mentorId) => {
     const response = await apiClient.patch(`/employees/${employeeId}/mentor`, { mentorId });
+    return response.data;
+};
+
+export const returnAsset = async (employeeId, assetId) => {
+    const response = await apiClient.patch(`/employees/${employeeId}/assets/${assetId}/return`);
     return response.data;
 };

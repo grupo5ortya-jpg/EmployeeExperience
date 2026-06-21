@@ -4,7 +4,7 @@ import {
   Home, UserPlus, RotateCcw, Target, BookOpen, GraduationCap,
   ClipboardList, User, Bell, BarChart2, LifeBuoy,
   Settings, Users, MessageSquareHeart, Briefcase,
-  PlusSquare, UserPlus2, SendHorizonal, FileQuestion, LogOut, UserCheck, TrendingUp,
+  PlusSquare, UserPlus2, SendHorizonal, FileQuestion, LogOut, UserCheck, TrendingUp, Activity,
 } from 'lucide-react'
 import { useUnreadAlerts } from '../hooks/useUnreadAlerts'
 
@@ -40,6 +40,7 @@ const ALL_NAV_ITEMS = [
   { icon: GraduationCap,      label: 'Aprendizaje',        to: '/learningdashboard', roles: ['Talento'] },
   { icon: Bell,               label: 'Alertas',            to: '/alerts',            dynamicBadge: true },
   { icon: ClipboardList,      label: 'Mis planes',         to: '/mytasks',           roles: ['Colaborador', 'Líder'] },
+  { icon: Activity,           label: 'Encuestas de pulso', to: '/pulsesurveys',      roles: ['Colaborador', 'Líder'] },
   { icon: RotateCcw,          label: 'Mis evaluaciones',   to: '/myevaluations',     roles: ['Colaborador', 'Líder'] },
   { icon: BarChart2,          label: 'Mis resultados 360°', to: '/employeefeedbackreport', roles: ['Colaborador', 'Líder'] },
   {

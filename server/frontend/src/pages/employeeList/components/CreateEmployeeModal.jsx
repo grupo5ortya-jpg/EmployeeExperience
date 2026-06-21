@@ -8,6 +8,12 @@ import { assignMentor } from '../../../services/employeeService'
 import EmployeeFormStep from './EmployeeFormStep'
 import MentorAssignmentStep from './MentorAssignmentStep'
 
+// TaskTypes de sistema que no son planes de onboarding para un alta nueva (son el
+// checklist de offboarding y el catálogo de cursos de Learning, ver OnboardingHome.jsx) —
+// nunca deben ofrecerse en "Template de plan". Mismo criterio de exclusión que el HIDDEN_TASK_TYPES
+// de OnboardingHome más la exclusión de Offboarding (que ahí sí se gestiona/edita).
+const NON_ONBOARDING_TASK_TYPES = ['Aprendizaje - curso', 'Offboarding estándar']
+
 const INITIAL = {
   firstName: '', lastName: '', documentType: 'DNI', documentNumber: '',
   birthDate: '', position: '', status: 'ACTIVE', departmentId: '',
@@ -29,7 +35,22 @@ export default function CreateEmployeeModal({ isOpen, onClose, onSave, employees
   const [assignError, setAssignError] = useState('')
 
   const { data: roles = [] } = useRoles()
-  const { data: taskTypes = [] } = useTaskTypes()
+  const { data: rawTaskTypes = [] } = useTaskTypes()
+  // Solo planes de onboarding reales: con al menos 1 tarea asignable y de propósito
+  // "alta de empleado" (no el checklist de offboarding ni el catálogo de Learning).
+  const taskTypes = useMemo(
+    () => rawTaskTypes.filter((tt) => tt.taskCount > 0 && !NON_ONBOARDING_TASK_TYPES.includes(tt.name)),
+    [rawTaskTypes],
+  )
+
+  // Default del selector "Template de plan": "Onboarding estándar" pre-seleccionado,
+  // pero el resto de templates sigue disponible para elegir en su lugar.
+  useEffect(() => {
+    if (form.taskTypeId) return
+    const standard = taskTypes.find((tt) => tt.name === 'Onboarding estándar')
+    if (standard) setForm((prev) => ({ ...prev, taskTypeId: standard.id }))
+  }, [taskTypes, form.taskTypeId])
+
   const {
     mutate: fetchSuggestions,
     data: suggestionsData,

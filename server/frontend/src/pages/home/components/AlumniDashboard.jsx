@@ -26,7 +26,7 @@ export default function AlumniDashboard({ employeeId, exitType }) {
         <p className="text-xs text-slate-400">Consultá tu información, certificaciones y skills</p>
       </Link>
 
-      {/* Checklist de salida (template "Offboarding estándad") — no aplica en despido */}
+      {/* Checklist de salida (template "Offboarding estándar") — no aplica en despido */}
       {!isTermination && <OffboardingChecklistCard employeeId={employeeId} />}
 
       {/* Entrevista de salida pendiente — no aplica en despido */}

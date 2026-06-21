@@ -3,7 +3,7 @@ const {
 	Employee, Person, User, Role,
 	EmployeeOffboarding, AlumniProfile, EmployeeTask, Task,
 	Survey, SurveyAssignment, QuestionType,
-	Alert,
+	Alert, EmployeeAsset, Asset,
 } = require('../connection/sequelize');
 const { EMPLOYEE, EMPLOYEE_TASK, EMPLOYEE_OFFBOARDING, OFFBOARDING, SURVEY_ASSIGNMENT, ROLE } = require('../utils/constants/models.constants.js');
 const { getOffboardingChecklistTaskType, getExitInterviewQuestionType } = require('../utils/offboarding.js');
@@ -16,18 +16,25 @@ const EMPLOYEE_INCLUDE = {
 };
 
 // Arma la respuesta para el frontend: checklist (progreso sobre Task/EmployeeTask del TaskType
-// "Offboarding estándad"/Checklist) + estado de la entrevista de salida (Survey/SurveyAssignment
+// "Offboarding estándar"/Checklist) + estado de la entrevista de salida (Survey/SurveyAssignment
 // del QuestionType "Offboarding"/"Salida").
 async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterviewQuestionTypeId) {
-	const checklistTasks = await EmployeeTask.findAll({
-		where: { employee_id: offboarding.employee_id },
-		include: [{
-			model:      Task,
-			as:         'task',
-			attributes: ['id', 'name'],
-			where:      { task_type_id: checklistTaskTypeId },
-		}],
-	});
+	// Despido: nunca se asigna checklist (ver startOffboarding) — se devuelve vacío directo en
+	// vez de consultar por employee_id, que traería el checklist de una ronda de renuncia previa
+	// sin limpiar (EmployeeTask no tiene offboarding_id, no hay forma de scopear por ronda).
+	const isTermination = offboarding.exit_type === EMPLOYEE_OFFBOARDING.EXIT_TYPE_TERMINATION;
+
+	const checklistTasks = isTermination
+		? []
+		: await EmployeeTask.findAll({
+			where: { employee_id: offboarding.employee_id },
+			include: [{
+				model:      Task,
+				as:         'task',
+				attributes: ['id', 'name'],
+				where:      { task_type_id: checklistTaskTypeId },
+			}],
+		});
 
 	const exitInterview = await SurveyAssignment.findOne({
 		where: { employee_id: offboarding.employee_id },
@@ -38,6 +45,13 @@ async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterview
 			where:    { question_type_id: exitInterviewQuestionTypeId },
 		}],
 		order: [['createdAt', 'DESC']],
+	});
+
+	// Activos sin devolver — aplica tanto a renuncia como a despido (la notebook hay que
+	// recuperarla en ambos casos), a diferencia del checklist/entrevista que sí se omiten en despido.
+	const pendingAssets = await EmployeeAsset.findAll({
+		where: { employee_id: offboarding.employee_id, return_date: null },
+		include: [{ model: Asset, as: 'asset', attributes: ['id', 'name', 'serial_number'] }],
 	});
 
 	return {
@@ -75,12 +89,18 @@ async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterview
 				dueDate:  exitInterview.due_date,
 			}
 			: null,
+		assets: pendingAssets.map((ea) => ({
+			id:             ea.asset_id,
+			name:           ea.asset?.name ?? null,
+			serialNumber:   ea.asset?.serial_number ?? null,
+			assignmentDate: ea.assignment_date,
+		})),
 	};
 }
 
 const startOffboarding = async (req, res, next) => {
 	try {
-		const { employeeId, lastWorkingDay, rehirable, exitType, tags } = req.body;
+		const { employeeId, lastWorkingDay, rehirable, exitType, tags, assets } = req.body;
 		if (!employeeId || !lastWorkingDay) {
 			return res.status(400).json({ status: 'fail', message: 'employeeId y lastWorkingDay son requeridos' });
 		}
@@ -118,7 +138,29 @@ const startOffboarding = async (req, res, next) => {
 			completed_at:     isTermination ? now : null,
 		});
 
-		// Checklist: una EmployeeTask por cada Task del TaskType "Offboarding estándad"/Checklist.
+		// Activos a devolver registrados manualmente por HR al iniciar el proceso (ej. equipo
+		// que nunca quedó cargado en el sistema). Cada item crea un Asset nuevo + su EmployeeAsset
+		// — no se intenta matchear contra inventario existente (findOrCreate por name/serial_number
+		// rompería el unique de EmployeeAsset.asset_id si ese asset ya tuvo otra asignación antes).
+		// Aplica igual en despido — hay que recuperar el equipo en ambos casos.
+		if (Array.isArray(assets)) {
+			for (const item of assets) {
+				const name = item?.name?.trim();
+				if (!name) continue;
+
+				const asset = await Asset.create({
+					name,
+					serial_number: item.serialNumber?.trim() || null,
+				});
+				await EmployeeAsset.create({
+					employee_id:     employeeId,
+					asset_id:        asset.id,
+					assignment_date: now,
+				});
+			}
+		}
+
+		// Checklist: una EmployeeTask por cada Task del TaskType "Offboarding estándar"/Checklist.
 		// En despido no se asignan — el TaskType se sigue resolviendo (findOrCreate) porque
 		// formatOffboarding lo necesita para reportar checklist:{total:0} de forma consistente.
 		const checklistTaskType = await getOffboardingChecklistTaskType();

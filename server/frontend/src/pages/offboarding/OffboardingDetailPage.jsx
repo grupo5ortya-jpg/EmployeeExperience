@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Circle, MessageSquare } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Circle, MessageSquare, Laptop } from 'lucide-react'
 
 import { useOffboardingByEmployee, useCompleteOffboarding } from '../../hooks/useOffboarding'
+import { useReturnAsset } from '../../hooks/useEmployeeById'
 
 const TASK_STATUS_LABEL = {
     ENROLLED:    'Pendiente',
@@ -42,6 +43,7 @@ export default function OffboardingDetailPage() {
     const navigate = useNavigate()
     const { data: offboarding, isLoading } = useOffboardingByEmployee(employeeId)
     const { mutate: complete, isPending: completing } = useCompleteOffboarding()
+    const returnAssetMutation = useReturnAsset()
 
     if (isLoading) {
         return (
@@ -194,6 +196,42 @@ export default function OffboardingDetailPage() {
                     )}
                 </div>
             )}
+
+            {/* Activos a devolver — aplica en renuncia y despido por igual */}
+            <div className="bg-white rounded-xl border border-brand-light shadow-sm p-4 flex flex-col gap-3">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Activos a devolver {offboarding.assets.length > 0 ? `(${offboarding.assets.length})` : ''}
+                </h3>
+                {offboarding.assets.length === 0 ? (
+                    <p className="text-sm text-slate-400">No tiene activos asignados sin devolver.</p>
+                ) : (
+                    <ul className="divide-y divide-brand-light">
+                        {offboarding.assets.map((a) => {
+                            const isReturning = returnAssetMutation.isPending
+                                && returnAssetMutation.variables?.assetId === a.id
+                            return (
+                                <li key={a.id} className="py-2.5 flex items-center justify-between gap-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <Laptop size={16} className="text-slate-400 shrink-0" />
+                                        <span className="text-sm text-slate-700 truncate">{a.name}</span>
+                                        {a.serialNumber && (
+                                            <span className="text-xs text-slate-400 shrink-0">— Serie: {a.serialNumber}</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => returnAssetMutation.mutate({ employeeId, assetId: a.id })}
+                                        disabled={isReturning}
+                                        className="text-xs font-semibold text-brand hover:text-brand-hover
+                                                   transition-colors cursor-pointer disabled:opacity-40 shrink-0"
+                                    >
+                                        {isReturning ? 'Marcando...' : 'Marcar como devuelto'}
+                                    </button>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                )}
+            </div>
         </main>
     )
 }

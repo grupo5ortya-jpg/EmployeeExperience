@@ -3,10 +3,6 @@ const { Router }            = require('express');
 const router                = Router();
 const routes_auth           = require('./routes.auth.js');
 const { authenticateToken } = require('../middlewares/authenticateToken');
-// TODO: eliminar este import cuando se quite el endpoint de admin/cron (solo para pruebas)
-const { assignDuePulseSurveys } = require('../connection/pulseCronJob.js');
-// TODO: eliminar — solo para pruebas de desarrollo
-const { checkOverdueTasks }     = require('../connection/onboardingCronJob.js');
 const routes_question = require('./routes.question.js');
 const routes_question_type = require('./routes.question_type.js');
 const routes_department = require('./routes.department.js');
@@ -135,23 +131,6 @@ router.use('/career-simulator', routes_career_simulator)
 // Next Steps — próximos pasos agregados para Home del Colaborador
 router.use('/next-steps', routes_next_steps)
 
-
-// TODO: eliminar estos endpoints — solo para pruebas de desarrollo
-router.post('/admin/cron/onboarding-run', async (_req, res, next) => {
-    try {
-        await checkOverdueTasks();
-        res.json({ ok: true, message: 'Onboarding cron ejecutado manualmente.' });
-    } catch (err) { next(err); }
-});
-
-router.post('/admin/cron/pulse-run', async (_req, res, next) => {
-    try {
-        await assignDuePulseSurveys();
-        res.json({ ok: true, message: 'Pulse cron ejecutado manualmente.' });
-    } catch (err) {
-        next(err);
-    }
-});
 
 // AI — test Gemini connection
 router.get('/ai/test', async (_req, res, next) => {

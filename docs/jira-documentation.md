@@ -664,6 +664,157 @@ Tercer bug de la familia boomerang: `PATCH /alumni/:employeeId/rehire` (botón "
 
 ---
 
+### EXP-401-FIX-01 · CreateEmployeeModal no asignaba ninguna tarea de onboarding (TODO desde hace mucho, descripción desactualizada)
+**Tipo:** Bug | **Rol:** Talento (HR)
+
+**Descripción:**
+El TODO original decía "MyTasks muestra solo 1 tarea al asignar onboarding" — verificado el 2026-06-20, la causa real era peor y distinta: `createEmployee` (`employee.controllers.js`) destructuraba `taskType` (un *nombre* de TaskType) de `req.body`, pero `WorkInfoFields.jsx` (selector "Template de plan" del modal de alta) envía `taskTypeId` (un UUID) — claves distintas, nunca se leían entre sí. El fallback hardcodeado `taskType || 'Onboarding'` tampoco coincidía con ningún `TaskType` seedeado real (los nombres reales son "Onboarding estándar", "Onboarding contabilidad", "Onboarding líderes" — nunca el string literal "Onboarding"). Resultado real: **0 tareas asignadas siempre**, sin importar qué template elija HR en el dropdown — no 1.
+
+**Bug secundario encontrado en el mismo bloque:** `task.estimatedDuration` (camelCase) se leía directo sobre la instancia de Sequelize del modelo `Task`, cuyo campo real es `estimated_duration` (snake_case, sin alias camelCase definido) — siempre evaluaba `undefined ?? 0`, así que **todas** las fechas de vencimiento de tareas auto-asignadas en el alta de empleado ignoraban la duración real de cada tarea (quedaban en la fecha de ingreso exacta, sin offset).
+
+**Fix:** `createEmployee` ahora destructura `taskTypeId` (matchea la key real que envía el frontend) y resuelve el TaskType por `id` directo (`Task.findAll({where:{task_type_id: resolvedTaskTypeId}})`) en vez de por nombre vía `include`/`where`. Si no se envía `taskTypeId` (opción "Plan estándar" del dropdown), usa como default el TaskType de sistema `TASK_TYPE.SYSTEM_TASK_TYPES[0]` ("Onboarding estándar") resuelto por nombre una sola vez. Y `task.estimated_duration` reemplaza a `task.estimatedDuration` en el cálculo de `due_date`.
+
+**Verificado end-to-end:** alta de empleado eligiendo "Onboarding estándar" explícito → 6 tareas creadas, `due_date` respetando la duración real de cada tarea (1-2 días). Alta sin elegir template (default) → mismas 6 tareas, mismo comportamiento.
+
+---
+
+### EXP-DEV-10-FIX-01 · Selector de destinatario en Feedback continuo no filtraba empleados inactivos
+**Tipo:** Bug | **Rol:** Colaborador
+
+**Descripción:**
+Auditoría de EXP-DEV-10 (todos los call-sites de `Alert.create`/`bulkCreate` del backend). La mayoría está disparada por una acción puntual de un empleado/HR ya en contexto, o ya filtra por `status==='ACTIVE'` a nivel del selector frontend (ej. "Responsable" en `OkrManagement.jsx`). Se encontró un caso real sin filtrar: `ContinuousFeedback.jsx` pasaba a `CreateContinuousFeedbackModal` la lista completa de `employees` filtrando solo `id !== propio` y `role !== 'Talento'`, sin excluir Alumni/`INACTIVE` — un Colaborador podía elegir a un excompañero como destinatario de un reconocimiento/sugerencia y disparar `CONTINUOUS_FEEDBACK_RECEIVED` a alguien que ya no trabaja ahí.
+
+**Fix:** se agregó `&& e.status === 'ACTIVE'` al filtro de `employees` en `ContinuousFeedback.jsx` (mismo patrón ya usado en `OkrManagement.jsx#employeeOptions`).
+
+**Resto de la auditoría (sin cambios, ya seguros):** `feedbackAssignmentService.js` (evaluadores ya vienen de una query con `status:'ACTIVE'`), `okrService.js`/`okr.controllers.js` (selector de responsable ya filtrado en `OkrManagement.jsx`), `courseEnrollment.controller.js`/`exitInterview.controller.js`/`employee_task.controllers.js`/`jobOpening.controller.js` (siempre el propio empleado actuando sobre sí mismo), `alumni.controller.js` (el propio empleado siendo recontratado).
+
+---
+
+### EXP-DEV-11-FIX-01 · Checklist de despido mostraba datos de una renuncia previa sin limpiar
+**Tipo:** Bug | **Rol:** Talento (HR)
+
+**Descripción:**
+Causa raíz: `EmployeeTask` (el checklist de offboarding) no tiene ningún `offboarding_id` que lo vincule a un `EmployeeOffboarding` específico — reutiliza las mismas filas (`employee_id`+`task_id` fijos) entre rondas. `formatOffboarding` buscaba el checklist filtrando solo por `employee_id`, sin scopear por ronda. Secuencia del bug: empleado renuncia (ronda 1) → completa 1 de 4 tareas (`COMPLETED`) → lo recontratan (`rehireAlumni` archiva las `ENROLLED`/`IN_PROGRESS`/`SUBMITTED` a `DROPPED`, pero no toca la que ya estaba `COMPLETED` — correcto en ese momento) → más adelante lo despiden (ronda 2, `TERMINATION`) → como un despido nunca asigna checklist, el bloque de reset de `startOffboarding` se salta por completo (`if (!isTermination...)`) → pero `formatOffboarding` seguía devolviendo `checklist:{total:4, completed:1}` para la ronda 2, arrastrando la tarea vieja de la ronda 1. No era user-facing porque el frontend ya oculta el checklist completo cuando `exitType==='TERMINATION'`, pero la API devolvía el dato sucio.
+
+**Fix:** `formatOffboarding` ahora devuelve `checklist:{total:0, completed:0, tasks:[]}` directo (sin consultar `EmployeeTask`) cuando `offboarding.exit_type==='TERMINATION'`, en vez de depender de que el frontend siga ocultándolo correctamente para siempre. Cambio mínimo (un guard), sin migraciones — no se agregó `offboarding_id` a `EmployeeTask` (hubiera sido la solución arquitectónica completa, pero es sobre-ingeniería para un caso dormant y no user-facing).
+
+**Verificado end-to-end:** renuncia → completar 1 de 4 tareas → recontratar → despido → `GET /offboarding/:employeeId` de la ronda 2 devuelve `checklist:{total:0,completed:0,tasks:[]}` (antes: `{total:4,completed:1}`).
+
+---
+
+### EXP-DEV-01-FIX-01 · Filtro de empleados por departamento movido al backend
+**Tipo:** Mejora técnica | **Rol:** Talento (HR)
+
+**Descripción:**
+`useFeedbackParticipants.js` (consumido por `FeedbackDetailPage.jsx`, `FeedbackHome.jsx`, `CreateFeedback.jsx`) traía el directorio **completo** de empleados de la empresa (`useEmployees()`, sin filtro) y filtraba por departamento/status en el cliente — innecesario para `FeedbackDetailPage`, que solo necesita los participantes de **un** departamento puntual.
+
+**Fix:**
+- `GET /employees` (`employee.controllers.js#getAllEmployees`) ahora acepta `?departmentId=X` y `?status=Y` como filtros opcionales a nivel SQL (`where.department_id`/`where.status`), combinables con la restricción existente de Líder (ve solo su equipo).
+- `employeeService.js#getEmployees(params)` y `useEmployees(params)` aceptan un objeto de query params opcional; `useEmployees` usa una `queryKey` separada (`['employees', params]`) cuando hay params, para no pisar/contaminar el cache del directorio completo (`['employees']`) que comparten el resto de las páginas.
+- `useFeedbackParticipants(departmentId)`: cuando recibe un `departmentId` (caso `FeedbackDetailPage`), pide directo `GET /employees?departmentId=X&status=ACTIVE` — ya no trae a toda la empresa. Cuando no recibe `departmentId` (caso `FeedbackHome`/`CreateFeedback`, necesitan el headcount de **todos** los departamentos a la vez para `countByDept`), sigue usando la lista completa — filtrar por un solo departamento no aplica a ese cálculo, y de todos modos reutiliza el cache compartido sin petición extra.
+- Cierra EXP-DEV-01 y EXP-DEV-06 (mismo pedido, dos tickets duplicados).
+
+**Verificado:** `GET /employees?departmentId=X` → solo empleados de ese departamento; `GET /employees?departmentId=X&status=ACTIVE` → además filtrado por status (probado contra el seed: 22 empleados totales → 4 de un departamento → 2 ACTIVE de ese departamento). `vite build` sin errores.
+
+---
+
+### EXP-DEV-03-FIX-01 · PulseSurveys sin fallback a auth + sin entrada en sidebar
+**Tipo:** Bug | **Rol:** Colaborador, Líder
+
+**Descripción:**
+El TODO original (de antes de implementar roles/auth) pedía integrar `EmployeeFeedbackReport`/`PulseSurveys` a "Mi perfil". Verificado el 2026-06-20: `EmployeeFeedbackReport.jsx` ya resuelve la identidad vía auth (`params.get('evaluatedId') || user?.employeeId`) desde hace tiempo — solo le falta la integración a "Mi perfil" (sigue siendo su propio ítem "Mis resultados 360°" en el sidebar, sin cambios hoy, redesign de UI mayor fuera de alcance). `PulseSurveys.jsx`, en cambio, seguía exactamente como describía el TODO viejo: leía `searchParams.get('employeeId')` directo de la URL **sin fallback a auth**, y no tenía ningún ítem en el sidebar — la única forma de llegar era un link armado a mano en `ColaboradorDashboard.jsx` (Home) o un alert `PULSE_SURVEY_DUE` con el query param ya resuelto. Un Líder no tenía **ninguna** forma de llegar ahí (ni sidebar ni Home), y cualquiera que navegara a `/pulsesurveys` sin el query param veía el estado vacío "especificá un empleado" aunque estuviera logueado.
+
+**Fix:**
+- `PulseSurveys.jsx`: `employeeId = searchParams.get('employeeId') || user?.employeeId` (mismo patrón que `EmployeeFeedbackReport`) — el query param sigue funcionando para los links existentes (Alertas, Home), pero ya no es obligatorio.
+- `Sidebar.jsx`: nuevo ítem "Encuestas de pulso" (ícono `Activity`) → `/pulsesurveys`, `roles:['Colaborador','Líder']` — ahora Líder también tiene una entrada real, no solo Colaborador vía Home.
+- No se integró a "Mi perfil" — eso requeriría rediseñar `DetailEmployee.jsx` como vista con tabs/secciones, un cambio de UI mucho mayor que el bug real (que era la falta de fallback a auth + sin acceso para Líder). Si en el futuro se quiere consolidar todo en "Mi perfil", es una iniciativa de diseño aparte.
+
+**Verificado:** `GET /pulse-surveys/pending?employeeId=<propio>` responde 200 autenticado. `vite build` sin errores.
+
+---
+
+### EXP-DEV-17-FIX-01 · Endpoints admin/cron sin protección de rol
+**Tipo:** Bug (seguridad) | **Rol:** Talento (HR)
+
+**Descripción:**
+Al verificar EXP-DEV-02 (que resultó ya estar implementado) se encontró que `POST /admin/cron/onboarding-run` y `POST /admin/cron/pulse-run` (`routes.js:141,148`) están detrás de `authenticateToken` (requieren sesión) pero **sin `authorize('Talento')`** — cualquier usuario autenticado, incluido un Alumni, podía disparar manualmente los crons de tareas vencidas y asignación de encuestas de pulso. El propio código los marca con `// TODO: eliminar estos endpoints — solo para pruebas de desarrollo`.
+
+**Fix:** se agregó `authorize('Talento')` a ambas rutas (import de `middlewares/authorize` agregado a `routes.js`). Los endpoints siguen existiendo para pruebas manuales de HR, pero ya no son de acceso público-autenticado.
+
+**Verificado:** Colaborador/Alumni → 403 en ambos endpoints; Talento → 200, cron ejecutado correctamente.
+
+---
+
+### EXP-DEV-17-FIX-02 · Endpoints admin/cron eliminados (no tenían un caso de uso real)
+**Tipo:** Limpieza | **Rol:** —
+
+**Descripción:**
+Tras protegerlos con `authorize('Talento')` (EXP-DEV-17-FIX-01), se cuestionó si valía la pena mantenerlos vivos: no tienen ningún caller en el frontend, ningún botón en la UI, y un usuario Talento real no tiene forma de descubrir que existen (son rutas crudas, solo invocables con curl/Postman conociendo los nombres internos de los cron jobs). El argumento de "recovery si el cron no corrió" es débil — si el server estaba caído a las 9am, tampoco se puede pegar al endpoint HTTP; y si un dev necesita forzar el cron para testing, alcanza con un script suelto (`node -e "require(...).checkOverdueTasks()"`, como se usó durante toda esta sesión) sin necesidad de exponer una ruta HTTP en el código de producción.
+
+**Fix:** se eliminaron por completo `POST /admin/cron/onboarding-run` y `POST /admin/cron/pulse-run` de `routes.js`, junto con los imports `authorize`, `checkOverdueTasks` y `assignDuePulseSurveys` (sin otro uso en ese archivo). Los cron jobs programados (`startOnboardingCronJob`/`startPulseCronJob`, diarios a las 9am) no se tocaron — siguen corriendo igual, solo se eliminó el trigger manual vía HTTP.
+
+**Verificado:** backend arranca limpio, los 3 crons (`pulseCron`/`onboardingCron`/`okrCron`) siguen "scheduled (daily at 09:00)" en el log de arranque. `POST /admin/cron/pulse-run`/`onboarding-run` con sesión válida de Talento → `404` (antes `200`). Resto de la API sin cambios (`/auth/login` → `200`).
+
+---
+
+### EXP-DEV-07-FIX-01 · Activos asignados (`Asset`/`EmployeeAsset`) — exposición read-only
+**Tipo:** Feature mínima | **Rol:** Talento
+
+**Descripción:**
+`Asset`/`EmployeeAsset` tenían modelo, seed (con datos realistas, ej. "Entregado al empleado en onboarding") y asociaciones completas en `relations.js` desde hacía tiempo, pero cero controllers/rutas/UI — el dato existía en la BD pero era invisible desde la app. En vez de construir un módulo de inventario completo (altas/bajas de activos, fuera de alcance) o borrar el modelo, se decidió cerrar el loop mínimo: hacer visible ese dato donde ya hace falta, sin tocar la gestión de activos en sí (que sigue siendo manual en BD).
+
+**Fix backend:**
+- `employee.controllers.js`: nuevo `EMPLOYEE_DETAIL_INCLUDE` (= `EMPLOYEE_INCLUDE` + `EmployeeAsset`→`Asset`), usado solo en `getEmployeeById` (no en `getAllEmployees`, para no agregar un JOIN extra a cada fila del listado completo). `formatEmployee` agrega `assets` (solo activos con `return_date: null`) — el campo queda `undefined` (no aparece en el JSON) cuando no se incluyó `e.assets`, así el listado (`GET /employees`) no lo expone.
+- `offboarding.controller.js#formatOffboarding`: agrega `assets` (mismo filtro `return_date: null`) a la respuesta de `GET /offboarding`/`GET /offboarding/:employeeId`. A diferencia del checklist/entrevista de salida, **no se omite en despido** — la notebook hay que recuperarla en ambos casos (renuncia o despido).
+
+**Fix frontend:**
+- `DetailEmployee.jsx`: nueva sección "Activos asignados" (solo lectura, ícono `Laptop`), oculta si el empleado no tiene activos sin devolver.
+- `OffboardingDetailPage.jsx`: nueva card "Activos a devolver" junto al checklist/entrevista de salida, con conteo y número de serie por activo.
+
+**Verificado:** `GET /employees` (lista) no trae la key `assets` en ningún elemento; `GET /employees/:id` sí, filtrado a no devueltos (probado con Gonzalo Vega → Mouse Logitech). `GET /offboarding` trae `assets` en cada proceso (probado con Florencia Sosa → 6 activos). `vite build` sin errores.
+
+**Bug encontrado durante esta misma verificación — corregido en el mismo commit:** `EMPLOYEE_DETAIL_INCLUDE` sin `separate: true` en el include de `assets` truncaba el array a 1 elemento (en vez de los 6 reales) cuando el empleado tenía además al menos 1 `leader` — dos `hasMany` (`leaders` vía `Team`, `assets` vía `EmployeeAsset`) en el mismo nivel bajo `Employee` generan un producto cartesiano en el SQL plano que Sequelize no separa bien al hidratar los arrays anidados. Fix: `separate: true` en el include de `assets` (fuerza una query aparte para esa relación). Verificado con Florencia Sosa (1 leader + 6 assets): sin el flag devolvía `assets.length === 1`; con el flag, `6`. El include de `offboarding.controller.js` no tiene este problema — ahí `EmployeeAsset` se consulta como modelo top-level (`EmployeeAsset.findAll(...)`), no anidado bajo `Employee` junto a otro `hasMany`.
+
+---
+
+### EXP-DEV-07-FIX-02 · "Marcar como devuelto" en OffboardingDetailPage
+**Tipo:** Feature mínima | **Rol:** Talento
+
+**Descripción:**
+Cierra el loop de EXP-DEV-07-FIX-01: la card "Activos a devolver" mostraba los activos pendientes pero no había ninguna acción para resolverlos — quedaban listados para siempre aunque el empleado ya entregara el equipo.
+
+**Fix backend:**
+- `employee.controllers.js#returnAsset` (nuevo) — `PATCH /employees/:id/assets/:assetId/return`: busca el `EmployeeAsset` activo (`employee_id`+`asset_id`+`return_date: null`), 404 si no existe (ya devuelto o no asignado a ese empleado), si existe hace `update({return_date: new Date()})`. Sin body — la fecha de devolución es siempre "ahora", no se acepta una fecha arbitraria (no hace falta para este caso de uso).
+- `routes.employee.js`: `router.patch('/:id/assets/:assetId/return', authorize('Talento'), ...)`.
+
+**Fix frontend:**
+- `services/employeeService.js#returnAsset` + `hooks/useEmployeeById.js#useReturnAsset` (invalida `['employee', employeeId]` y `['offboardings']` — la misma lista de activos se muestra en `DetailEmployee` y en `OffboardingDetailPage`).
+- `OffboardingDetailPage.jsx`: cada activo de la card "Activos a devolver" tiene un botón "Marcar como devuelto" (deshabilitado mientras esa mutación específica está en curso, vía `mutation.variables?.assetId === a.id`); al confirmar, desaparece de la lista (el array ya no lo incluye, por filtrar `return_date: null`).
+
+**Verificado:** con Florencia Sosa (6 activos) → `PATCH .../return` sobre uno → `200`, `GET /employees/:id` pasa de 5 a 4 sin devolver, mismo resultado reflejado en `GET /offboarding/:employeeId`. Segundo `PATCH` sobre el mismo activo → `404`. Intento con rol Colaborador → `403`. `vite build` sin errores.
+
+---
+
+### EXP-DEV-07-FIX-03 · Registro manual de activos a devolver al iniciar el proceso
+**Tipo:** Feature mínima | **Rol:** Talento
+
+**Descripción:**
+Hasta ahora `Asset`/`EmployeeAsset` solo mostraban lo que vino del seed — no había ningún flujo para registrar un activo nuevo, así que un empleado cuyo equipo nunca quedó cargado en el sistema no aparecía en "Activos a devolver" aunque HR supiera perfectamente que tiene una notebook que recuperar. Se agregó un campo opcional en `StartOffboardingModal` para que HR anote esos activos justo en el momento en que más le importa: al iniciar el offboarding.
+
+**Decisión de diseño:** cada item registrado crea un `Asset` nuevo (`Asset.create`, nunca `findOrCreate`) — no se intenta matchear contra el inventario existente por nombre/serie. Motivo: `EmployeeAsset.asset_id` tiene `unique: true` (un asset físico solo puede tener una asignación en toda su vida), así que reusar un `Asset` ya asignado a otro empleado en otro momento rompería ese constraint. Como esto es un registro ad-hoc ("recordame devolver esto"), no inventario real, crear siempre un objeto nuevo es la simplificación correcta — sin esto, dos empleados anotando "Notebook Dell" sin serie chocarían al segundo intento.
+
+**Fix backend:** `offboarding.controller.js#startOffboarding` acepta `assets: [{name, serialNumber}]` opcional en el body. Por cada item con `name` no vacío: `Asset.create({name, serial_number: serialNumber || null})` + `EmployeeAsset.create({employee_id, asset_id, assignment_date: now})`. Corre sin condicionar por `exitType` — aplica igual en despido (hay que recuperar el equipo en ambos casos, mismo criterio que el resto de la sección de activos).
+
+**Fix frontend:** `offboardingService.js#startOffboarding` reenvía `assets`. `StartOffboardingModal.jsx` agrega sección "Activos a devolver (opcional)" — lista dinámica con inputs nombre (requerido) + N° de serie (opcional) + botón "+", mismo patrón visual que la sección de Tags ya existente (chips con botón de quitar).
+
+**Verificado:** `POST /offboarding` con 2 activos nuevos (uno con serie, uno sin) → `201`, ambos aparecen en la respuesta junto a los 5 ya existentes del seed, mismo resultado en `GET /offboarding/:employeeId` y `GET /employees/:id`. Limpiado con `PATCH .../return` ×2 + `PATCH .../complete` + `PATCH /alumni/:id/rehire` para devolver a Florencia Sosa a su estado original. `vite build` sin errores.
+
+**Typo "Offboarding estándad" corregido a "Offboarding estándar" (2026-06-21):** detectado al revisar el diff antes de un commit — un cambio accidental en `OnboardingHome.jsx` (probablemente autocorrección del editor) había "arreglado" el typo solo ahí, lo que rompía el matching contra el nombre real persistido en la base (`task_types.name`) y todas las demás referencias en código, que seguían con el typo. En vez de revertir ese cambio, se corrigió de raíz: `UPDATE task_types SET name='Offboarding estándar' WHERE name='Offboarding estándad'` (1 fila, dato ya seedeado) + se actualizaron las 9 referencias restantes al string viejo en código (`models.constants.js#OFFBOARDING.CHECKLIST_TASK_TYPE`, `seeds.task_types.js`, `seeds.tasks.js` ×3, comentarios en `offboarding.controller.js`/`utils/offboarding.js`, y en frontend: `CreateEmployeeModal.jsx#NON_ONBOARDING_TASK_TYPES`, `TemplateListPanel.jsx#SYSTEM_TASK_TYPES`, `MyTasks.jsx`/`OffboardingChecklistCard.jsx#OFFBOARDING_CHECKLIST_TASK_TYPE`, comentario en `AlumniDashboard.jsx`). Verificado: el TaskType renombrado se sigue encontrando por nombre, `POST /offboarding` de prueba asignó el checklist completo (4 tareas) sin problemas.
+
+**Limitación conocida, sin resolver (caso borde, baja probabilidad):** `Asset` tiene un índice único sobre `(name, serial_number)` juntos (no sobre `EmployeeAsset.asset_id`, ese es el constraint distinto que sí se evita con `Asset.create` siempre nuevo, ver arriba). Si dos registros manuales usan el mismo nombre **y** la misma serie exacta (ej. dos personas tipean "Notebook Dell" / "ABC123" por coincidencia o error de tipeo), el segundo `Asset.create` rompe ese índice único y la request de `POST /offboarding` falla con 500. No se resolvió porque el escenario es poco probable (una serie real debería ser única por definición) y no vale la pena la complejidad adicional (ej. capturar el error y reusar el asset, o validar antes) para este alcance básico. Si en el futuro se reporta este caso en producción, ahí se evalúa un fix puntual.
+
+---
+
 ## Arquitectura técnica — Notas para desarrolladores
 
 ### Protección de rutas por rol
@@ -725,25 +876,27 @@ Una auditoría completa de backend + frontend encontró varias rutas de escritur
 
 | ID | Descripción | Prioridad |
 |---|---|---|
-| EXP-401-BUG | MyTasks muestra solo 1 tarea al asignar onboarding | Alta |
-| EXP-DEV-01 | Mover filtro de empleados por departamento al backend (`GET /employee?departmentId=X`) | Media |
-| EXP-DEV-02 | `POST /admin/cron/pulse-run` para disparar cron de pulso manualmente | Baja |
-| EXP-DEV-03 | Mover `EmployeeFeedbackReport` y `PulseSurveys` a "Mi perfil" en sidebar cuando haya roles completos | Media |
-| EXP-DEV-04 | Reemplazar `assigned_by = employee_id` en FeedbackAssignment por el ID del usuario HR logueado real | Media |
+| EXP-401-BUG | ~~MyTasks muestra solo 1 tarea al asignar onboarding~~ — Resuelto 2026-06-20, ver EXP-401-FIX-01 (causa real era 0 tareas, no 1) | ~~Alta~~ |
+| EXP-DEV-01 | ~~Mover filtro de empleados por departamento al backend~~ — Resuelto 2026-06-20, ver EXP-DEV-01-FIX-01 | ~~Media~~ |
+| EXP-DEV-02 | ~~`POST /admin/cron/pulse-run` para disparar cron de pulso manualmente~~ — Ya existe (`routes.js:147-154`), nunca se había marcado en esta tabla. Ver EXP-DEV-17 por el hueco de seguridad encontrado al verificarlo | ~~Baja~~ |
+| EXP-DEV-03 | (parcial) ~~Mover EmployeeFeedbackReport/PulseSurveys a "Mi perfil"~~ — no se integraron a "Mi perfil" (redesign de UI mayor, fuera de alcance), pero ver EXP-DEV-03-FIX-01: el bug real (`PulseSurveys` sin fallback a auth, sin entrada en sidebar) se corrigió 2026-06-20 | Media |
+| EXP-DEV-04 | ~~Reemplazar `assigned_by = employee_id` en FeedbackAssignment~~ — No aplica: `FeedbackAssignment` no tiene (ni tuvo) campo `assigned_by`. El patrón real es en `SurveyAssignment` (Pulso/entrevista de salida) y es intencional — ver gotcha en CLAUDE.md. Único caso accionable: `startOffboarding` podría usar `req.user.employeeId` (HR real) en vez de auto-asignarse, ver EXP-DEV-18 | ~~Media~~ |
 | EXP-DEV-05 | ~~Definir flujo y vistas para rol Alumni~~ — Resuelto, ver ÉPICA 10 | ~~Baja~~ |
-| EXP-DEV-06 | Implementar `GET /employee?departmentId=X` en backend para escalar filtro de participantes 360° | Media |
-| EXP-DEV-07 | Decidir destino de `Asset`/`EmployeeAsset` (modelo + seed completos, sin controllers/rutas/UI) — terminar la feature, dejarla, o borrar modelo+seed+asociaciones | Media |
+| EXP-DEV-06 | ~~Implementar `GET /employee?departmentId=X` para escalar filtro de participantes 360°~~ — Resuelto 2026-06-20, ver EXP-DEV-01-FIX-01 | ~~Media~~ |
+| EXP-DEV-07 | ~~Decidir destino de `Asset`/`EmployeeAsset`~~ — Resuelto 2026-06-20, ver EXP-DEV-07-FIX-01: exposición read-only en `DetailEmployee`/`OffboardingDetailPage`, sin altas/bajas desde la UI (eso sigue manual en BD) | ~~Media~~ |
 | EXP-DEV-08 | Decidir destino de `EmployeeHistory` (los hooks de `Employee` escriben en cada cambio de depto/posición, pero ningún endpoint la expone) — exponer un endpoint de historial o eliminar los hooks | Media |
 | EXP-DEV-09 | Rediseñar el patrón de exclusión manual de `router.js` (ver nota técnica arriba) — unificar en una sola fuente de verdad para evitar que una página nueva con `RoleRoute` quede sin proteger por descuido | Baja |
 | EXP-1005-BUG-01 | ~~`useStartOffboarding` descartaba `rehirable`/`exitType` antes de llegar al backend~~ — Resuelto 2026-06-19, ver EXP-1006 | ~~Alta~~ |
 | EXP-1005-BUG-02 | ~~Crons diarios (`onboardingCronJob.js`, `okrCronJob.js`) generaban alertas para empleados `INACTIVE`/Alumni~~ — Resuelto 2026-06-19, filtrado por `Employee.status==='ACTIVE'` | ~~Alta~~ |
-| EXP-DEV-10 | Auditar otros paths de creación de `Alert` (feedback assignments, continuous feedback, job openings) por si también alcanzan empleados `INACTIVE` — menor riesgo porque suelen ser disparados por acción directa de HR, pero no verificado exhaustivamente | Media |
-| EXP-DEV-11 | ~~`formatOffboarding`/`formatUser` buscan checklist/entrevista/`exitType` por `employee_id` sin scopear por proceso~~ — Resuelto 2026-06-20 para renuncias repetidas (ver EXP-1002-FIX-01); para despido tras renuncia sin limpiar la data vieja queda pero el frontend nunca la muestra | ~~Media~~ |
+| EXP-DEV-10 | ~~Auditar otros paths de creación de `Alert`~~ — Resuelto 2026-06-20, ver EXP-DEV-10-FIX-01. Auditados los ~30 call-sites: todos seguros salvo el selector de destinatario de Feedback continuo (ya corregido) | ~~Media~~ |
+| EXP-DEV-11 | ~~`formatOffboarding`/`formatUser` buscan checklist/entrevista/`exitType` por `employee_id` sin scopear por proceso~~ — Resuelto 2026-06-20: renuncias repetidas (EXP-1002-FIX-01) y despido-tras-renuncia (EXP-DEV-11-FIX-01) | ~~Media~~ |
 | EXP-DEV-12 | Implementar previsualización de email antes de enviar para acciones sensibles (paso a Alumni) — bloqueado por EXP-DEV-16 (no hay envío de emails reales todavía, solo alertas internas, acta cliente 2026-06-18) | Baja (bloqueado) |
 | EXP-DEV-16 | Implementar el envío de emails reales (hoy todo el sistema de notificación es `Alert` interno in-app, sin integración SMTP/proveedor de email) — desbloquea EXP-DEV-12 y cualquier comunicación que deba llegarle al usuario fuera de la plataforma (alta de cuenta, paso a Alumni, recontratación, vencimientos) | Media |
 | EXP-DEV-13 | Migrar los ~30 botones celestes (`bg-brand hover:bg-brand-hover text-white`) repartidos por el frontend a `components/ui/Button.jsx` (variant `primary`) — en progreso (migrado: `AlumniDetailPage.jsx`, `StartOffboardingModal.jsx`), el resto se va migrando de forma oportunista cuando se toque ese archivo por otra razón, no como barrido único | Baja |
 | EXP-DEV-14 | Adoptar `components/ui/Button.jsx` (variants `ghost`/`danger`) y `components/ui/IconButton.jsx` (nuevo, variants `default`/`danger`/`success`/`reject`) en los botones "Cancelar", destructivos y de ícono-solo (editar/borrar/aprobar/rechazar) que hoy están repetidos en ~20 archivos — en progreso (migrado: `StartOffboardingModal.jsx` Cancelar/tag, `CreateJobOpeningModal.jsx` borrar skill), mismo criterio de migración oportunista que EXP-DEV-13 | Baja |
 | EXP-DEV-15 | Borrar `components/ui/Button.jsx`'s variant `outline` sigue con colores `gray-*` (no `slate-*`/`brand-*` del resto del proyecto) — corregir si/cuando se empiece a usar ese variant | Baja |
+| EXP-DEV-17 | ~~`POST /admin/cron/onboarding-run`/`pulse-run` sin `authorize('Talento')`~~ — Resuelto 2026-06-20, ver EXP-DEV-17-FIX-01 (protegidos), luego eliminados por completo el mismo día — ver EXP-DEV-17-FIX-02 | ~~Media~~ |
+| EXP-DEV-18 | `startOffboarding` auto-asigna `SurveyAssignment.assigned_by = employeeId` (workaround de sistema) para la entrevista de salida — podría usar `req.user.employeeId` (el HR real que inició el proceso, ya capturado como `initiated_by`) en su lugar. Mejora cosmética/de trazabilidad, no es un bug | Baja |
 
 ---
 

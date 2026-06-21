@@ -150,17 +150,17 @@ module.exports = async function (sequelize) {
 		},
 		{
 			name: 'Devolver notebook y tarjetas de acceso',
-			task_type_id: taskTypeByKey['Offboarding estándad'],
+			task_type_id: taskTypeByKey['Offboarding estándar'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Completar checklist de salida con RRHH',
-			task_type_id: taskTypeByKey['Offboarding estándad'],
+			task_type_id: taskTypeByKey['Offboarding estándar'],
 			estimated_duration: 1,
 		},
 		{
 			name: 'Entrevista de salida con RRHH',
-			task_type_id: taskTypeByKey['Offboarding estándad'],
+			task_type_id: taskTypeByKey['Offboarding estándar'],
 			estimated_duration: 1,
 		},
 		{

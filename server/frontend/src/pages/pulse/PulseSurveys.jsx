@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { Activity } from 'lucide-react'
 import { usePendingSurveys } from '../../hooks/usePendingSurveys'
 import { usePendingExitInterviews } from '../../hooks/useExitInterviews'
@@ -10,7 +11,10 @@ import ExitInterviewForm from './components/ExitInterviewForm'
 
 export default function PulseSurveys() {
   const [searchParams] = useSearchParams()
-  const employeeId = searchParams.get('employeeId')
+  const { user } = useSelector((s) => s.auth)
+  // ?employeeId= sigue soportado (lo usan los links de Alertas/Home con el id ya resuelto),
+  // pero si no viene en la URL se cae al empleado logueado — antes quedaba vacío sin el query param.
+  const employeeId = searchParams.get('employeeId') || user?.employeeId
 
   const { data: assignments = [], isLoading, isError } = usePendingSurveys(employeeId)
   const { data: exitInterviews = [] } = usePendingExitInterviews(employeeId)
@@ -28,14 +32,11 @@ export default function PulseSurveys() {
         </p>
       </div>
 
-      {/* No employeeId */}
+      {/* No employeeId — no debería pasar logueado, defensivo */}
       {!employeeId && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <Activity size={36} className="text-slate-300" />
-          <p className="text-sm text-slate-400">
-            No se especificó un empleado.<br />
-            Accedé con el parámetro <code className="text-brand">?employeeId=...</code> en la URL.
-          </p>
+          <p className="text-sm text-slate-400">No se pudo identificar al empleado.</p>
         </div>
       )}
 

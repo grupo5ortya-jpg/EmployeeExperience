@@ -15,7 +15,7 @@ const MAX_TASKS = 10
 // siempre protegidas, no se pueden desproteger desde la UI.
 const SYSTEM_TASK_TYPES = [
     { name: 'Onboarding estándar', sub_type: 'Checklist' },
-    { name: 'Offboarding estándad', sub_type: 'Checklist' },
+    { name: 'Offboarding estándar', sub_type: 'Checklist' },
 ]
 const isSystemTemplate = (type) =>
     SYSTEM_TASK_TYPES.some((s) => s.name === type.name && s.sub_type === type.sub_type)

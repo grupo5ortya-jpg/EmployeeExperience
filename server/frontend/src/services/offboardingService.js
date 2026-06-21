@@ -8,8 +8,8 @@ export const getOffboardings = ({ status } = {}) =>
 export const getOffboardingByEmployee = (employeeId) =>
     apiClient.get(`/offboarding/${employeeId}`).then((r) => r.data);
 
-export const startOffboarding = ({ employeeId, lastWorkingDay, rehirable, exitType, tags }) =>
-    apiClient.post('/offboarding', { employeeId, lastWorkingDay, rehirable, exitType, tags }).then((r) => r.data);
+export const startOffboarding = ({ employeeId, lastWorkingDay, rehirable, exitType, tags, assets }) =>
+    apiClient.post('/offboarding', { employeeId, lastWorkingDay, rehirable, exitType, tags, assets }).then((r) => r.data);
 
 export const completeOffboarding = (employeeId) =>
     apiClient.patch(`/offboarding/${employeeId}/complete`).then((r) => r.data);

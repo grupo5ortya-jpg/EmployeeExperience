@@ -24,7 +24,7 @@ module.exports = {
 		EXIT_TYPE_TERMINATION: 'TERMINATION',
 	},
 	OFFBOARDING: {
-		CHECKLIST_TASK_TYPE: { name: 'Offboarding estándad', sub_type: 'Checklist' },
+		CHECKLIST_TASK_TYPE: { name: 'Offboarding estándar', sub_type: 'Checklist' },
 		EXIT_INTERVIEW_QUESTION_TYPE: { name: 'Offboarding', sub_type: 'Salida' },
 		EXIT_INTERVIEW_WINDOW_DAYS: 30,
 	},
@@ -124,7 +124,7 @@ module.exports = {
 		// siempre protegidas contra borrado, no se puede desproteger vía PATCH.
 		SYSTEM_TASK_TYPES: [
 			{ name: 'Onboarding estándar', sub_type: 'Checklist' },
-			{ name: 'Offboarding estándad', sub_type: 'Checklist' },
+			{ name: 'Offboarding estándar', sub_type: 'Checklist' },
 			{ name: 'Aprendizaje - curso', sub_type: 'Curso' },
 		],
 	},

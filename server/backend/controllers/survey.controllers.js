@@ -70,8 +70,11 @@ function formatSurvey(s) {
 const getAllSurveys = async (req, res, next) => {
 	try {
 		const surveys = await Survey.findAll({ include: SURVEY_INCLUDE, order: [['createdAt', 'DESC']] });
-		// Exclude pulse surveys — those are managed separately via /pulse-surveys
-		const feedback = surveys.filter((s) => s.questionType?.name !== 'Pulso');
+		// Los ciclos de Feedback 360° reales siempre se crean con questionTypeId:null
+		// (ver CreateFeedback.jsx) — cualquier Survey con questionType seteado pertenece a
+		// otro flujo (Pulso, entrevista de salida de Offboarding, etc., gestionados aparte
+		// vía /pulse-surveys, /exit-interviews) y nunca debe listarse acá.
+		const feedback = surveys.filter((s) => !s.questionType);
 		res.json(feedback.map(formatSurvey));
 	} catch (err) {
 		next(err);

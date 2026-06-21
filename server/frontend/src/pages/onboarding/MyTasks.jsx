@@ -12,7 +12,7 @@ const STATUS_DROPPED   = 'DROPPED'
 
 // Mismo TaskType seedeado que usa el backend para el checklist de salida
 // (getOffboardingChecklistTaskType — utils/offboarding.js).
-const OFFBOARDING_CHECKLIST_TASK_TYPE = 'Offboarding estándad'
+const OFFBOARDING_CHECKLIST_TASK_TYPE = 'Offboarding estándar'
 
 /* ─── Fila de tarea ──────────────────────────────────────── */
 function TaskRow({ task, onToggle, isUpdating, disabled = false, isOverdue = false }) {

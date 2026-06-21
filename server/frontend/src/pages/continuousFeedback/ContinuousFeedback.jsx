@@ -205,7 +205,7 @@ export default function ContinuousFeedback() {
             <CreateContinuousFeedbackModal
                 isOpen={openModal}
                 onClose={() => setOpenModal(false)}
-                employees={employees.filter((e) => e.id !== employeeId && e.role?.name !== 'Talento')}
+                employees={employees.filter((e) => e.id !== employeeId && e.role?.name !== 'Talento' && e.status === 'ACTIVE')}
                 onSubmit={async (payload) => { await createFeedback(payload) }}
                 loading={isPending}
             />

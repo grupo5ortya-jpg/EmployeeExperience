@@ -7,20 +7,26 @@ function isSystemTaskType(taskType) {
 	);
 }
 
-function formatTaskType(t) {
+function formatTaskType(t, taskCount = 0) {
 	return {
 		id: t.id,
 		name: t.name,
 		subType: t.sub_type ?? null,
 		isProtected: t.is_protected,
 		isSystem: isSystemTaskType(t),
+		taskCount,
 	};
 }
 
 const getAllTaskTypes = async (req, res, next) => {
 	try {
 		const taskTypes = await TaskType.findAll();
-		res.json(taskTypes.map(formatTaskType));
+		const tasks = await Task.findAll({ attributes: ['task_type_id'] });
+		const countByType = tasks.reduce((acc, t) => {
+			acc[t.task_type_id] = (acc[t.task_type_id] ?? 0) + 1;
+			return acc;
+		}, {});
+		res.json(taskTypes.map((tt) => formatTaskType(tt, countByType[tt.id] ?? 0)));
 	} catch (err) {
 		next(err);
 	}

@@ -3,39 +3,36 @@ import { useEmployees } from '../../../hooks/useEmployees'
 
 /**
  * Hook centralizado de participantes para Feedback 360°.
- * React Query cachea useEmployees → una sola petición aunque se llame
- * en múltiples componentes al mismo tiempo.
+ *
+ * Con `departmentId`: pide al backend solo ese departamento (`GET /employees?departmentId=X&status=ACTIVE`,
+ * ver EXP-DEV-06) — no trae el directorio completo de la empresa para mostrar la lista de un solo ciclo.
+ * Sin `departmentId`: necesita el headcount de TODOS los departamentos a la vez (`countByDept`, usado por
+ * las cards de FeedbackHome/CreateFeedback) — reutiliza la lista completa ya cacheada por `useEmployees()`
+ * (compartida con el resto de la app, sin petición extra).
  *
  * @param {string|null} departmentId - ID del departamento del ciclo (null = sin filtro)
  * @returns {{ participants: object[], count: number, countByDept: object, isLoading: boolean }}
  */
 export function useFeedbackParticipants(departmentId = null) {
-    const { data: employees = [], isLoading } = useEmployees()
-
-    // Solo empleados ACTIVOS (el backend genera assignments únicamente para status ACTIVE)
-    const activeEmployees = useMemo(
-        () => employees.filter((e) => e.status === 'ACTIVE'),
-        [employees],
+    const { data: employees = [], isLoading } = useEmployees(
+        departmentId ? { departmentId, status: 'ACTIVE' } : {},
     )
 
-    // Empleados activos filtrados por departamento
-    // NOTA: el objeto employee tiene e.department.id (anidado), NO e.departmentId
-    const participants = useMemo(
-        () => !departmentId
-            ? []
-            : activeEmployees.filter((e) => e.department?.id === departmentId),
-        [activeEmployees, departmentId],
-    )
+    // Con departmentId el backend ya filtró por depto + ACTIVE — se usa directo.
+    const participants = departmentId ? employees : []
 
-    // Mapa global de conteo: deptId → cantidad de empleados ACTIVOS
+    // Mapa global de conteo: deptId → cantidad de empleados ACTIVOS (solo tiene sentido
+    // sobre la lista completa; con departmentId no se consume en ningún lugar).
     const countByDept = useMemo(() => {
+        if (departmentId) return {}
         const map = {}
-        activeEmployees.forEach((e) => {
+        employees.forEach((e) => {
+            if (e.status !== 'ACTIVE') return
             const id = e.department?.id
             if (id) map[id] = (map[id] ?? 0) + 1
         })
         return map
-    }, [activeEmployees])
+    }, [employees, departmentId])
 
     return {
         participants,
