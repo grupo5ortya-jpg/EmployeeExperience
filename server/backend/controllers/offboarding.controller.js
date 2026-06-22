@@ -1,5 +1,6 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const {
+	sequelize,
 	Employee, Person, User, Role,
 	EmployeeOffboarding, AlumniProfile, EmployeeTask, Task,
 	Survey, SurveyAssignment, QuestionType,
@@ -139,176 +140,204 @@ const startOffboarding = async (req, res, next) => {
 			return res.status(409).json({ status: 'fail', message: 'Ya existe un proceso de offboarding en curso para este empleado' });
 		}
 
-		// Despido: no hay checklist/entrevista que esperar, así que el caso se cierra solo en
-		// el mismo momento — Talento no tiene que entrar después a tocar "Finalizar proceso".
-		const now = new Date();
-		const offboarding = await EmployeeOffboarding.create({
-			employee_id:      employeeId,
-			initiated_by:     req.user?.employeeId ?? null,
-			last_working_day: lastWorkingDay,
-			rehirable:        rehirable !== undefined ? !!rehirable : true,
-			exit_type:        resolvedExitType,
-			status:           isTermination ? EMPLOYEE_OFFBOARDING.STATUS_COMPLETED : EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
-			completed_at:     isTermination ? now : null,
-		});
-
-		// Activos a devolver registrados manualmente por HR al iniciar el proceso (ej. equipo
-		// que nunca quedó cargado en el sistema). Cada item crea un Asset nuevo + su EmployeeAsset
-		// — no se intenta matchear contra inventario existente (findOrCreate por name/serial_number
-		// rompería el unique de EmployeeAsset.asset_id si ese asset ya tuvo otra asignación antes).
-		// Aplica igual en despido — hay que recuperar el equipo en ambos casos.
-		if (Array.isArray(assets)) {
-			for (const item of assets) {
-				const name = item?.name?.trim();
-				if (!name) continue;
-
-				// `Asset` tiene un índice único sobre (name, serial_number) — si dos registros
-				// manuales coinciden exacto en ambos, devolver 400 claro en vez de un 500 crudo
-				// de Postgres (caso borde documentado, EXP-DEV-07-FIX-03).
-				let asset;
-				try {
-					asset = await Asset.create({
-						name,
-						serial_number: item.serialNumber?.trim() || null,
-					});
-				} catch (err) {
-					if (err instanceof UniqueConstraintError) {
-						return res.status(400).json({
-							status:  'fail',
-							message: `Ya existe un activo registrado con el nombre "${name}" y ese número de serie.`,
-						});
-					}
-					throw err;
-				}
-
-				await EmployeeAsset.create({
-					employee_id:     employeeId,
-					asset_id:        asset.id,
-					assignment_date: now,
-				});
-			}
-		}
-
-		// Checklist: una EmployeeTask por cada Task del TaskType "Offboarding estándar"/Checklist.
-		// En despido no se asignan — el TaskType se sigue resolviendo (findOrCreate) porque
-		// formatOffboarding lo necesita para reportar checklist:{total:0} de forma consistente.
+		// Referencias de sistema (TaskType/QuestionType ya seedeados, findOrCreate idempotente) —
+		// se resuelven fuera de la transacción a propósito: son datos de infraestructura
+		// compartidos por todo el módulo, no algo específico de esta operación que deba revertirse
+		// si el resto falla.
 		const checklistTaskType = await getOffboardingChecklistTaskType();
-		const checklistTasks = await Task.findAll({ where: { task_type_id: checklistTaskType.id } });
-
-		if (!isTermination && checklistTasks.length > 0) {
-			const existingEmployeeTasks = await EmployeeTask.findAll({
-				where: { employee_id: employeeId, task_id: { [Op.in]: checklistTasks.map((t) => t.id) } },
-			});
-			const existingTaskIds = new Set(existingEmployeeTasks.map((et) => et.task_id));
-
-			const newEmployeeTasks = checklistTasks
-				.filter((task) => !existingTaskIds.has(task.id))
-				.map((task) => ({
-					employee_id: employeeId,
-					task_id:     task.id,
-					status:      EMPLOYEE_TASK.STATUS_ENROLLED,
-					due_date:    lastWorkingDay,
-				}));
-
-			if (newEmployeeTasks.length > 0) {
-				await EmployeeTask.bulkCreate(newEmployeeTasks);
-			}
-
-			// Empleado boomerang (renunció, lo recontrataron, renuncia de nuevo): la
-			// EmployeeTask del checklist ya existe (misma PK employee_id+task_id) con el
-			// estado del ciclo anterior (COMPLETED/DROPPED/lo que sea) — se resetea a
-			// ENROLLED para este nuevo proceso, no debe arrastrar el checklist viejo.
-			if (existingTaskIds.size > 0) {
-				await EmployeeTask.update(
-					{ status: EMPLOYEE_TASK.STATUS_ENROLLED, due_date: lastWorkingDay },
-					{ where: { employee_id: employeeId, task_id: { [Op.in]: [...existingTaskIds] } } },
-				);
-			}
-		}
-
-		// Entrevista de salida: Survey + SurveyAssignment respondible hasta last_working_day + 30 días.
-		// En despido no se genera — sin cuestionario para el empleado.
 		const exitInterviewQuestionType = await getExitInterviewQuestionType();
 
-		// Empleado boomerang (renunció, lo recontrataron, renuncia/despiden de nuevo dentro de
-		// la ventana de 30 días): a diferencia del checklist (PK fija, se resetea), cada ronda
-		// crea un Survey/SurveyAssignment nuevo — si la ronda anterior quedó PENDING sin
-		// contestar, se cancela (soft delete, SurveyAssignment es paranoid) para que no se
-		// acumule junto a la nueva en /exit-interviews/pending. Corre siempre, incluso si esta
-		// ronda es despido (no debe quedar una entrevista vieja viva para alguien sin acceso).
-		const staleAssignments = await SurveyAssignment.findAll({
-			where: { employee_id: employeeId, status: SURVEY_ASSIGNMENT.STATUS_PENDING },
-			include: [{ model: Survey, as: 'survey', required: true, where: { question_type_id: exitInterviewQuestionType.id } }],
-		});
-		if (staleAssignments.length > 0) {
-			await SurveyAssignment.destroy({
-				where: { employee_id: employeeId, survey_id: { [Op.in]: staleAssignments.map((a) => a.survey_id) } },
+		// Despido: no hay checklist/entrevista que esperar, así que el caso se cierra solo en
+		// el mismo momento — Talento no tiene que entrar después a tocar "Finalizar proceso".
+		// Todo lo que sigue (creación del caso, activos, checklist, entrevista, alta de rol a
+		// Alumni, vencimiento de tareas de otros templates) corre en una sola transacción — son
+		// ~10 escrituras secuenciales y, sin esto, un fallo a mitad de camino (ej. un activo
+		// duplicado) dejaba al empleado a medio migrar (caso creado pero rol sin cambiar, o
+		// viceversa). Si cualquier paso falla, se hace rollback completo y no se cambia nada.
+		const now = new Date();
+		const t = await sequelize.transaction();
+
+		try {
+			const offboarding = await EmployeeOffboarding.create({
+				employee_id:      employeeId,
+				initiated_by:     req.user?.employeeId ?? null,
+				last_working_day: lastWorkingDay,
+				rehirable:        rehirable !== undefined ? !!rehirable : true,
+				exit_type:        resolvedExitType,
+				status:           isTermination ? EMPLOYEE_OFFBOARDING.STATUS_COMPLETED : EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
+				completed_at:     isTermination ? now : null,
+			}, { transaction: t });
+
+			// Activos a devolver registrados manualmente por HR al iniciar el proceso (ej. equipo
+			// que nunca quedó cargado en el sistema). Cada item crea un Asset nuevo + su EmployeeAsset
+			// — no se intenta matchear contra inventario existente (findOrCreate por name/serial_number
+			// rompería el unique de EmployeeAsset.asset_id si ese asset ya tuvo otra asignación antes).
+			// Aplica igual en despido — hay que recuperar el equipo en ambos casos.
+			if (Array.isArray(assets)) {
+				for (const item of assets) {
+					const name = item?.name?.trim();
+					if (!name) continue;
+
+					// `Asset` tiene un índice único sobre (name, serial_number) — si dos registros
+					// manuales coinciden exacto en ambos, devolver 400 claro en vez de un 500 crudo
+					// de Postgres (caso borde documentado, EXP-DEV-07-FIX-03). Rollback explícito
+					// porque salimos con un `return` directo, no con un `throw` hacia el catch de abajo.
+					let asset;
+					try {
+						asset = await Asset.create({
+							name,
+							serial_number: item.serialNumber?.trim() || null,
+						}, { transaction: t });
+					} catch (err) {
+						if (err instanceof UniqueConstraintError) {
+							await t.rollback();
+							return res.status(400).json({
+								status:  'fail',
+								message: `Ya existe un activo registrado con el nombre "${name}" y ese número de serie.`,
+							});
+						}
+						throw err;
+					}
+
+					await EmployeeAsset.create({
+						employee_id:     employeeId,
+						asset_id:        asset.id,
+						assignment_date: now,
+					}, { transaction: t });
+				}
+			}
+
+			// Checklist: una EmployeeTask por cada Task del TaskType "Offboarding estándar"/Checklist.
+			// En despido no se asignan.
+			const checklistTasks = await Task.findAll({ where: { task_type_id: checklistTaskType.id }, transaction: t });
+
+			if (!isTermination && checklistTasks.length > 0) {
+				const existingEmployeeTasks = await EmployeeTask.findAll({
+					where: { employee_id: employeeId, task_id: { [Op.in]: checklistTasks.map((tsk) => tsk.id) } },
+					transaction: t,
+				});
+				const existingTaskIds = new Set(existingEmployeeTasks.map((et) => et.task_id));
+
+				const newEmployeeTasks = checklistTasks
+					.filter((task) => !existingTaskIds.has(task.id))
+					.map((task) => ({
+						employee_id: employeeId,
+						task_id:     task.id,
+						status:      EMPLOYEE_TASK.STATUS_ENROLLED,
+						due_date:    lastWorkingDay,
+					}));
+
+				if (newEmployeeTasks.length > 0) {
+					await EmployeeTask.bulkCreate(newEmployeeTasks, { transaction: t });
+				}
+
+				// Empleado boomerang (renunció, lo recontrataron, renuncia de nuevo): la
+				// EmployeeTask del checklist ya existe (misma PK employee_id+task_id) con el
+				// estado del ciclo anterior (COMPLETED/DROPPED/lo que sea) — se resetea a
+				// ENROLLED para este nuevo proceso, no debe arrastrar el checklist viejo.
+				if (existingTaskIds.size > 0) {
+					await EmployeeTask.update(
+						{ status: EMPLOYEE_TASK.STATUS_ENROLLED, due_date: lastWorkingDay },
+						{ where: { employee_id: employeeId, task_id: { [Op.in]: [...existingTaskIds] } }, transaction: t },
+					);
+				}
+			}
+
+			// Empleado boomerang (renunció, lo recontrataron, renuncia/despiden de nuevo dentro de
+			// la ventana de 30 días): a diferencia del checklist (PK fija, se resetea), cada ronda
+			// crea un Survey/SurveyAssignment nuevo — si la ronda anterior quedó PENDING sin
+			// contestar, se cancela (soft delete, SurveyAssignment es paranoid) para que no se
+			// acumule junto a la nueva en /exit-interviews/pending. Corre siempre, incluso si esta
+			// ronda es despido (no debe quedar una entrevista vieja viva para alguien sin acceso).
+			const staleAssignments = await SurveyAssignment.findAll({
+				where: { employee_id: employeeId, status: SURVEY_ASSIGNMENT.STATUS_PENDING },
+				include: [{ model: Survey, as: 'survey', required: true, where: { question_type_id: exitInterviewQuestionType.id } }],
+				transaction: t,
 			});
-		}
+			if (staleAssignments.length > 0) {
+				await SurveyAssignment.destroy({
+					where: { employee_id: employeeId, survey_id: { [Op.in]: staleAssignments.map((a) => a.survey_id) } },
+					transaction: t,
+				});
+			}
 
-		if (!isTermination) {
-			const dueDate = new Date(lastWorkingDay);
-			dueDate.setDate(dueDate.getDate() + OFFBOARDING.EXIT_INTERVIEW_WINDOW_DAYS);
+			// Entrevista de salida: Survey + SurveyAssignment respondible hasta last_working_day + 30
+			// días. En despido no se genera — sin cuestionario para el empleado.
+			if (!isTermination) {
+				const dueDate = new Date(lastWorkingDay);
+				dueDate.setDate(dueDate.getDate() + OFFBOARDING.EXIT_INTERVIEW_WINDOW_DAYS);
 
-			const survey = await Survey.create({
-				name:              'Entrevista de salida',
-				question_type_id: exitInterviewQuestionType.id,
-				start_date:        new Date(),
-				end_date:          dueDate,
-			});
+				const survey = await Survey.create({
+					name:              'Entrevista de salida',
+					question_type_id: exitInterviewQuestionType.id,
+					start_date:        new Date(),
+					end_date:          dueDate,
+				}, { transaction: t });
 
-			// assigned_by es parte de la PK compuesta (NOT NULL a nivel DB) — se usa el propio
-			// employee_id para asignaciones generadas por el sistema, igual que el cron de Pulse.
-			await SurveyAssignment.create({
-				survey_id:   survey.id,
-				employee_id: employeeId,
-				assigned_by: employeeId,
-				due_date:    dueDate,
-				status:      SURVEY_ASSIGNMENT.STATUS_PENDING,
-			});
-
-			Alert.create({
-				employee_id: employeeId,
-				type:        'OFFBOARDING_STARTED',
-				message:     'Se inició tu proceso de desvinculación. Revisá tu checklist de salida y completá la entrevista de salida.',
-				status:      'UNREAD',
-			}).catch(console.error);
-		}
-
-		// Transición a Alumni desde el inicio del proceso (no al finalizarlo): cambiar
-		// User.role_id dispara el hook syncEmployeeStatus (Employee.status='INACTIVE',
-		// limpia department_id/position). El empleado completa su checklist y entrevista
-		// de salida ya como Alumni; "Finalizar proceso" queda como cierre formal de HR.
-		const alumniRole = await Role.findOne({ where: { name: ROLE.ALUMNI } });
-		const user = await User.findOne({ where: { employee_id: employeeId } });
-		if (alumniRole && user) {
-			await user.update({ role_id: alumniRole.id });
-		}
-
-		await AlumniProfile.findOrCreate({
-			where:    { employee_id: employeeId },
-			defaults: { employee_id: employeeId, rehirable: offboarding.rehirable, tags: Array.isArray(tags) ? tags : [] },
-		});
-
-		// Tareas pendientes de OTROS templates (ej. onboarding) dejan de tener sentido una vez
-		// que el empleado es Alumni — se marcan vencidas (due_date al pasado) en vez de quedar
-		// accionables para siempre en MyTasks/AllAssignmentsPage. No se tocan SUBMITTED/
-		// COMPLETED/DROPPED/REJECTED (ya resueltas).
-		const yesterday = new Date();
-		yesterday.setDate(yesterday.getDate() - 1);
-		await EmployeeTask.update(
-			{ due_date: yesterday },
-			{
-				where: {
+				// assigned_by es parte de la PK compuesta (NOT NULL a nivel DB) — se usa el propio
+				// employee_id para asignaciones generadas por el sistema, igual que el cron de Pulse.
+				await SurveyAssignment.create({
+					survey_id:   survey.id,
 					employee_id: employeeId,
-					status:      { [Op.in]: [EMPLOYEE_TASK.STATUS_ENROLLED, EMPLOYEE_TASK.STATUS_IN_PROGRESS] },
-					task_id:     { [Op.notIn]: checklistTasks.map((t) => t.id) },
-				},
-			},
-		);
+					assigned_by: employeeId,
+					due_date:    dueDate,
+					status:      SURVEY_ASSIGNMENT.STATUS_PENDING,
+				}, { transaction: t });
+			}
 
-		const full = await EmployeeOffboarding.findByPk(offboarding.id, { include: [EMPLOYEE_INCLUDE] });
-		res.status(201).json(await formatOffboarding(full, checklistTaskType.id, exitInterviewQuestionType.id));
+			// Transición a Alumni desde el inicio del proceso (no al finalizarlo): cambiar
+			// User.role_id dispara el hook syncEmployeeStatus (Employee.status='INACTIVE',
+			// limpia department_id/position). El empleado completa su checklist y entrevista
+			// de salida ya como Alumni; "Finalizar proceso" queda como cierre formal de HR.
+			const alumniRole = await Role.findOne({ where: { name: ROLE.ALUMNI }, transaction: t });
+			const user = await User.findOne({ where: { employee_id: employeeId }, transaction: t });
+			if (alumniRole && user) {
+				await user.update({ role_id: alumniRole.id }, { transaction: t });
+			}
+
+			await AlumniProfile.findOrCreate({
+				where:       { employee_id: employeeId },
+				defaults:    { employee_id: employeeId, rehirable: offboarding.rehirable, tags: Array.isArray(tags) ? tags : [] },
+				transaction: t,
+			});
+
+			// Tareas pendientes de OTROS templates (ej. onboarding) dejan de tener sentido una vez
+			// que el empleado es Alumni — se marcan vencidas (due_date al pasado) en vez de quedar
+			// accionables para siempre en MyTasks/AllAssignmentsPage. No se tocan SUBMITTED/
+			// COMPLETED/DROPPED/REJECTED (ya resueltas).
+			const yesterday = new Date();
+			yesterday.setDate(yesterday.getDate() - 1);
+			await EmployeeTask.update(
+				{ due_date: yesterday },
+				{
+					where: {
+						employee_id: employeeId,
+						status:      { [Op.in]: [EMPLOYEE_TASK.STATUS_ENROLLED, EMPLOYEE_TASK.STATUS_IN_PROGRESS] },
+						task_id:     { [Op.notIn]: checklistTasks.map((tsk) => tsk.id) },
+					},
+					transaction: t,
+				},
+			);
+
+			await t.commit();
+
+			// Fire-and-forget: fuera de la transacción a propósito, una alerta que no llegue a
+			// crearse no debería revertir el offboarding ya confirmado.
+			if (!isTermination) {
+				Alert.create({
+					employee_id: employeeId,
+					type:        'OFFBOARDING_STARTED',
+					message:     'Se inició tu proceso de desvinculación. Revisá tu checklist de salida y completá la entrevista de salida.',
+					status:      'UNREAD',
+				}).catch(console.error);
+			}
+
+			const full = await EmployeeOffboarding.findByPk(offboarding.id, { include: [EMPLOYEE_INCLUDE] });
+			res.status(201).json(await formatOffboarding(full, checklistTaskType.id, exitInterviewQuestionType.id));
+		} catch (err) {
+			await t.rollback();
+			throw err;
+		}
 	} catch (err) {
 		next(err);
 	}

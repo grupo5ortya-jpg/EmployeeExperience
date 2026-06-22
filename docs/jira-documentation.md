@@ -924,6 +924,62 @@ Cierre de los ítems de menor esfuerzo identificados en EXP-DEV-19 (`apiClient.j
 
 ---
 
+### EXP-DEV-21-FIX-01 · `startOffboarding` envuelto en una transacción de Sequelize
+
+**Tipo:** Mejora técnica | **Rol:** Talento (HR)
+
+**Descripción:**
+`startOffboarding` hace ~10 escrituras secuenciales (crear el caso, activos a devolver, checklist, cancelar entrevistas viejas, crear la entrevista nueva, cambiar el rol a Alumni, crear `AlumniProfile`, vencer tareas de otros templates) sin ninguna transacción — si cualquier paso fallaba a mitad de camino (ej. el activo duplicado de EXP-DEV-07-FIX-03), el empleado quedaba en un estado a medio migrar: el `EmployeeOffboarding` ya creado pero el rol sin cambiar, o algunos activos ya guardados y otros no.
+
+**Fix:** todo el bloque de escritura (desde `EmployeeOffboarding.create` hasta el vencimiento de tareas de otros templates) ahora corre dentro de `sequelize.transaction()`, con `{transaction: t}` en cada `create`/`update`/`bulkCreate`/`destroy`/`findOne`/`findAll` involucrado — mismo patrón ya usado en `employee.controllers.js#createEmployee`. Quedan **fuera** de la transacción a propósito:
+- La resolución de `checklistTaskType`/`exitInterviewQuestionType` (`getOffboardingChecklistTaskType`/`getExitInterviewQuestionType`, `findOrCreate` idempotente sobre referencias de sistema ya seedeadas) — son datos de infraestructura compartidos, no algo específico de esta operación que deba revertirse.
+- El `Alert.create` de `OFFBOARDING_STARTED` — fire-and-forget después del `commit`, una alerta que falle no debería revertir un offboarding ya confirmado.
+
+El caso del activo duplicado (única rama que sale con un `return` directo en vez de propagar la excepción al `catch`) ahora hace `await t.rollback()` explícito antes de responder 400, para no dejar la conexión/transacción abierta.
+
+**Acceptance Criteria:**
+- [ ] Un fallo a mitad de camino (ej. activo duplicado) no deja ningún rastro: ni el `EmployeeOffboarding`, ni el checklist, ni el cambio de rol
+- [ ] El camino feliz sigue creando todo exactamente igual que antes (checklist, entrevista, activo, transición a Alumni, alerta)
+- [ ] No se reintroduce ningún `await t.rollback()` faltante en una rama de error nueva
+
+**Verificado end-to-end (backend real, `curl`, con limpieza completa después de cada prueba):**
+- **Rollback:** `POST /offboarding` con dos activos duplicados (mismo `name`+`serialNumber`) dentro del mismo `assets[]` → 400; confirmado que **ni siquiera el primer activo** del array quedó guardado (antes del fix, el primero sí se guardaba); el empleado siguió `ACTIVE`/`Colaborador` sin cambios; no se creó ningún `EmployeeOffboarding` nuevo (el endpoint `GET /offboarding/:employeeId` siguió devolviendo el último caso `COMPLETED` de una prueba anterior, no uno nuevo `IN_PROGRESS`).
+- **Camino feliz:** `POST /offboarding` (renuncia, con un activo y tags) sobre un empleado limpio → 201 con checklist de 4 tareas `ENROLLED`, entrevista de salida `PENDING` con `Survey`/`SurveyAssignment` reales, activo nuevo creado y asociado, `employee.status` → `INACTIVE`, rol → `Alumni`, alerta `OFFBOARDING_STARTED` visible en `GET /alerts` del empleado — todo confirmado tras el `commit`. Revertido completo vía `PATCH /alumni/:id/rehire` (rol/status) + `PATCH .../assets/:assetId/return` (activo).
+
+---
+
+### EXP-DEV-20-FIX-01 · Ownership check en `/survey-response` sin cambiar el esquema
+
+**Tipo:** Bug (seguridad) | **Rol:** Colaborador, Líder
+
+**Descripción:**
+`POST /survey-response` (único endpoint de este recurso con un caller real — `PulseSurveyForm.jsx#submitPulseResponse`, el flujo de Pulso 30/60/90) no validaba que el empleado autenticado fuera el dueño de la encuesta que estaba respondiendo. El modelo `SurveyResponse` no tiene columna `employee_id` (solo `survey_assignment_id`+`question_id` como PK compuesta), lo que parecía bloquear cualquier validación de ownership sin una migración.
+
+**Decisión — sin cambio de esquema, mismo patrón ya usado en el código:**
+Antes de decidir el approach se investigaron dos preguntas clave:
+1. **¿`survey_assignment_id` identifica a un empleado puntual sin ambigüedad?** Sí — a pesar del nombre, este campo en la práctica guarda `Survey.id` (no una referencia real a la PK compuesta de `SurveyAssignment`, ver `PulseSurveyForm.jsx`). Pero `pulseCronJob.js#assignDuePulseSurveys` crea un `Survey` **nuevo por cada empleado** en cada check-in (nunca se reusa un template entre empleados), así que `survey_id` sí identifica una asignación de un empleado específico sin ambigüedad — no hace falta que sea una FK real para que la validación sea correcta.
+2. **¿Ya existe este patrón de validación en el código?** Sí — `pulseSurveyService.js#handleCompletePulseSurvey` ya hace exactamente este lookup (`SurveyAssignment.findOne({where:{survey_id, employee_id}})`) antes de leer las respuestas para el análisis de Gemini. Se reusa el mismo patrón en vez de inventar uno nuevo.
+
+Con esto confirmado, se optó por la solución liviana: en `createResponse`, si el rol no es Talento, se exige que exista una `SurveyAssignment` con `{survey_id: surveyAssignmentId, employee_id: req.user.employeeId, status: 'PENDING'}` — 403 si no. **Se agregó también el chequeo de `status: PENDING`** (no pedido originalmente, encontrado al analizar el flujo): sin esto, nada impedía crear/alterar respuestas sobre una encuesta ya `COMPLETED` — un Colaborador podía reabrir y modificar sus propias respuestas históricas de Pulso después de que el análisis de Gemini ya se había generado sobre la versión original, sin que HR se enterara del cambio.
+
+**`GET`/`PATCH`/`DELETE` sin caller real → `authorize('Talento')` directo:** confirmado por grep que ningún archivo del frontend llama a `GET /survey-response` (ninguna de las dos variantes) ni a `PATCH /survey-response/:surveyAssignmentId/:questionId` — a diferencia de `POST`, no había ningún flujo de self-service legítimo que proteger con ownership check, así que se restringieron directo a Talento (mismo criterio que otros endpoints sin uso real esta sesión). `DELETE` ya estaba restringido a Talento desde la ronda anterior de la auditoría (EXP-DEV-19).
+
+**Por qué no se migró el esquema:** agregar `employee_id` a `SurveyResponse` sería la solución "correcta" a nivel de modelo de datos, pero implica una migración + tocar el modelo + el controller + los 2 services de frontend que llaman a este endpoint — para un beneficio marginal sobre la solución liviana, dado que `survey_id` ya identifica la asignación sin ambigüedad en la práctica (ver punto 1 arriba). Queda como mejora de claridad de esquema para el futuro si alguna vez se necesita, no como deuda de seguridad — la validación de acceso ya es correcta con el approach actual.
+
+**Acceptance Criteria:**
+- [ ] `POST /survey-response` 403 si el empleado autenticado no es el dueño de la `SurveyAssignment` referenciada
+- [ ] `POST /survey-response` 403 si la `SurveyAssignment` ya está `COMPLETED` (incluso siendo el dueño)
+- [ ] Talento bypassa ambos chequeos
+- [ ] `GET`/`PATCH /survey-response` devuelven 403 para cualquier rol que no sea Talento
+
+**Verificado end-to-end (backend real, `curl`, con limpieza completa de los datos de prueba después):**
+- `GET /survey-response` → 403 Colaborador, 200 Talento. `PATCH /survey-response/...` → 403 Colaborador.
+- Creado un `Survey`+`SurveyAssignment` `PENDING` reales para un empleado (vía script directo, no hay endpoint de test para esto desde que se eliminaron los `/admin/cron/*` en EXP-DEV-17-FIX-02): el propio empleado responde → 201; otro empleado intenta responder la misma encuesta → 403; Talento responde en nombre del empleado (pregunta distinta, para no chocar con la PK ya usada) → 201, bypass confirmado.
+- Asignación marcada `COMPLETED` (mismo flujo real: `PATCH /survey-assignment/.../status:COMPLETED`) → el propio dueño intenta agregar una respuesta más → 403 ("no es tuya o ya fue completada").
+- Datos de prueba (`SurveyResponse`×2, `SurveyAssignment`, `Survey`) borrados al cerrar la prueba; empleado de test sin cambios de estado.
+
+---
+
 ## Arquitectura técnica — Notas para desarrolladores
 
 ### Protección de rutas por rol
@@ -1007,8 +1063,8 @@ Una auditoría completa de backend + frontend encontró varias rutas de escritur
 | EXP-DEV-17 | ~~`POST /admin/cron/onboarding-run`/`pulse-run` sin `authorize('Talento')`~~ — Resuelto 2026-06-20, ver EXP-DEV-17-FIX-01 (protegidos), luego eliminados por completo el mismo día — ver EXP-DEV-17-FIX-02 | ~~Media~~ |
 | EXP-DEV-18 | `startOffboarding` auto-asigna `SurveyAssignment.assigned_by = employeeId` (workaround de sistema) para la entrevista de salida — podría usar `req.user.employeeId` (el HR real que inició el proceso, ya capturado como `initiated_by`) en su lugar. Mejora cosmética/de trazabilidad, no es un bug | Baja |
 | EXP-DEV-19 | ~~Auditoría round 2 de `authorize()` faltante + ownership checks + reglas de negocio Alumni~~ — Resuelto 2026-06-21, ver EXP-DEV-19 arriba | ~~Alta~~ |
-| EXP-DEV-20 | `/survey-response` (POST/PATCH) sin ownership check — el modelo no tiene `employee_id`, requiere cambio de esquema para validar "es tu propia respuesta". Ver EXP-DEV-19 | Media |
-| EXP-DEV-21 | `startOffboarding` sin transacción de Sequelize a pesar de ~10 escrituras secuenciales — riesgo de estado a medio migrar si falla a mitad de camino | Media |
+| EXP-DEV-20 | ~~`/survey-response` (POST/PATCH) sin ownership check~~ — Resuelto 2026-06-21 sin cambio de esquema (mismo patrón que `handleCompletePulseSurvey`), ver EXP-DEV-20-FIX-01 | ~~Media~~ |
+| EXP-DEV-21 | ~~`startOffboarding` sin transacción de Sequelize a pesar de ~10 escrituras secuenciales~~ — Resuelto 2026-06-21, ver EXP-DEV-21-FIX-01 | ~~Media~~ |
 | EXP-DEV-22 | ~~`rehireAlumni` archiva (`DROPPED`) tareas en `SUBMITTED` al recontratar~~ — Resuelto 2026-06-21, ver EXP-DEV-29-FIX-01 | ~~Baja~~ |
 | EXP-DEV-23 | ~~Falta `onDelete`/guard en `DELETE /employee`/`DELETE /job-openings`~~ — Resuelto 2026-06-21 para `Employee` (409 limpio, ver EXP-DEV-29-FIX-01); para `JobOpening` se confirmó que no aplica (`paranoid:true`, soft-delete nunca viola FK) | ~~Media~~ |
 | EXP-DEV-30 | ~~`formatOffboarding` no aplicaba el guard `isTermination` a la consulta de `exitInterview` (solo al checklist) — un despido mostraba la entrevista de una ronda de renuncia previa en vez de `null`~~ — Resuelto 2026-06-21, ver EXP-DEV-29-FIX-01 | ~~Media~~ |

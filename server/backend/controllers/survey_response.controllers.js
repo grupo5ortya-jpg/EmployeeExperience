@@ -1,4 +1,5 @@
-const { SurveyResponse, Question, QuestionOption } = require('../connection/sequelize');
+const { SurveyResponse, SurveyAssignment, Question, QuestionOption } = require('../connection/sequelize');
+const { SURVEY_ASSIGNMENT } = require('../utils/constants/models.constants.js');
 
 const RESPONSE_INCLUDE = [
 	{ model: Question,       as: 'question',       attributes: ['id', 'text', 'type'] },
@@ -44,6 +45,28 @@ const getResponseById = async (req, res, next) => {
 const createResponse = async (req, res, next) => {
 	try {
 		const { surveyAssignmentId, questionId, answerText, questionOptionId, numericValue } = req.body;
+
+		// `survey_assignment_id` no es realmente la PK compuesta de SurveyAssignment — el flujo de
+		// Pulso (único caller real de este endpoint) lo usa como alias de `Survey.id` (ver
+		// PulseSurveyForm.jsx#submitPulseResponse). Cada empleado tiene su propio Survey por
+		// check-in (pulseCronJob.js nunca reusa uno entre empleados), así que esto sigue
+		// identificando una asignación puntual sin ambigüedad. Ownership check: mismo patrón que
+		// pulseSurveyService.js#handleCompletePulseSurvey (que ya hace este lookup antes de leer
+		// las respuestas) — Talento bypassa, el resto solo puede responder su propia asignación
+		// PENDING. EXP-DEV-20-FIX-01, ver jira-documentation.md.
+		if (req.user?.role !== 'Talento') {
+			const assignment = await SurveyAssignment.findOne({
+				where: {
+					survey_id:   surveyAssignmentId,
+					employee_id: req.user?.employeeId,
+					status:      SURVEY_ASSIGNMENT.STATUS_PENDING,
+				},
+			});
+			if (!assignment) {
+				return res.status(403).json({ status: 'fail', message: 'No podés responder una encuesta que no es tuya o que ya fue completada.' });
+			}
+		}
+
 		const response = await SurveyResponse.create({
 			survey_assignment_id: surveyAssignmentId,
 			question_id:          questionId,
