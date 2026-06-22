@@ -109,6 +109,7 @@ const EMPTY_FORM = { receiverId: '', title: '', description: '', type: 'RECOGNIT
 export default function CreateContinuousFeedbackModal({ isOpen, onClose, employees, onSubmit, loading }) {
     const { user } = useSelector((s) => s.auth)
     const [form, setForm] = useState(EMPTY_FORM)
+    const [error, setError] = useState('')
 
     if (!isOpen) return null
 
@@ -120,16 +121,21 @@ export default function CreateContinuousFeedbackModal({ isOpen, onClose, employe
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!form.receiverId) return
-        await onSubmit({
-            type:        form.type,
-            title:       form.title,
-            description: form.description,
-            receiver_id: form.receiverId,
-            emitter_id:  user?.employeeId ?? '',
-            isAnonymous: form.isAnonymous,
-        })
-        setForm(EMPTY_FORM)
-        onClose()
+        setError('')
+        try {
+            await onSubmit({
+                type:        form.type,
+                title:       form.title,
+                description: form.description,
+                receiver_id: form.receiverId,
+                emitter_id:  user?.employeeId ?? '',
+                isAnonymous: form.isAnonymous,
+            })
+            setForm(EMPTY_FORM)
+            onClose()
+        } catch (err) {
+            setError(err?.response?.data?.message ?? 'No se pudo enviar el feedback.')
+        }
     }
 
     return (
@@ -206,6 +212,10 @@ export default function CreateContinuousFeedbackModal({ isOpen, onClose, employe
                         />
                         Emitir anónimamente
                     </label>
+
+                    {error && (
+                        <p className="text-sm text-red-400 text-center">{error}</p>
+                    )}
 
                     {/* Footer */}
                     <div className="flex justify-end gap-3 pt-3 border-t border-brand-light">

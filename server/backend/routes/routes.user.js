@@ -6,7 +6,7 @@ const users = require('../controllers/user.controllers');
 
 router.get('/',       users.getAllUsers);
 router.get('/:id',    users.getUserById);
-router.post('/',      users.createUser);
+router.post('/',      authorize('Talento'), users.createUser);
 router.patch('/:id',  authorize('Talento'), users.updateUser);
 router.delete('/:id', authorize('Talento'), users.deleteUser);
 

@@ -2,7 +2,7 @@
 
 **Proyecto:** EmployeeExperience HR Platform  
 **Branch activo:** `fullstack-changes`  
-**Última actualización:** 2026-06-20  
+**Última actualización:** 2026-06-21  
 **Stack:** React 19 + Vite + Tailwind v4 / Express 5 + Sequelize 6 + PostgreSQL + Gemini AI
 
 ---
@@ -815,6 +815,115 @@ Hasta ahora `Asset`/`EmployeeAsset` solo mostraban lo que vino del seed — no h
 
 ---
 
+### EXP-DEV-19 · Auditoría de seguridad backend round 2 — `authorize()` faltante + ownership checks + reglas de negocio para Alumni
+
+**Tipo:** Bug (seguridad) | **Rol:** Talento (HR)
+
+**Descripción:**
+Continuación de la auditoría de `authorize()` del 2026-06-18 (que cubrió `routes.user.js`, `routes.department.js`, `routes.team.js`, `routes.task.js`, `routes.task_type.js`, `routes.jobOpening.js`, `routes.continuousFeedback.js`). Esta ronda (2026-06-21) revisó los ~23 archivos de rutas restantes y encontró el mismo patrón de bug sin corregir, más algunas reglas de negocio faltantes alrededor del rol Alumni.
+
+**`authorize()` faltante, corregido:**
+- `POST /user` → `authorize('Talento')` (el `PATCH`/`DELETE` ya lo tenían desde 2026-06-18, el `POST` había quedado afuera — permitía auto-provisionar un `User` con `roleId` arbitrario).
+- `POST/PATCH/DELETE` de `/learning-courses`, `/person`, `/question`, `/question-option`, `/question-type`, `/survey-type` → `authorize('Talento')` en los 6 archivos (CRUD de catálogo/admin usado solo desde páginas Talento-only, sin protección real en el backend).
+- `PATCH /course-enrollments/:id/review` → `authorize('Talento')` (aprobación de finalización de curso, acción HR-only que cualquier autenticado podía disparar).
+- `POST`/`DELETE /survey-assignment` → `authorize('Talento')` (sin caller real en el frontend).
+- `DELETE /survey-response/...` → `authorize('Talento')`.
+- `POST`/`DELETE /employee-task` → `authorize('Talento')` (creación/borrado son acciones de template management, Talento-only en el frontend).
+- `GET /feedback-assignment`, `PATCH /feedback-assignment/:id` → `authorize('Talento','Líder','Colaborador')` (excluye Alumni).
+
+**Ownership checks agregados a nivel controller** (no se podía restringir por rol porque el propio empleado usa el endpoint sobre sus propios datos):
+- `PATCH /employee-task/:employeeId/:taskId` — Talento/Líder sin restricción (aprueban tareas de otros), el resto solo su propio `employeeId`.
+- `PATCH /survey-assignment/:surveyId/:employeeId/:assignedBy` — mismo patrón (completar la propia encuesta de Pulso).
+- `PATCH /alerts/:id/read` — Talento sin restricción, el resto solo si `alert.employee_id` es el propio.
+- `POST /course-enrollments`, `POST /course-enrollments/external`, `PATCH /course-enrollments/:id/progress`, `PATCH /course-enrollments/:id/request-completion` — mismo patrón sobre la propia inscripción.
+
+**Reglas de negocio agregadas (empleado `INACTIVE`/Alumni no debe ser target de acciones nuevas):**
+- `createOkr`/`updateOkr` — 400 si el `responsibleEmployeeId` no está `ACTIVE`.
+- `POST /job-openings/:id/apply` — 400 si el postulante no está `ACTIVE`.
+- `POST /continuous-feedback` — 400 si el `receiver` no está `ACTIVE` (antes solo se filtraba en el selector del frontend).
+
+**Otros fixes de la misma auditoría:**
+- `team.controllers.js` — `PERSON_ATTRS` (objeto de include compartido entre `leader`/`collaborator`) separado en dos literales, defensivo (mismo patrón estructural del gotcha de "include compartido" ya documentado, aunque acá no estaba rompiendo nada).
+- `offboarding.controller.js#startOffboarding` — valida que `lastWorkingDay` sea una fecha parseable (400, antes generaba un `Invalid Date` silencioso) y que los items de `assets` no superen 150 caracteres en `name`/`serialNumber` (400 en vez de un 500 crudo de Sequelize).
+
+**Acceptance Criteria:**
+- [ ] Las 13 rutas listadas arriba devuelven 403 para roles no autorizados
+- [ ] Los 7 endpoints con ownership check devuelven 403 cuando un empleado intenta actuar sobre el recurso de otro, y 200 cuando actúa sobre el propio
+- [ ] Talento/Líder mantienen su bypass donde corresponde (aprobaciones)
+- [ ] OKR/postulación a vacante/feedback continuo rechazan empleados inactivos con 400
+
+**Verificado end-to-end:** backend levantado con `--env-file=.env.dev`, `curl` autenticado como Talento/Líder/Colaborador reales (usuarios de seed). Confirmado 403 en los 3 endpoints Talento-only probados desde Colaborador; 403 cruzado / 200 propio en `employee-task` y `course-enrollments`; 403 al marcar la alerta de otro; 400 en OKR/feedback continuo/postulación contra un empleado Alumni; 400 (antes 500) en offboarding con fecha inválida.
+
+**No corregido, deuda documentada (ver TODOs):**
+- `EXP-DEV-20` — `/survey-response` (POST/PATCH) sin ownership check: el modelo no tiene `employee_id`, solo `survey_assignment_id`+`question_id`, y en la práctica `survey_assignment_id` viaja como el `surveyId` plano (no como referencia a una asignación de un empleado puntual). No se puede validar "es tu propia respuesta" sin agregar una columna — fuera de alcance de esta auditoría.
+- `EXP-DEV-21` — `startOffboarding` no usa transacción de Sequelize a pesar de ~10 escrituras secuenciales (riesgo de estado a medio migrar si falla a mitad de camino, ej. el `Asset.create` con nombre+serie duplicados).
+- `EXP-DEV-22` — `rehireAlumni` archiva (`DROPPED`) tareas en `SUBMITTED` al recontratar, perdiendo revisiones de HR en curso sin distinguirlo de una tarea simplemente abandonada.
+- `EXP-DEV-23` — Falta `onDelete` en las FKs de `EmployeeOffboarding`, `AlumniProfile`, `CareerPlan`, `Asset`/`EmployeeAsset` — un `DELETE` de `Employee`/`JobOpening` con dependientes tira un 500 crudo de Postgres en vez de un 409 claro (mismo patrón ya resuelto a propósito para `Skill`, ver EXP-603).
+
+---
+
+### EXP-DEV-24 · Auditoría frontend cruzada con la auditoría de backend EXP-DEV-19 (mismo día)
+
+**Tipo:** Bug (seguridad/privacidad) | **Rol:** Talento (HR)
+
+**Descripción:**
+Continuación inmediata de EXP-DEV-19: con el backend recién endurecido, se auditó el frontend buscando (1) páginas sin `RoleRoute` que el backend ya no cubre por sí solo, (2) si los flujos que ahora pueden recibir 403/400 nuevos los manejan con gracia, (3) calidad general (código muerto, duplicación).
+
+**`RoleRoute` faltante, corregido:** `AssignTemplatePage`, `CreateTemplatePage`, `CreateFeedback`, `HRFeedbackReport` eran páginas Talento-only por nombre/uso real pero auto-generadas por `router.js` sin ningún `RoleRoute` — accesibles por URL directa para cualquier rol. Las 4 se agregaron a la exclusión de `router.js` y se registraron en `App.jsx` con `RoleRoute allowed={['Talento']}`.
+
+**Bug de privacidad encontrado en el backend (una capa más abajo del `RoleRoute`):** investigando `HRFeedbackReport`/`EmployeeFeedbackReport` se encontró que `GET /feedback-assignment/results` y `GET /feedback-assignment/gap-analysis` no validaban `evaluatedId` contra el empleado autenticado — cualquier Colaborador/Líder podía ver los scores y el análisis de brechas IA **completo** de otro empleado, sin importar si HR ya lo había "enviado" (`sent_sections`). El flujo de aprobación de privacidad de EXP-103 solo se aplicaba en el frontend al renderizar, nunca en la API.
+- Fix `getResults`: ownership check (Talento/Líder sin restricción, el resto solo su propio `evaluatedId`).
+- Fix `getGapAnalysis`: mismo ownership check + redacción real server-side (`strengths`/`gaps`/`suggestions`/`summary` se devuelven `null` si la sección no está en `sent_sections`, para quien no sea HR) + `authorize('Talento','Líder','Colaborador')` agregado a la ruta (no tenía ninguno).
+
+**Bugs de UX corregidos (modales con `unhandled promise rejection` ante cualquier error del backend):** `OkrFormModal.jsx`, `CreateContinuousFeedbackModal.jsx`, `ExternalCertificationModal.jsx` hacían `await onSubmit(...)` sin `try/catch` — un error (incluidos los 400 nuevos de EXP-DEV-19, aunque hoy inalcanzables desde la UI por los filtros ya existentes) dejaba el modal colgado sin mensaje. Se agregó `try/catch` + estado de error visible, mismo patrón que `ResponseForm360`/`JobOpeningApplyModal`.
+
+**Acceptance Criteria:**
+- [ ] Las 4 páginas devuelven `RoleRoute`/redirect para roles no-Talento
+- [ ] `GET /feedback-assignment/results` y `/gap-analysis` devuelven 403 si `evaluatedId` no es el propio (salvo Talento/Líder)
+- [ ] `/gap-analysis` no devuelve secciones no enviadas (`sent_sections`) a un Colaborador/Líder, incluso pegándole directo a la API
+- [ ] Los 3 modales muestran un mensaje de error en vez de quedar colgados ante un fallo
+
+**Verificado end-to-end:** `vite build` sin errores. Backend real + curl: Colaborador A con el `evaluatedId` de Colaborador B en `/results` y `/gap-analysis` → 403 en ambos; con su propio `evaluatedId` → pasa el chequeo; Talento → sin restricción.
+
+**No corregido, deuda documentada (ver TODOs):**
+- `EXP-DEV-25` — 5 de 8 flujos que pueden recibir un 403/400 nuevo (toggle de tareas, marcar alerta leída, los 4 de `course-enrollments`) fallan en silencio sin mensaje — patrón general de mutaciones con solo `onSuccess`/`mutate()` fire-and-forget, no específico de esta sesión.
+- `EXP-DEV-26` — 11 exports huérfanos en `services/`/`hooks/` (`surveyTypeService.js` completo, `feedback360Service.js#getAssignments/createAssignment`, etc.) — mismo patrón de la limpieza de 2026-06-16, quedaron afuera.
+- `EXP-DEV-27` — `JobOpeningsList`, `MyEvaluations`, `EmployeeFeedbackReport` registradas a mano en `App.jsx` pero también auto-generadas por no estar en la exclusión de `router.js` (doble-registro inofensivo al mismo path/componente, sin bug de protección — a diferencia del histórico — pero amerita prolijidad).
+- `EXP-DEV-28` — ~10 reimplementaciones locales de `formatDate` casi idénticas en `pages/**` — candidato a extraer a un helper compartido, sin bug.
+- `EXP-DEV-29` — `apiClient.js` sin interceptor de `response`/401 — cada sesión vencida se maneja (o no) independientemente en cada call site, sin redirect-a-login centralizado.
+
+---
+
+### EXP-DEV-29-FIX-01 · Cierre de los TODOs "simples" de la auditoría de seguridad (EXP-DEV-20/29) + bug nuevo encontrado en testing
+
+**Tipo:** Bug + mejora técnica | **Rol:** Talento (HR)
+
+**Descripción:**
+Cierre de los ítems de menor esfuerzo identificados en EXP-DEV-19 (`apiClient.js` sin interceptor 401, activo duplicado → 500, `rehireAlumni` dropeando `SUBMITTED`, falta de guard en `DELETE /employee`/`DELETE /job-openings`). Verificado end-to-end contra el backend real (no solo lectura de código) — apareció un bug nuevo en el camino, no relacionado a los fixes en sí.
+
+**`EXP-DEV-29` — `apiClient.js#interceptors.response`:** cualquier 401 fuera de `/auth/*` ahora dispara `store.dispatch(clearUser())` (import dinámico de `store.js`/`authSlice.js` para evitar el ciclo `apiClient → store → authSlice → authService → apiClient`). `PrivateRoute` ya redirige a `/login` solo con que `user` pase a `null`, así que no hace falta navegar a mano. Se excluye `/auth/*` porque un 401 ahí (login con credenciales inválidas) es un error de formulario esperado, no una sesión vencida.
+
+**Activo duplicado (name+serial) → 400 en vez de 500:** `startOffboarding` ahora atrapa `UniqueConstraintError` en el `Asset.create` del loop de "activos a devolver" y devuelve un 400 claro (`"Ya existe un activo registrado con el nombre... y ese número de serie."`) en vez de dejar pasar el 500 crudo de Postgres.
+
+**`EXP-DEV-22` — `rehireAlumni` ya no dropea tareas `SUBMITTED`:** el bulk-`DROPPED` al recontratar ahora excluye `SUBMITTED` (queda solo `ENROLLED`/`IN_PROGRESS`) — una certificación externa o curso con diploma ya subido y pendiente de revisión de HR sobrevive el ciclo de recontratación en vez de perderse silenciosamente.
+
+**`EXP-DEV-23` — guard genérico contra `DELETE` con dependientes:**
+- `deleteEmployee` (`employee.controllers.js`): se intentó primero un guard específico por `SequelizeForeignKeyConstraintError` (mismo patrón que `skill.controller.js`), pero **el testing en vivo reveló que el error real no es ese**: `SurveyAssignment.employee_id` es parte de la PK compuesta (`allowNull:true` a nivel Sequelize, pero NOT NULL real en Postgres por ser PK — mismo gotcha ya documentado para `assigned_by`), así que el `onDelete` que Sequelize infiere por default (`SET NULL`, porque el campo es `allowNull:true`) es **imposible de cumplir** sobre una columna de PK → Postgres tira un `SequelizeDatabaseError` crudo ("viola la restricción not-null"), no un `ForeignKeyConstraintError`. Fix ampliado para atrapar ambas clases de error y devolver 409 con un mensaje claro. **Verificado con un empleado real del seed:** antes → 500 con el mensaje crudo de Postgres expuesto al cliente; después → 409 limpio, empleado no tocado.
+- `core_ctrl_delete_job_opening` (`jobOpening.controller.js`): cambiado de `res.status(500)` directo a `next(error)`, para que `errorHandler.js` (que ya traduce `ForeignKeyConstraintError`→400 y `UniqueConstraintError`→409 globalmente) se aplique acá también. **Corrección sobre la estimación original:** `JobOpening` es `paranoid:true` (soft-delete) — un `DELETE` nunca llega a ejecutar un `DELETE FROM` real en Postgres (es un `UPDATE deleted_at=now()`), así que el riesgo de FK violation que motivó este ítem **no existe en la práctica** para esta tabla; confirmado en vivo borrando (y restaurando) una vacante con un `CareerPlan` real asociado — la operación "tuvo éxito" sin tocar el `CareerPlan` en absoluto, sin ningún error que traducir. El cambio se mantiene como mejora de consistencia (mismo patrón de error que el resto de los controllers modernos), no como fix de un bug reproducible.
+
+**Bug nuevo encontrado durante el testing de `rehireAlumni` (no relacionado a los fixes de arriba):** `formatOffboarding` tiene el guard `isTermination ? [] : ...` para el checklist (fix de EXP-DEV-11-FIX-01) pero **nunca se aplicó el mismo guard a la consulta de `exitInterview`** — a pesar de que el comentario en el código y el acceptance criteria de EXP-1006 dicen explícitamente que un despido no debe tener entrevista de salida (`exitInterview === null`). Reproducido en vivo: empleado con una ronda de renuncia vieja (entrevista ya `COMPLETED`) → despedido en una ronda nueva → `GET /offboarding/:employeeId` devolvía la entrevista `COMPLETED` de la ronda vieja en vez de `null`. No es user-facing (el frontend ya oculta la entrevista por completo para `TERMINATION` en los 3 lugares donde se muestra) pero la API devolvía el dato sucio — exactamente el mismo patrón ya resuelto para el checklist, que quedó sin aplicar acá. Fix: mismo guard `isTermination ? null : await SurveyAssignment.findOne(...)`.
+
+**Verificado end-to-end (backend real, `curl`, usuarios de seed — con limpieza completa de cada artefacto de prueba después):**
+- 401 fuera de `/auth/*` → interceptor agregado, verificado por `vite build` (revisión de código, no hay sesión real expirable a mano en este entorno de testing).
+- Activo duplicado en el mismo `assets[]` de un `POST /offboarding` → 400 con mensaje claro; empleado no transicionó a Alumni (el error ocurre antes del cambio de rol); activo parcial creado por el primer item del array limpiado vía `PATCH .../assets/:assetId/return`.
+- `DELETE /employees/:id` sobre un empleado real con datos asociados → 409 limpio (antes 500 con mensaje crudo de Postgres); empleado intacto.
+- `DELETE /job-openings/:id` sobre una vacante con un `CareerPlan` real → sigue devolviendo 200 (soft-delete, no hay FK que viole) — **restaurada inmediatamente vía `.restore()`** tras confirmar que el soft-delete no afecta al `CareerPlan` (`job_opening_id` no quedó en `null`).
+- Certificación externa `SUBMITTED` → empleado despedido (Alumni) → recontratado → tarea sigue `PENDING_APPROVAL` (antes se perdía a `DROPPED`) → rechazada manualmente para cerrar el ciclo de prueba.
+- Bug nuevo de `exitInterview`: confirmado antes (devolvía la entrevista vieja) y después del fix (`null`) sobre el mismo empleado/ronda de despido.
+- Efecto colateral encontrado y resuelto en el camino: el empleado de prueba tenía un `EmployeeOffboarding` `IN_PROGRESS` colgado de una sesión de testing anterior (exactamente el bug ya documentado en EXP-1002-FIX-03) — cerrado vía `PATCH .../complete` antes de poder continuar.
+
+---
+
 ## Arquitectura técnica — Notas para desarrolladores
 
 ### Protección de rutas por rol
@@ -897,6 +1006,18 @@ Una auditoría completa de backend + frontend encontró varias rutas de escritur
 | EXP-DEV-15 | Borrar `components/ui/Button.jsx`'s variant `outline` sigue con colores `gray-*` (no `slate-*`/`brand-*` del resto del proyecto) — corregir si/cuando se empiece a usar ese variant | Baja |
 | EXP-DEV-17 | ~~`POST /admin/cron/onboarding-run`/`pulse-run` sin `authorize('Talento')`~~ — Resuelto 2026-06-20, ver EXP-DEV-17-FIX-01 (protegidos), luego eliminados por completo el mismo día — ver EXP-DEV-17-FIX-02 | ~~Media~~ |
 | EXP-DEV-18 | `startOffboarding` auto-asigna `SurveyAssignment.assigned_by = employeeId` (workaround de sistema) para la entrevista de salida — podría usar `req.user.employeeId` (el HR real que inició el proceso, ya capturado como `initiated_by`) en su lugar. Mejora cosmética/de trazabilidad, no es un bug | Baja |
+| EXP-DEV-19 | ~~Auditoría round 2 de `authorize()` faltante + ownership checks + reglas de negocio Alumni~~ — Resuelto 2026-06-21, ver EXP-DEV-19 arriba | ~~Alta~~ |
+| EXP-DEV-20 | `/survey-response` (POST/PATCH) sin ownership check — el modelo no tiene `employee_id`, requiere cambio de esquema para validar "es tu propia respuesta". Ver EXP-DEV-19 | Media |
+| EXP-DEV-21 | `startOffboarding` sin transacción de Sequelize a pesar de ~10 escrituras secuenciales — riesgo de estado a medio migrar si falla a mitad de camino | Media |
+| EXP-DEV-22 | ~~`rehireAlumni` archiva (`DROPPED`) tareas en `SUBMITTED` al recontratar~~ — Resuelto 2026-06-21, ver EXP-DEV-29-FIX-01 | ~~Baja~~ |
+| EXP-DEV-23 | ~~Falta `onDelete`/guard en `DELETE /employee`/`DELETE /job-openings`~~ — Resuelto 2026-06-21 para `Employee` (409 limpio, ver EXP-DEV-29-FIX-01); para `JobOpening` se confirmó que no aplica (`paranoid:true`, soft-delete nunca viola FK) | ~~Media~~ |
+| EXP-DEV-30 | ~~`formatOffboarding` no aplicaba el guard `isTermination` a la consulta de `exitInterview` (solo al checklist) — un despido mostraba la entrevista de una ronda de renuncia previa en vez de `null`~~ — Resuelto 2026-06-21, ver EXP-DEV-29-FIX-01 | ~~Media~~ |
+| EXP-DEV-24 | ~~Auditoría frontend cruzada con EXP-DEV-19 — `RoleRoute` faltante + privacidad de gap-analysis + modales colgados~~ — Resuelto 2026-06-21, ver EXP-DEV-24 arriba | ~~Alta~~ |
+| EXP-DEV-25 | 5 de 8 flujos con 403/400 nuevo fallan en silencio sin mensaje (toggle de tareas, marcar alerta leída, `course-enrollments`) — patrón general de mutaciones sin `onError`, no nuevo de esta sesión | Baja |
+| EXP-DEV-26 | 11 exports huérfanos en `services/`/`hooks/` (`surveyTypeService.js` completo, `feedback360Service.js#getAssignments/createAssignment`, etc.) — limpieza pendiente, mismo patrón de 2026-06-16 | Baja |
+| EXP-DEV-27 | `JobOpeningsList`/`MyEvaluations`/`EmployeeFeedbackReport` con doble-registro inofensivo en `router.js` (auto-generado + manual al mismo path) — prolijidad, sin bug de protección | Baja |
+| EXP-DEV-28 | ~10 reimplementaciones locales de `formatDate` en `pages/**` — extraer a helper compartido | Baja |
+| EXP-DEV-29 | ~~`apiClient.js` sin interceptor de `response`/401~~ — Resuelto 2026-06-21, ver EXP-DEV-29-FIX-01 | ~~Media~~ |
 
 ---
 

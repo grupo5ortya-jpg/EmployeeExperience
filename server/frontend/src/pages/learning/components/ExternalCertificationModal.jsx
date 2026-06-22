@@ -13,22 +13,28 @@ export default function ExternalCertificationModal({ isOpen, onClose, employeeId
     const { mutateAsync: createExternalCertification, isPending } = useCreateExternalCertification()
 
     const [form, setForm] = useState(emptyForm)
+    const [error, setError] = useState('')
 
     if (!isOpen) return null
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        await createExternalCertification({
-            employeeId,
-            title: form.title.trim(),
-            duration: form.duration.trim() || null,
-            modality: form.modality,
-            skillId: form.skillId || null,
-            institution: form.institution.trim() || null,
-            certificateLink: form.certificateLink.trim(),
-        })
-        setForm(emptyForm)
-        onClose()
+        setError('')
+        try {
+            await createExternalCertification({
+                employeeId,
+                title: form.title.trim(),
+                duration: form.duration.trim() || null,
+                modality: form.modality,
+                skillId: form.skillId || null,
+                institution: form.institution.trim() || null,
+                certificateLink: form.certificateLink.trim(),
+            })
+            setForm(emptyForm)
+            onClose()
+        } catch (err) {
+            setError(err?.response?.data?.message ?? 'No se pudo registrar la certificación.')
+        }
     }
 
     return (
@@ -90,6 +96,10 @@ export default function ExternalCertificationModal({ isOpen, onClose, employeeId
                         onChange={(e) => setForm((p) => ({ ...p, certificateLink: e.target.value }))}
                         className="border border-brand-light rounded-lg px-3 py-2 text-sm outline-none focus:border-brand"
                     />
+
+                    {error && (
+                        <p className="text-sm text-red-400 text-center">{error}</p>
+                    )}
 
                     <div className="flex justify-end gap-2 mt-2">
                         <button type="button" onClick={onClose} className="px-3 py-2 border rounded-lg text-sm">

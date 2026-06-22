@@ -148,6 +148,10 @@ const rehireAlumni = async (req, res, next) => {
 		// ya no aplican — se archivan (DROPPED) automáticamente. MyTasks.jsx ya agrupa los
 		// templates 100% DROPPED en "Archivados" (colapsado, sin acción), sin que el
 		// colaborador tenga que archivar nada a mano.
+		// SUBMITTED queda afuera a propósito: es una entrega ya hecha por el empleado y
+		// pendiente de revisión de HR (ej. una certificación con diploma ya subido) — dropearla
+		// junto con el resto perdería esa revisión en curso sin que HR se entere. Queda visible
+		// para que HR la apruebe/rechace como cualquier otra entrega pendiente.
 		await EmployeeTask.update(
 			{ status: EMPLOYEE_TASK.STATUS_DROPPED },
 			{
@@ -157,7 +161,6 @@ const rehireAlumni = async (req, res, next) => {
 						[Op.in]: [
 							EMPLOYEE_TASK.STATUS_ENROLLED,
 							EMPLOYEE_TASK.STATUS_IN_PROGRESS,
-							EMPLOYEE_TASK.STATUS_SUBMITTED,
 						],
 					},
 				},

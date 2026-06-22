@@ -78,6 +78,11 @@ const createAssignment = async (req, res, next) => {
 const updateAssignment = async (req, res, next) => {
 	try {
 		const { surveyId, employeeId, assignedBy } = req.params;
+
+		if (req.user?.role !== 'Talento' && req.user?.employeeId !== employeeId) {
+			return res.status(403).json({ status: 'fail', message: 'No podés completar la encuesta de otro empleado.' });
+		}
+
 		const assignment = await SurveyAssignment.findOne({
 			where: { survey_id: surveyId, employee_id: employeeId, assigned_by: assignedBy },
 		});

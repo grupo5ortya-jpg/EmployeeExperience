@@ -53,6 +53,10 @@ export function srv_front_router_generate_routes() {
     if (pageName === 'CareerSimulatorPage') continue
     if (pageName === 'EmployeeList') continue
     if (pageName === 'AllAssignmentsPage') continue
+    if (pageName === 'AssignTemplatePage') continue
+    if (pageName === 'CreateTemplatePage') continue
+    if (pageName === 'CreateFeedback') continue
+    if (pageName === 'HRFeedbackReport') continue
 
     layoutRoutes.push({ path: '/' + pageName.toLowerCase(), component })
   }

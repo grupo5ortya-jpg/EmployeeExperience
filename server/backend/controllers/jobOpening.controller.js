@@ -1,7 +1,7 @@
 
 const { Op } = require('sequelize');
 const { JobOpening, Skill, JobOpeningSkill, Department, Employee, Person, Alert } = require('../connection/sequelize');
-const { JOB_OPENING } = require('../utils/constants/models.constants.js');
+const { JOB_OPENING, EMPLOYEE } = require('../utils/constants/models.constants.js');
 
 
 const core_ctrl_get_job_openings = async (req, res, next) => {
@@ -181,7 +181,10 @@ const core_ctrl_delete_job_opening = async (req, res, next) => {
 
 		res.json({ message: 'Deleted' });
 	} catch (error) {
-		res.status(500).json({ error: error.message });
+		// CareerPlan referencia esta vacante sin onDelete — delegar a next() en vez de
+		// res.status(500) directo para que errorHandler.js traduzca el FK violation a un
+		// 400 claro ("Invalid related resource reference") en vez de un 500 crudo.
+		next(error);
 	}
 };
 
@@ -201,6 +204,13 @@ const core_ctrl_apply_to_job_opening = async (req, res, next) => {
 			return res.status(400).json({ message: 'La vacante no está abierta' });
 		}
 
+		const employee = await Employee.findByPk(employeeId, {
+			include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
+		});
+		if (!employee || employee.status !== EMPLOYEE.STATUS_ACTIVE) {
+			return res.status(400).json({ message: 'Solo empleados activos pueden postularse' });
+		}
+
 		const existing = await Alert.findOne({
 			where: {
 				employee_id: employeeId,
@@ -212,9 +222,6 @@ const core_ctrl_apply_to_job_opening = async (req, res, next) => {
 			return res.status(409).json({ message: 'Ya te postulaste para esta vacante' });
 		}
 
-		const employee = await Employee.findByPk(employeeId, {
-			include: [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
-		});
 		const name = employee?.person
 			? `${employee.person.first_name ?? ''} ${employee.person.last_name ?? ''}`.trim()
 			: 'Un empleado';

@@ -77,6 +77,10 @@ const markAsRead = async (req, res, next) => {
 		const alert = await Alert.findByPk(req.params.id);
 		if (!alert) return res.status(404).json({ error: 'Alert not found' });
 
+		if (req.user?.role !== 'Talento' && alert.employee_id && alert.employee_id !== req.user?.employeeId) {
+			return res.status(403).json({ error: 'No podés marcar como leída la alerta de otro empleado.' });
+		}
+
 		await alert.update({ status: 'READ' });
 
 		const updated = await Alert.findByPk(alert.id, { include: EMPLOYEE_INCLUDE });

@@ -242,6 +242,12 @@ const createEmployeeTask = async (req, res, next) => {
 const updateEmployeeTask = async (req, res, next) => {
 	try {
 		const { employeeId, taskId } = req.params;
+
+		const role = req.user?.role;
+		if (role !== 'Talento' && role !== 'Líder' && req.user?.employeeId !== employeeId) {
+			return res.status(403).json({ status: 'fail', message: 'No podés modificar la tarea de otro empleado.' });
+		}
+
 		const record = await EmployeeTask.findOne({
 			where: { employee_id: employeeId, task_id: taskId },
 		});

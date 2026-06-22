@@ -1,19 +1,17 @@
 const { Team, Employee, Person } = require('../connection/sequelize');
 
-const PERSON_ATTRS = { model: Person, as: 'person', attributes: ['first_name', 'last_name'] };
-
 const TEAM_INCLUDE = [
 	{
 		model:      Employee,
 		as:         'leader',
 		attributes: ['id', 'position'],
-		include:    [PERSON_ATTRS],
+		include:    [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
 	},
 	{
 		model:      Employee,
 		as:         'collaborator',
 		attributes: ['id', 'position'],
-		include:    [PERSON_ATTRS],
+		include:    [{ model: Person, as: 'person', attributes: ['first_name', 'last_name'] }],
 	},
 ];
 

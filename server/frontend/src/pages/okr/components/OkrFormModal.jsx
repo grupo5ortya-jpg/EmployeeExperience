@@ -29,6 +29,7 @@ const formFromOkr = (okr) => ({
 // between create/edit or between different OKRs, so initial state is always fresh.
 export default function OkrFormModal({ isOpen, onClose, employees, okrs, editing, onSubmit, loading }) {
     const [form, setForm] = useState(() => editing ? formFromOkr(editing) : EMPTY_FORM)
+    const [error, setError] = useState('')
 
     if (!isOpen) return null
 
@@ -40,6 +41,7 @@ export default function OkrFormModal({ isOpen, onClose, employees, okrs, editing
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!form.responsibleEmployeeId || !form.targetValue) return
+        setError('')
 
         const payload = {
             title:                 form.title,
@@ -53,8 +55,12 @@ export default function OkrFormModal({ isOpen, onClose, employees, okrs, editing
             parentId:              form.parentId || null,
         }
 
-        await onSubmit(payload)
-        onClose()
+        try {
+            await onSubmit(payload)
+            onClose()
+        } catch (err) {
+            setError(err?.response?.data?.message ?? 'No se pudo guardar el objetivo.')
+        }
     }
 
     // Only suggest active objectives as parent: not itself, not completed, not overdue/at-risk.
@@ -172,6 +178,10 @@ export default function OkrFormModal({ isOpen, onClose, employees, okrs, editing
                             El estado (<span className="font-semibold text-slate-500">{okrStatusMeta(editing.status).label}</span>)
                             se calcula automáticamente según el progreso y el tiempo transcurrido.
                         </p>
+                    )}
+
+                    {error && (
+                        <p className="text-sm text-red-400 text-center">{error}</p>
                     )}
 
                     <div className="flex justify-end gap-3 pt-3 border-t border-brand-light">

@@ -10,8 +10,11 @@ import RoleRoute              from './components/RoleRoute.jsx'
 import DetailEmployee         from './pages/detailEmployee/DetailEmployee.jsx'
 import TemplateDetailPage     from './pages/onboarding/TemplateDetailPage.jsx'
 import AllAssignmentsPage     from './pages/onboarding/AllAssignmentsPage.jsx'
+import AssignTemplatePage     from './pages/onboarding/AssignTemplatePage.jsx'
+import CreateTemplatePage     from './pages/onboarding/CreateTemplatePage.jsx'
 import FeedbackHome           from './pages/feedback/FeedbackHome.jsx'
 import FeedbackDetailPage     from './pages/feedback/FeedbackDetailPage.jsx'
+import CreateFeedback         from './pages/feedback/CreateFeedback.jsx'
 import HRFeedbackReport       from './pages/feedback/HRFeedbackReport.jsx'
 import EmployeeFeedbackReport from './pages/feedback/EmployeeFeedbackReport.jsx'
 import ContinuousFeedback     from './pages/continuousFeedback/ContinuousFeedback.jsx'
@@ -55,9 +58,12 @@ function App() {
               <Route path="/detailemployee/:id"      element={<DetailEmployee />} />
               <Route path="/onboarding-template/:id" element={<TemplateDetailPage />} />
               <Route path="/all-assignments"         element={<RoleRoute allowed={['Talento', 'Líder']}><AllAssignmentsPage /></RoleRoute>} />
+              <Route path="/assigntemplatepage"      element={<RoleRoute allowed={['Talento']}><AssignTemplatePage /></RoleRoute>} />
+              <Route path="/createtemplatepage"      element={<RoleRoute allowed={['Talento']}><CreateTemplatePage /></RoleRoute>} />
               <Route path="/feedbackhome"            element={<RoleRoute allowed={['Talento']}><FeedbackHome /></RoleRoute>} />
               <Route path="/feedback/:id"            element={<FeedbackDetailPage />} />
-              <Route path="/hrfeedbackreport"        element={<HRFeedbackReport />} />
+              <Route path="/createfeedback"          element={<RoleRoute allowed={['Talento']}><CreateFeedback /></RoleRoute>} />
+              <Route path="/hrfeedbackreport"        element={<RoleRoute allowed={['Talento']}><HRFeedbackReport /></RoleRoute>} />
               <Route path="/employeefeedbackreport"  element={<EmployeeFeedbackReport />} />
               <Route path="/continuous-feedback"     element={<RoleRoute allowed={['Colaborador']}><ContinuousFeedback /></RoleRoute>} />
               <Route path="/continuous-feedback/:id" element={<RoleRoute allowed={['Colaborador']}><ContinuousFeedbackDetail /></RoleRoute>} />

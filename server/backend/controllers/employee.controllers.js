@@ -343,6 +343,21 @@ const deleteEmployee = async (req, res, next) => {
 		await employee.destroy();
 		res.status(204).end();
 	} catch (err) {
+		// Sin onDelete explícito en la mayoría de las FKs hacia Employee (tareas, evaluaciones,
+		// alertas, offboarding, etc.), Sequelize infiere un default según `allowNull` del campo —
+		// para FKs que son además parte de una PK compuesta (ej. SurveyAssignment.employee_id,
+		// `allowNull:true` a nivel Sequelize pero NOT NULL real en Postgres por ser PK, mismo
+		// gotcha ya documentado para `assigned_by`) ese default termina siendo `SET NULL`, que
+		// Postgres no puede cumplir sobre una columna de PK — y en vez de una FK violation limpia,
+		// tira un `SequelizeDatabaseError` crudo de "viola la restricción not-null". Se atrapan
+		// ambas clases y se devuelve un 409 claro en vez de un 500 (mismo objetivo que el guard de
+		// Skill, pero genérico porque acá son demasiadas tablas dependientes para enumerar una por una).
+		if (err.name === 'SequelizeForeignKeyConstraintError' || err.name === 'SequelizeDatabaseError') {
+			return res.status(409).json({
+				status:  'fail',
+				message: 'No se puede eliminar: el empleado tiene datos asociados (tareas, evaluaciones, alertas, offboarding, etc.).',
+			});
+		}
 		next(err);
 	}
 };

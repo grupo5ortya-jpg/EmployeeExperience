@@ -96,6 +96,10 @@ const createEnrollment = async (req, res, next) => {
 	try {
 		const { employeeId, courseId } = req.body;
 
+		if (req.user?.role !== 'Talento' && req.user?.employeeId !== employeeId) {
+			return res.status(403).json({ status: 'fail', message: 'No podés inscribir a otro empleado.' });
+		}
+
 		const course = await Task.findByPk(courseId);
 		if (!course) return res.status(404).json({ status: 'fail', message: 'Course not found' });
 
@@ -129,6 +133,10 @@ const updateProgress = async (req, res, next) => {
 		const { employeeId, taskId } = parseEnrollmentId(req.params.id);
 		const { progress } = req.body;
 
+		if (req.user?.role !== 'Talento' && req.user?.employeeId !== employeeId) {
+			return res.status(403).json({ status: 'fail', message: 'No podés modificar el progreso de otro empleado.' });
+		}
+
 		if (!COURSE_ENROLLMENT.PROGRESS_STEPS.includes(progress)) {
 			return res.status(400).json({ status: 'fail', message: 'Progreso inválido' });
 		}
@@ -155,6 +163,10 @@ const requestCompletion = async (req, res, next) => {
 	try {
 		const { employeeId, taskId } = parseEnrollmentId(req.params.id);
 		const { certificateLink } = req.body;
+
+		if (req.user?.role !== 'Talento' && req.user?.employeeId !== employeeId) {
+			return res.status(403).json({ status: 'fail', message: 'No podés solicitar la finalización del curso de otro empleado.' });
+		}
 
 		const enrollment = await EmployeeTask.findOne({
 			where:   { employee_id: employeeId, task_id: taskId },
@@ -192,6 +204,10 @@ const requestCompletion = async (req, res, next) => {
 const createExternalCertification = async (req, res, next) => {
 	try {
 		const { employeeId, title, description, duration, modality, skillId, institution, certificateLink } = req.body;
+
+		if (req.user?.role !== 'Talento' && req.user?.employeeId !== employeeId) {
+			return res.status(403).json({ status: 'fail', message: 'No podés registrar una certificación para otro empleado.' });
+		}
 
 		if (!title || !title.trim()) {
 			return res.status(400).json({ status: 'fail', message: 'El título es obligatorio' });

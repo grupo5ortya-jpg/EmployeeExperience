@@ -92,6 +92,10 @@ const updateAssignment = async (req, res, next) => {
 		const assignment = await FeedbackAssignment.findByPk(req.params.id);
 		if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
 
+		if (req.user?.role !== 'Talento' && req.user?.employeeId !== assignment.evaluator_id) {
+			return res.status(403).json({ error: 'No podés completar la evaluación de otro evaluador.' });
+		}
+
 		const updates = {};
 		if (req.body.status)   updates.status   = req.body.status;
 		if (req.body.comments) updates.comments = req.body.comments;
@@ -158,6 +162,11 @@ const getResults = async (req, res, next) => {
 		const { cycleId, evaluatedId } = req.query;
 		if (!cycleId || !evaluatedId)
 			return res.status(400).json({ error: 'cycleId and evaluatedId are required' });
+
+		const role = req.user?.role;
+		if (role !== 'Talento' && role !== 'Líder' && req.user?.employeeId !== evaluatedId) {
+			return res.status(403).json({ error: 'No podés ver los resultados de otro empleado.' });
+		}
 
 		// 1. Fetch cycle to get selected competency IDs
 		const cycle = await Survey.findByPk(cycleId, {
@@ -283,11 +292,22 @@ const getGapAnalysis = async (req, res, next) => {
 		if (!cycleId || !evaluatedId)
 			return res.status(400).json({ error: 'cycleId and evaluatedId are required' });
 
+		const role = req.user?.role;
+		const isHr = role === 'Talento' || role === 'Líder';
+		if (!isHr && req.user?.employeeId !== evaluatedId) {
+			return res.status(403).json({ error: 'No podés ver el análisis de otro empleado.' });
+		}
+
 		const existing = await FeedbackGapAnalysis.findOne({
 			where: { cycle_id: cycleId, employee_id: evaluatedId },
 		});
 
 		if (!existing) return res.json(null);
+
+		// HR ve el análisis completo siempre. El propio empleado solo ve las secciones que
+		// HR ya aprobó compartir (sent_sections) — si todavía no se envió nada, no ve nada.
+		const sent = new Set(existing.sent_sections ?? []);
+		const visible = (key, value) => (isHr || sent.has(key)) ? value : null;
 
 		res.json({
 			id:              existing.id,
@@ -295,10 +315,10 @@ const getGapAnalysis = async (req, res, next) => {
 			actualResults:   existing.actual_results,
 			expectedResults: existing.expected_results,
 			analysis: {
-				strengths:   existing.strengths,
-				gaps:        existing.gaps,
-				suggestions: existing.suggestions,
-				summary:     existing.summary,
+				strengths:   visible('strengths', existing.strengths),
+				gaps:        visible('gaps', existing.gaps),
+				suggestions: visible('suggestions', existing.suggestions),
+				summary:     isHr || sent.size > 0 ? existing.summary : null,
 			},
 			sentSections: existing.sent_sections,
 			sentAt:       existing.sent_at,

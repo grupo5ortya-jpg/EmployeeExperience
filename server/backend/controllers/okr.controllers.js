@@ -1,6 +1,6 @@
 
 const { Okr, Employee, Person, Alert } = require('../connection/sequelize');
-const { OKR } = require('../utils/constants/models.constants.js');
+const { OKR, EMPLOYEE } = require('../utils/constants/models.constants.js');
 const {
     progressPercent,
     expectedProgressPercent,
@@ -158,6 +158,9 @@ const createOkr = async (req, res, next) => {
         if (!responsible) {
             return res.status(404).json({ status: 'error', message: 'Empleado responsable no encontrado.' });
         }
+        if (responsible.status !== EMPLOYEE.STATUS_ACTIVE) {
+            return res.status(400).json({ status: 'error', message: 'No se puede asignar un objetivo a un empleado inactivo.' });
+        }
 
         if (parentId) {
             const parent = await Okr.findByPk(parentId);
@@ -221,6 +224,16 @@ const updateOkr = async (req, res, next) => {
 
         const reassigned = responsibleEmployeeId !== undefined
             && responsibleEmployeeId !== okr.responsible_employee_id;
+
+        if (reassigned) {
+            const newResponsible = await Employee.findByPk(responsibleEmployeeId);
+            if (!newResponsible) {
+                return res.status(404).json({ status: 'error', message: 'Empleado responsable no encontrado.' });
+            }
+            if (newResponsible.status !== EMPLOYEE.STATUS_ACTIVE) {
+                return res.status(400).json({ status: 'error', message: 'No se puede asignar un objetivo a un empleado inactivo.' });
+            }
+        }
 
         const progressChanged = currentValue !== undefined
             && Number(currentValue) !== okr.current_value;

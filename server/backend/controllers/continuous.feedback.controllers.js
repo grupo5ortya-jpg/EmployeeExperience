@@ -1,5 +1,6 @@
 
 const { ContinuousFeedback, Employee, Person, Alert } = require('../connection/sequelize');
+const { EMPLOYEE } = require('../utils/constants/models.constants.js');
 
 const formatEmployeeMini = (employee) => {
     if (!employee) return null;
@@ -50,6 +51,14 @@ const createContinuousFeedback = async (req, res, next) => {
             return res.status(400).json({
                 status: 'error',
                 message: 'No podés enviarte feedback a vos mismo.',
+            });
+        }
+
+        const receiver = await Employee.findByPk(receiver_id);
+        if (!receiver || receiver.status !== EMPLOYEE.STATUS_ACTIVE) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'No podés enviarle feedback a un empleado inactivo.',
             });
         }
 

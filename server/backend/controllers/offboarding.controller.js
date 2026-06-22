@@ -1,4 +1,4 @@
-const { Op } = require('sequelize');
+const { Op, UniqueConstraintError } = require('sequelize');
 const {
 	Employee, Person, User, Role,
 	EmployeeOffboarding, AlumniProfile, EmployeeTask, Task,
@@ -36,16 +36,21 @@ async function formatOffboarding(offboarding, checklistTaskTypeId, exitInterview
 			}],
 		});
 
-	const exitInterview = await SurveyAssignment.findOne({
-		where: { employee_id: offboarding.employee_id },
-		include: [{
-			model:    Survey,
-			as:       'survey',
-			required: true,
-			where:    { question_type_id: exitInterviewQuestionTypeId },
-		}],
-		order: [['createdAt', 'DESC']],
-	});
+	// Despido: tampoco se asigna entrevista de salida (ver startOffboarding) — mismo guard que
+	// el checklist arriba. Sin esto, una ronda de despido posterior a una renuncia previa
+	// mostraba la entrevista (incluso ya COMPLETED) de esa ronda vieja en vez de null.
+	const exitInterview = isTermination
+		? null
+		: await SurveyAssignment.findOne({
+			where: { employee_id: offboarding.employee_id },
+			include: [{
+				model:    Survey,
+				as:       'survey',
+				required: true,
+				where:    { question_type_id: exitInterviewQuestionTypeId },
+			}],
+			order: [['createdAt', 'DESC']],
+		});
 
 	// Activos sin devolver — aplica tanto a renuncia como a despido (la notebook hay que
 	// recuperarla en ambos casos), a diferencia del checklist/entrevista que sí se omiten en despido.
@@ -104,6 +109,15 @@ const startOffboarding = async (req, res, next) => {
 		if (!employeeId || !lastWorkingDay) {
 			return res.status(400).json({ status: 'fail', message: 'employeeId y lastWorkingDay son requeridos' });
 		}
+		if (Number.isNaN(new Date(lastWorkingDay).getTime())) {
+			return res.status(400).json({ status: 'fail', message: 'lastWorkingDay no es una fecha válida' });
+		}
+		if (Array.isArray(assets) && assets.some((item) =>
+			(item?.name && item.name.trim().length > 150) ||
+			(item?.serialNumber && item.serialNumber.trim().length > 150)
+		)) {
+			return res.status(400).json({ status: 'fail', message: 'Nombre/N° de serie de un activo no puede superar los 150 caracteres' });
+		}
 
 		// Despido (TERMINATION): sin checklist, sin entrevista de salida, sin alert al empleado —
 		// el proceso se registra igual para tracking de HR, pero no se le envía nada al empleado.
@@ -148,10 +162,25 @@ const startOffboarding = async (req, res, next) => {
 				const name = item?.name?.trim();
 				if (!name) continue;
 
-				const asset = await Asset.create({
-					name,
-					serial_number: item.serialNumber?.trim() || null,
-				});
+				// `Asset` tiene un índice único sobre (name, serial_number) — si dos registros
+				// manuales coinciden exacto en ambos, devolver 400 claro en vez de un 500 crudo
+				// de Postgres (caso borde documentado, EXP-DEV-07-FIX-03).
+				let asset;
+				try {
+					asset = await Asset.create({
+						name,
+						serial_number: item.serialNumber?.trim() || null,
+					});
+				} catch (err) {
+					if (err instanceof UniqueConstraintError) {
+						return res.status(400).json({
+							status:  'fail',
+							message: `Ya existe un activo registrado con el nombre "${name}" y ese número de serie.`,
+						});
+					}
+					throw err;
+				}
+
 				await EmployeeAsset.create({
 					employee_id:     employeeId,
 					asset_id:        asset.id,
