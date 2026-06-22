@@ -980,6 +980,27 @@ Con esto confirmado, se optó por la solución liviana: en `createResponse`, si 
 
 ---
 
+## Containerización (Docker) — 2026-06-22, EXP-DEV-31
+
+Proyecto dockerizado completo: 3 servicios (`db` Postgres 16, `backend` Express, `frontend` nginx sirviendo el build de Vite) vía `docker-compose.yml` en la raíz del repo. Build context del backend es `./server` (no `./server/backend`) porque el código depende de `server/bs/` (carpeta hermana, SQL de extensiones/funciones) en una ruta relativa fija (`../../bs` desde `connection/connection.js`) — el `Dockerfile` hace `COPY bs/ /app/server/bs` además de `COPY backend/ ./` para preservarla.
+
+**Cambios de código necesarios para soportarlo:**
+- `server/backend/index.js` — nuevo gate `RUN_SEEDS` (default `true`): `if (process.env.RUN_SEEDS !== 'false') await core_seed_database(sequelize);` — permite levantar una imagen sin datos de prueba para una base de cliente real.
+- `server/backend/.env.example` reescrito: `SYNC_PARAMS` default vuelve a `{"force":false}` (estaba en `{"force":true}`, que borra la BD en cada arranque — peligroso como default de un `.example`), agregado `RUN_SEEDS=true` con comentario, eliminadas variables `AUTH0_*` sin ningún uso real en el código (confirmado por grep — la autenticación real es JWT propio).
+- `server/backend/package.json`/`package-lock.json` — eliminada la dependencia `"employeeexperience": "file:../.."` (apuntaba al `package.json` raíz del monorepo, inalcanzable en un build context aislado de Docker; confirmado sin ningún uso real vía grep antes de borrarla). Lockfile regenerado con `rm -rf node_modules && npm install`.
+
+**Archivos nuevos:** `server/backend/Dockerfile` + `.dockerignore`, `server/frontend/Dockerfile` (multi-stage: build con Vite, sirve con nginx) + `.dockerignore` + `nginx.conf` (fallback SPA a `index.html`), `docker-compose.yml` (raíz), `.env.docker.example` (raíz, template a copiar como `.env`).
+
+**Gotcha — Vite bakea env vars en build time, no runtime:** `VITE_API_URL` se pasa como build `ARG` al Dockerfile del frontend (`ENV VITE_API_URL=$VITE_API_URL` antes de `npm run build`), no como variable de entorno del contenedor en runtime — si se cambia, hay que re-buildear la imagen del frontend, no alcanza con reiniciar el contenedor.
+
+**`.gitignore`:** agregada excepción `!.env.docker.example` (la regla genérica `.env.*` ya bloqueaba el nuevo archivo template).
+
+**Validado end-to-end 2026-06-22** (`docker compose build` + `docker compose up`, Docker Desktop/WSL2 en Windows): los 3 servicios levantan sanos (`db` healthcheck OK, `backend` conecta a Postgres, ejecuta el SQL de `bs/`, siembra la base, queda escuchando en :3002; `frontend`/nginx sirve en :80→5173 mapeado), login real contra la API containerizada (`POST /auth/login` con un usuario seedeado) devuelve 200 con el JWT esperado. Stack bajado y volumen de prueba (`pgdata`) borrado al terminar — sin datos de prueba persistidos.
+
+**Pendiente antes de un deploy real a cliente (ver EXP-DEV-32):** completar `.env` real (no usar los placeholders de `.env.docker.example`) — contraseña de Postgres, `JWT_SECRET` largo y random, `GEMINI_API_KEY` real, y `RUN_SEEDS=false` para no crear empleados/usuarios de prueba en la base del cliente. La key de Gemini real que hoy vive en `server/backend/.env.dev` (desarrollo local) no se tocó ni se subió a ningún lado — rotar/reemplazar si ese archivo llegara a compartirse fuera de git.
+
+---
+
 ## Arquitectura técnica — Notas para desarrolladores
 
 ### Protección de rutas por rol
@@ -1074,6 +1095,8 @@ Una auditoría completa de backend + frontend encontró varias rutas de escritur
 | EXP-DEV-27 | `JobOpeningsList`/`MyEvaluations`/`EmployeeFeedbackReport` con doble-registro inofensivo en `router.js` (auto-generado + manual al mismo path) — prolijidad, sin bug de protección | Baja |
 | EXP-DEV-28 | ~10 reimplementaciones locales de `formatDate` en `pages/**` — extraer a helper compartido | Baja |
 | EXP-DEV-29 | ~~`apiClient.js` sin interceptor de `response`/401~~ — Resuelto 2026-06-21, ver EXP-DEV-29-FIX-01 | ~~Media~~ |
+| EXP-DEV-31 | ~~Containerizar el proyecto (Docker Compose: db/backend/frontend)~~ — Resuelto y validado end-to-end 2026-06-22, ver sección "Containerización (Docker)" arriba | ~~Media~~ |
+| EXP-DEV-32 | Antes de un deploy real a cliente: completar `.env` con secretos reales (no los placeholders de `.env.docker.example`) y `RUN_SEEDS=false` para no crear usuarios/empleados de prueba en la base del cliente | Media |
 
 ---
 

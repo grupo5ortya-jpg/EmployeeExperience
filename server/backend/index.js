@@ -23,8 +23,15 @@ async function core_start_server() {
 		await core_conn_apply_associations(sequelize);
 		await sequelize.sync(JSON.parse(SYNC_PARAMS));
 
-		// Sembrar datos iniciales - De prueba, se puede comentar después
-		await core_seed_database(sequelize);
+		// Sembrar datos iniciales (empleados/usuarios/contraseñas de ejemplo) — solo para
+		// desarrollo/demo. Gateado por RUN_SEEDS para no poblar con datos falsos una base de un
+		// cliente real (ej. en Docker) por accidente. Default true para no romper `npm run dev`
+		// existente, que nunca seteó esta variable.
+		if (process.env.RUN_SEEDS !== 'false') {
+			await core_seed_database(sequelize);
+		} else {
+			console.log('RUN_SEEDS=false — se omite el seed de datos de ejemplo.');
+		}
 
 		console.log('Database initialized and models synchronized successfully');
 

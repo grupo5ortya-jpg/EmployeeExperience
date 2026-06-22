@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-employee_experience}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3002
+      DB_DIALECT: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-employee_experience}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_SCHEMA: main
+      # {"force":true} BORRA Y RECREA toda la base en cada arranque — nunca usar eso acá.
+      SYNC_PARAMS: '{"force":false}'
+      # false en una base de cliente/producción real — true solo para demo/desarrollo.
+      RUN_SEEDS: ${RUN_SEEDS:-true}
+      PROJECT_NAME: EmployeeExperience
+      ALLOWED_DOMAINS: "*"
+      ALLOWED_METHODS: GET,POST,PUT,PATCH,DELETE,OPTIONS
+      JWT_SECRET: ${JWT_SECRET:-cambiar_por_un_string_largo_y_secreto}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "3002:3002"
+
+  frontend:
+    build:
+      context: ./server/frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3002}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
