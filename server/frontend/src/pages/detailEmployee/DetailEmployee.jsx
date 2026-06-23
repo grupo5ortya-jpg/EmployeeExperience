@@ -11,6 +11,7 @@ import { useDepartments }   from '../../hooks/useDepartments'
 import { useEmployees }     from '../../hooks/useEmployees'
 import { updateEmployee, assignLeader, assignMentor } from '../../services/employeeService'
 import LearningCertifications from '../learning/components/LearningCertifications'
+import { DOCUMENT_TYPE_OPTIONS } from '../../constants/documentType'
 
 /* ── Constantes ──────────────────────────────────────────── */
 const STATUS_OPTIONS = [
@@ -440,9 +441,7 @@ export default function DetailEmployee() {
                         <div className="grid grid-cols-3 gap-1.5">
                             <select value={form.documentType} onChange={set('documentType')} className={inputCls}>
                                 <option value="">Tipo</option>
-                                <option value="DNI">DNI</option>
-                                <option value="PASSPORT">Pasaporte</option>
-                                <option value="CUIL">CUIL</option>
+                                {DOCUMENT_TYPE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                             </select>
                             <input value={form.documentNumber} onChange={set('documentNumber')}
                                 placeholder="Número" className={`${inputCls} col-span-2`} />

@@ -1,7 +1,6 @@
 import Field from './Field'
 import SectionTitle from './SectionTitle'
-
-const DOC_TYPES = ['DNI', 'Pasaporte', 'CUIT', 'CUIL']
+import { DOCUMENT_TYPE_OPTIONS } from '../../../constants/documentType'
 
 const inputCls = `
 w-full rounded-lg border border-brand-light px-3.5 py-2 text-sm text-slate-700
@@ -24,7 +23,7 @@ export default function PersonalInfoFields({ form, onChange }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Field label="Tipo de documento" required>
           <select name="documentType" value={form.documentType} onChange={onChange} className={inputCls}>
-            {DOC_TYPES.map((t) => <option key={t}>{t}</option>)}
+            {DOCUMENT_TYPE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
         </Field>
         <Field label="Número de documento" required>

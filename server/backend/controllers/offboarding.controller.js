@@ -158,15 +158,31 @@ const startOffboarding = async (req, res, next) => {
 		const t = await sequelize.transaction();
 
 		try {
-			const offboarding = await EmployeeOffboarding.create({
-				employee_id:      employeeId,
-				initiated_by:     req.user?.employeeId ?? null,
-				last_working_day: lastWorkingDay,
-				rehirable:        rehirable !== undefined ? !!rehirable : true,
-				exit_type:        resolvedExitType,
-				status:           isTermination ? EMPLOYEE_OFFBOARDING.STATUS_COMPLETED : EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
-				completed_at:     isTermination ? now : null,
-			}, { transaction: t });
+			// El `findOne` de arriba (línea ~136) cubre el caso feliz, pero corre fuera de esta
+			// transacción — dos requests casi simultáneos (doble click, dos tabs) pueden pasarlo
+			// ambos antes de que el primero confirme. El índice único parcial
+			// `employee_offboardings_one_in_progress_per_employee` (ver models/EmployeeOffboarding.js,
+			// solo sobre status=IN_PROGRESS — no afecta el histórico de boomerang employees) es la
+			// defensa real bajo concurrencia: el segundo INSERT que llegue a la BD revienta acá con
+			// un UniqueConstraintError limpio en vez de crear un proceso duplicado.
+			let offboarding;
+			try {
+				offboarding = await EmployeeOffboarding.create({
+					employee_id:      employeeId,
+					initiated_by:     req.user?.employeeId ?? null,
+					last_working_day: lastWorkingDay,
+					rehirable:        rehirable !== undefined ? !!rehirable : true,
+					exit_type:        resolvedExitType,
+					status:           isTermination ? EMPLOYEE_OFFBOARDING.STATUS_COMPLETED : EMPLOYEE_OFFBOARDING.STATUS_IN_PROGRESS,
+					completed_at:     isTermination ? now : null,
+				}, { transaction: t });
+			} catch (err) {
+				if (err instanceof UniqueConstraintError) {
+					await t.rollback();
+					return res.status(409).json({ status: 'fail', message: 'Ya existe un proceso de offboarding en curso para este empleado' });
+				}
+				throw err;
+			}
 
 			// Activos a devolver registrados manualmente por HR al iniciar el proceso (ej. equipo
 			// que nunca quedó cargado en el sistema). Cada item crea un Asset nuevo + su EmployeeAsset

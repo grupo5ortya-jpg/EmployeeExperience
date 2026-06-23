@@ -8,6 +8,15 @@ const ai = new GoogleGenAI({
     location: undefined
 });
 
+// generarTexto() es el único punto por el que pasan las 4 funciones que llaman a Gemini
+// (suggestMentors, analyzePulseSurvey, analyzeGapAnalysis, generateCareerPlan) — varias se
+// invocan de forma síncrona dentro de un request HTTP (gap-analysis, mentor-suggestions,
+// career-simulator). Sin timeout, un colgazo del proveedor deja ese request esperando para
+// siempre. 30s da margen para prompts grandes (gap-analysis con muchos comentarios, career-plan
+// con varias skills) sin dejar al usuario esperando indefinidamente ni agotar recursos del
+// servidor (worker de Node + conexión a BD si hay una transacción abierta).
+const GEMINI_TIMEOUT_MS = 30_000;
+
 // Strip markdown code fences if Gemini wraps the response, then parse the JSON
 function parseGeminiJson(raw) {
     const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
@@ -15,19 +24,31 @@ function parseGeminiJson(raw) {
 }
 
 async function generarTexto(prompt) {
-    try {
-        if (!process.env.GEMINI_API_KEY) {
-            console.warn("⚠️ Advertencia: process.env.GEMINI_API_KEY no está definida. Revisa tu archivo .env");
-        }
+    if (!process.env.GEMINI_API_KEY) {
+        console.warn("⚠️ Advertencia: process.env.GEMINI_API_KEY no está definida. Revisa tu archivo .env");
+    }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+
+    try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
+            config: { abortSignal: controller.signal },
         });
         return response.text;
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error(`Gemini Service: timeout esperando respuesta (>${GEMINI_TIMEOUT_MS}ms)`);
+            const timeoutError = new Error('El servicio de IA no respondió a tiempo. Intentá de nuevo en unos minutos.');
+            timeoutError.statusCode = 504;
+            throw timeoutError;
+        }
         console.error("Error en Gemini Service:", error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 

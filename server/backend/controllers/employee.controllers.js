@@ -1,8 +1,10 @@
 const { Op } = require('sequelize');
 const { sequelize, Employee, Person, Department, User, Role, Task, TaskType, EmployeeTask, Alert, Team, EmployeeAsset, Asset } = require('../connection/sequelize');
-const { TASK_TYPE } = require('../utils/constants/models.constants.js');
+const { TASK_TYPE, PERSON } = require('../utils/constants/models.constants.js');
 
-const DOC_TYPE_MAP = Person.rawAttributes.document_type.values;
+function isValidDocumentType(documentType) {
+	return PERSON.DOCUMENT_TYPES.includes(documentType);
+}
 
 const EMPLOYEE_INCLUDE = [
 	{ model: Person, as: 'person' },
@@ -152,6 +154,13 @@ const createEmployee = async (req, res, next) => {
 		taskTypeId
 	} = req.body;
 
+	if (documentType !== undefined && !isValidDocumentType(documentType)) {
+		return res.status(400).json({
+			status: 'fail',
+			message: `Tipo de documento inválido. Valores permitidos: ${PERSON.DOCUMENT_TYPES.join(', ')}.`,
+		});
+	}
+
 	const t = await sequelize.transaction();
 
 	try {
@@ -163,7 +172,7 @@ const createEmployee = async (req, res, next) => {
 		const person = await Person.create({
 			first_name: firstName,
 			last_name: lastName,
-			document_type: DOC_TYPE_MAP[documentType] ?? documentType,
+			document_type: documentType,
 			document_number: documentNumber,
 			birth_date: birthDate || null,
 			phone: phone || null,
@@ -306,12 +315,19 @@ const updateEmployee = async (req, res, next) => {
 			position, status, departmentId, hireDate,
 		} = body;
 
+		if (documentType !== undefined && !isValidDocumentType(documentType)) {
+			return res.status(400).json({
+				status: 'fail',
+				message: `Tipo de documento inválido. Valores permitidos: ${PERSON.DOCUMENT_TYPES.join(', ')}.`,
+			});
+		}
+
 		const personUpdates = {};
 		if (firstName !== undefined) personUpdates.first_name = firstName;
 		if (lastName !== undefined) personUpdates.last_name = lastName;
 		if (email !== undefined) personUpdates.email = email;
 		if (personalEmail !== undefined) personUpdates.personal_email = personalEmail || null;
-		if (documentType !== undefined) personUpdates.document_type = DOC_TYPE_MAP[documentType] ?? documentType;
+		if (documentType !== undefined) personUpdates.document_type = documentType;
 		if (documentNumber !== undefined) personUpdates.document_number = documentNumber;
 		if (birthDate !== undefined) personUpdates.birth_date = birthDate || null;
 		if (phone !== undefined) personUpdates.phone = phone || null;

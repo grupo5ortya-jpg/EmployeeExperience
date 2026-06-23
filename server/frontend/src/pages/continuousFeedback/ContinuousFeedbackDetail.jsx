@@ -156,9 +156,9 @@ export default function ContinuousFeedbackDetail() {
                                 </p>
 
                                 <p className="text-sm font-semibold text-slate-700">
-                                    {feedback.is_anonymous
+                                    {feedback.isAnonymous || !feedback.emitter
                                         ? 'Anónimo'
-                                        : `${feedback.emitter?.firstName} ${feedback.emitter?.lastName}`}
+                                        : `${feedback.emitter.firstName} ${feedback.emitter.lastName}`}
                                 </p>
                             </div>
                         </div>
