@@ -90,4 +90,4 @@ const markAsRead = async (req, res, next) => {
 	}
 };
 
-module.exports = { getAlerts, getUnreadCount, markAsRead };
+module.exports = { getAlerts, getUnreadCount, markAsRead, HR_ALERT_TYPES, EMPLOYEE_ALERT_TYPES };

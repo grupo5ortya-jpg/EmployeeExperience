@@ -43,6 +43,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-cambiar_por_un_string_largo_y_secreto}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     ports:
       - "3002:3002"
 

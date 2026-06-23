@@ -1001,6 +1001,27 @@ Proyecto dockerizado completo: 3 servicios (`db` Postgres 16, `backend` Express,
 
 ---
 
+## Envío de emails reales ligado a las Alertas — 2026-06-22, EXP-DEV-33
+
+Hasta ahora todo el sistema de notificación era `Alert` interno in-app (ver ÉPICA 5). Se agregó envío de emails reales (nodemailer) reusando exactamente esas mismas alertas, sin crear un sistema de notificación paralelo ni tocar ninguno de los ~30 lugares del código que ya crean `Alert`s — se centralizó vía hooks de Sequelize (`afterCreate`/`afterBulkCreate`) en `models/Alert.js`.
+
+**Reglas de destinatario:**
+- Alertas dirigidas al empleado (`EMPLOYEE_ALERT_TYPES` — ej. "tu tarea venció", "tenés evaluaciones pendientes") → mail al email **institucional** del empleado (`User.email`, no el email personal opcional).
+- Alertas dirigidas a HR (`HR_ALERT_TYPES` — ej. "tarea vencida de un empleado", "entrevista de salida completada") → mail a **todos** los usuarios con rol Talento. Decisión explícita del cliente/usuario: sin lista de destinatarios fija por ahora, para no requerir mantenimiento manual; se puede migrar a una casilla configurable más adelante si hace falta (ver EXP-DEV-34).
+- Hay tipos que son ambas cosas a la vez (ej. un OKR atrasado le importa tanto al empleado como a HR) — en esos casos se manda a ambos destinos, no es una decisión excluyente.
+
+**Apagado por default:** la feature está gateada por `EMAIL_ENABLED` (env var, default `false`) — sin SMTP configurado, el sistema sigue funcionando exactamente igual que antes (100% in-app), no requiere ningún cambio para los ambientes que no quieran usarlo todavía.
+
+**Contenido del mail (v1, deliberadamente simple):** asunto genérico + el mismo texto que ya se muestra en la alerta in-app + un link a la plataforma.
+
+**Verificado end-to-end** con una cuenta de prueba descartable (Ethereal — nunca se mandó nada a una casilla real): alerta de empleado → llega al empleado correcto; alerta de HR → llega a los 4 usuarios Talento del ambiente de prueba; alertas creadas en lote (`bulkCreate`, mismo mecanismo que usa la asignación masiva de Feedback 360°) → cada destinatario recibe su mail individual. Servidor con la feature apagada (`EMAIL_ENABLED=false`) sigue funcionando idéntico a como funcionaba antes de este cambio.
+
+**Nuevas variables de entorno** (agregadas a `.env.example`, `.env.dev`, `.env.docker.example`, `docker-compose.yml`): `EMAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`.
+
+**Revisión de resiliencia posterior (EXP-DEV-35) — bug real encontrado y corregido:** se pidió explícitamente verificar que ningún error de SMTP pudiera impedir la creación de una alerta ni romper un endpoint. Se encontró que un módulo de mail roto (no un error de SMTP en sí, sino un error al cargar el código que lo maneja) sí podía hacer que `Alert.create()` rechazara — lo que rompería cualquiera de los ~30 endpoints/crons del proyecto que crean alertas sin su propio manejo de errores. Corregido envolviendo el hook completo en try/catch (antes solo el envío de mail en sí estaba protegido, no el paso previo de cargar el módulo). Verificado en vivo simulando el módulo roto, un SMTP inalcanzable, y el camino feliz — los tres casos confirmados sin afectar la creación de la alerta ni el endpoint que la dispara. Detalle técnico completo en `CLAUDE.md`.
+
+---
+
 ## Arquitectura técnica — Notas para desarrolladores
 
 ### Protección de rutas por rol
@@ -1076,8 +1097,10 @@ Una auditoría completa de backend + frontend encontró varias rutas de escritur
 | EXP-1005-BUG-02 | ~~Crons diarios (`onboardingCronJob.js`, `okrCronJob.js`) generaban alertas para empleados `INACTIVE`/Alumni~~ — Resuelto 2026-06-19, filtrado por `Employee.status==='ACTIVE'` | ~~Alta~~ |
 | EXP-DEV-10 | ~~Auditar otros paths de creación de `Alert`~~ — Resuelto 2026-06-20, ver EXP-DEV-10-FIX-01. Auditados los ~30 call-sites: todos seguros salvo el selector de destinatario de Feedback continuo (ya corregido) | ~~Media~~ |
 | EXP-DEV-11 | ~~`formatOffboarding`/`formatUser` buscan checklist/entrevista/`exitType` por `employee_id` sin scopear por proceso~~ — Resuelto 2026-06-20: renuncias repetidas (EXP-1002-FIX-01) y despido-tras-renuncia (EXP-DEV-11-FIX-01) | ~~Media~~ |
-| EXP-DEV-12 | Implementar previsualización de email antes de enviar para acciones sensibles (paso a Alumni) — bloqueado por EXP-DEV-16 (no hay envío de emails reales todavía, solo alertas internas, acta cliente 2026-06-18) | Baja (bloqueado) |
-| EXP-DEV-16 | Implementar el envío de emails reales (hoy todo el sistema de notificación es `Alert` interno in-app, sin integración SMTP/proveedor de email) — desbloquea EXP-DEV-12 y cualquier comunicación que deba llegarle al usuario fuera de la plataforma (alta de cuenta, paso a Alumni, recontratación, vencimientos) | Media |
+| EXP-DEV-12 | Implementar previsualización de email antes de enviar para acciones sensibles (paso a Alumni) — ya no bloqueado (ver EXP-DEV-16, resuelto), pero sigue sin implementar: no se pidió explícitamente en esta sesión | Baja |
+| EXP-DEV-16 | ~~Implementar el envío de emails reales~~ — Resuelto 2026-06-22, ver EXP-DEV-33 arriba | ~~Media~~ |
+| EXP-DEV-34 | Reemplazar "todos los Talento" por una casilla HR configurable (env var) para los `HR_ALERT_TYPES` — mencionado como mejora futura al decidir EXP-DEV-33, no implementado a pedido explícito ("por ahora todos los Talento") | Baja |
+| EXP-DEV-35 | ~~Revisión de resiliencia del sistema de mails — un módulo de mail roto podía romper `Alert.create()`/cualquier endpoint que la dispare~~ — Resuelto 2026-06-22, ver sección "Envío de emails reales..." arriba | ~~Alta~~ |
 | EXP-DEV-13 | Migrar los ~30 botones celestes (`bg-brand hover:bg-brand-hover text-white`) repartidos por el frontend a `components/ui/Button.jsx` (variant `primary`) — en progreso (migrado: `AlumniDetailPage.jsx`, `StartOffboardingModal.jsx`), el resto se va migrando de forma oportunista cuando se toque ese archivo por otra razón, no como barrido único | Baja |
 | EXP-DEV-14 | Adoptar `components/ui/Button.jsx` (variants `ghost`/`danger`) y `components/ui/IconButton.jsx` (nuevo, variants `default`/`danger`/`success`/`reject`) en los botones "Cancelar", destructivos y de ícono-solo (editar/borrar/aprobar/rechazar) que hoy están repetidos en ~20 archivos — en progreso (migrado: `StartOffboardingModal.jsx` Cancelar/tag, `CreateJobOpeningModal.jsx` borrar skill), mismo criterio de migración oportunista que EXP-DEV-13 | Baja |
 | EXP-DEV-15 | Borrar `components/ui/Button.jsx`'s variant `outline` sigue con colores `gray-*` (no `slate-*`/`brand-*` del resto del proyecto) — corregir si/cuando se empiece a usar ese variant | Baja |

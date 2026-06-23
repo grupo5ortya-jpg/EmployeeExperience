@@ -85,6 +85,7 @@ module.exports = {
 		INACTIVE_ROLES: ['Alumni'],
 		ALUMNI: 'Alumni',
 		COLABORADOR: 'Colaborador',
+		TALENTO: 'Talento',
 	},
 	SKILL: {
 		TYPES: ['hard', 'soft'],
