@@ -1,5 +1,8 @@
 # Employee Experience
 
+## Email (alertas por SMTP)
+Ver [docs/email-delivery.md](docs/email-delivery.md) para habilitar/deshabilitar/probar el envío real de emails.
+
 ## Ejecución:
 - En .../EmployeeExperience/server/backend/ crear 2 copias de ".env.example" llamados ".env.dev" y ".env.prod". Completar las constantes del entorno.
 - Desde la carpeta del proyecto ".../EmployeeExperience".
